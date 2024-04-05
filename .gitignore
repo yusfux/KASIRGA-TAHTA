@@ -1,0 +1,41 @@
+**.direnv/
+**.metals/
+**.bsp/
+**.target/
+*/modelsim/*
+**/sim_build
+*_prove/
+**_pycache_*
+**/transcript
+**/out
+**/target
+**/test_run_dir
+
+# pre-commit-hooks
+/.pre-commit-config.yaml
+
+# Package Files #
+*.jar
+*.war
+*.ear
+
+# Compiled Static libraries
+*.lai
+*.la
+*.a
+*.lib
+
+# Precompiled Headers
+*.gch
+*.pch
+
+# Compiled Dynamic libraries
+*.so
+*.dylib
+*.dll
+
+# Compiled Object files
+*.slo
+*.lo
+*.o
+*.obj

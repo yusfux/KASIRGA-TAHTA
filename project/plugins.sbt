@@ -1,0 +1,2 @@
+logLevel := Level.Warn
+addSbtPlugin("ch.epfl.scala" % "sbt-bloop" % "1.5.13")
