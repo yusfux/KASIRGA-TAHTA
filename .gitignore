@@ -1,5 +1,4 @@
 **.direnv/
-**.metals/
 **.bsp/
 **.target/
 */modelsim/*
@@ -10,6 +9,12 @@
 **/out
 **/target
 **/test_run_dir
+
+# metals lsp
+**.metals/
+**.bloop/
+**/project/project/
+**/project/metals.sbt
 
 # pre-commit-hooks
 /.pre-commit-config.yaml
