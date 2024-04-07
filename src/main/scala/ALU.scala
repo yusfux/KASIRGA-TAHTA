@@ -18,12 +18,13 @@ class ALU(val dataWidth: Int) extends Module {
 
   val shamt = if (dataWidth > 1) log2Ceil(dataWidth) - 1 else 0 // Shift amount.
 
-  val resultAdd = io.value1 + Mux(io.control === ALUOp.sub, ~io.value2, io.value2)
+  val value1 = Mux(io.control === ALUOp.sub, Cat(io.value1, 1.U(1.W)), Cat(io.value1, 0.U(1.W)))
+  val value2 = Mux(io.control === ALUOp.sub, Cat(~io.value2, 1.U(1.W)), Cat(io.value2, 0.U(1.W)))
+  val resultAdd = value1 + value2
 
   io.result := 0.U
   switch(io.control) {
-    is(ALUOp.sub) { io.result := resultAdd + 1.U }
-    is(ALUOp.add) { io.result := resultAdd }
+    is(ALUOp.sub, ALUOp.add) { io.result := resultAdd(dataWidth, 1) }
     is(ALUOp.xor) { io.result := io.value1 ^ io.value2 }
     is(ALUOp.or) { io.result := io.value1 | io.value2 }
     is(ALUOp.and) { io.result := io.value1 & io.value2 }

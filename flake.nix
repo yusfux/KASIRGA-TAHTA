@@ -44,6 +44,8 @@
           };
         };
         devShells.default = pkgs.mkShell {
+          CHISEL_FIRTOOL_PATH = "${pkgs.circt}/bin";
+
           inherit (self.checks.${system}.pre-commit-check) shellHook;
           packages = [
             pkgs.mill
