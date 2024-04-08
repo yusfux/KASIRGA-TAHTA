@@ -1,42 +1,83 @@
 package alu
 
 import chisel3._
+import chisel3.util._
+import chisel3.experimental.BundleLiterals._
+
 import chiseltest._
 import chiseltest.ChiselScalatestTester
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import scala.util.Random
 import scala.math.log10
-import scala.math.pow
 
+import scala.collection.mutable.Queue
 import alu.ALUOp
+import wood._
 
 trait ALUBehavior {
   this: AnyFlatSpec with ChiselScalatestTester =>
 
-  def testOperation(a: BigInt, b: BigInt, dataWidth: Int, op: (BigInt, BigInt) => BigInt, fn: ALUOp.Type): Unit = {
+  def testOperation(
+    data:      Seq[(BigInt, BigInt)],
+    dataWidth: Int,
+    tagWidth:  Int,
+    opWidth:   Int,
+    op:        (BigInt, BigInt) => BigInt,
+    fn:        ALUOp.Type
+  ): Unit = {
     val mask: BigInt = (BigInt(1) << dataWidth) - 1
-    val ua:   BigInt = a & mask
-    val ub:   BigInt = b & mask
-    val result = op(ua, ub) & mask
-    it should s"$fn on 0x${a.toString(16)}, 0x${b.toString(16)}, width:$dataWidth and the result == 0x${result
-      .toString(16)}" in {
-      test(new ALU(dataWidth)) { c =>
-        c.io.control.poke(fn)
-        c.io.value1.poke(a.U(dataWidth.W))
-        c.io.value2.poke(b.U(dataWidth.W))
-        c.clock.step()
-        val actual = c.io.result.peek().litValue
-        assert(actual == result, s"Expected 0x${result.toString(16)}, but got 0x${actual.toString(16)}")
+    var results = Queue[TagBus]()
+
+    it should s"$fn on width:$dataWidth" in {
+      test(new ALU(dataWidth, tagWidth, opWidth)) { dut =>
+        dut.io.microOp.initSource()
+        dut.io.tagBus.initSink()
+
+        fork {
+          for ((a, b) <- data) {
+            val ua: BigInt = a & mask
+            val ub: BigInt = b & mask
+            val result = op(ua, ub) & mask
+            val tagBus = new TagBus(dataWidth, tagWidth).Lit(
+              _.data -> result.U(dataWidth.W),
+              _.tag -> fn.litValue.U
+            )
+            results.enqueue(tagBus)
+          }
+        }.fork {
+          val microOps = data.map {
+            case (a, b) =>
+              val microOp = new MicroOperation(dataWidth, tagWidth, opWidth).Lit(
+                _.data1 -> a.U,
+                _.data2 -> b.U,
+                _.tag -> fn.litValue.U,
+                _.op -> fn.litValue.U
+              )
+              microOp
+          }
+          dut.io.microOp.enqueueSeq(microOps)
+        }.fork {
+          for ((expected, index) <- results.zipWithIndex) {
+            try {
+              dut.io.tagBus.expectDequeue(expected)
+            } catch {
+              case e: Exception =>
+                println("\u001b[31m" + s"${fn} on (0x${data(index)._1.toString(16)}, 0x${data(index)._2
+                  .toString(16)}) at index: $index: ${e.getMessage}" + "\u001b[0m")
+                throw new Exception()
+            }
+          }
+        }.joinAndStep(dut.clock)
       }
     }
   }
-
 }
 
 class ALUSpec extends AnyFlatSpec with ALUBehavior with ChiselScalatestTester with Matchers {
   behavior.of("ALU")
-
+  val tagWidth = 5
+  val opWidth = log2Ceil(ALUOp.values.length)
   val dataWidths: List[Int] = List(32, 64)
   val numVectors: Int = 100 // Number of random test vectors
   val rand = new Random()
@@ -97,10 +138,8 @@ class ALUSpec extends AnyFlatSpec with ALUBehavior with ChiselScalatestTester wi
 
     val testData: List[(BigInt, BigInt)] = (cornerCases ++ randomData).toSet.toList
 
-    testData.foreach { data =>
-      operations.foreach { op =>
-        (it should behave).like(testOperation(data._1, data._2, dataWidth, op._2, op._1))
-      }
+    operations.foreach { op =>
+      (it should behave).like(testOperation(testData, dataWidth, tagWidth, opWidth, op._2, op._1))
     }
   }
 }
