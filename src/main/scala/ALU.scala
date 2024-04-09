@@ -50,5 +50,5 @@ class ALU(dataWidth: Int, tagWidth: Int, opWidth: Int) extends Module {
 }
 
 object ALUMain extends App {
-  ChiselStage.emitSystemVerilogFile(gen = new ALU(32, 5, 4), args = Array("-td", "generated"))
+  GenerateVerilog(new ALU(32, 5, 4))
 }

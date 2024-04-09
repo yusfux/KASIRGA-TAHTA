@@ -3,6 +3,7 @@
 **.target/
 */modelsim/*
 **/sim_build
+**/build
 *_prove/
 **_pycache_*
 **/transcript
