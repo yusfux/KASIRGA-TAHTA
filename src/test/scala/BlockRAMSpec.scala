@@ -1,34 +1,89 @@
 package blockram
 
 import chisel3._
+import chisel3.util._
+import chisel3.experimental.BundleLiterals._
 import chiseltest._
+
 import org.scalatest.flatspec.AnyFlatSpec
+
 class BlockRAMSpec extends AnyFlatSpec with ChiselScalatestTester {
 
-  "BlockRAM" should "work" in {
-    test(new BlockRAM(32, 1600000, 2, 1)).withAnnotations(Seq(VerilatorBackendAnnotation, WriteVcdAnnotation)) { dut =>
-      for (w <- 0 until 16) {
-        for (d <- 0 until 256) {
-          // Write data to the BlockRAM
-          dut.io.writePorts(0).enable.poke(true.B)
-          dut.io.writePorts(0).addr.poke(w.U)
-          dut.io.writePorts(0).data.poke(d.U)
-          dut.clock.step(1)
+  val numWritePorts = 2
+  val numReadPorts = 2
+  val depth = 128
+  val dataWidth = 32
 
-          // Read data from the BlockRAM
-          for (r <- 0 until 16) {
-            dut.io.readPorts(0).addr.poke(r.U)
-            dut.io.readPorts(1).addr.poke(r.U)
-            dut.clock.step(1)
+  "BlockRAM" should s"work ${numReadPorts}r ${numWritePorts}w" in {
+    test(new BlockRAM(BlockRAMParams(dataWidth, depth, numReadPorts, numWritePorts)))
+      .withAnnotations(Seq(VerilatorBackendAnnotation, WriteVcdAnnotation)) { dut =>
+        val numTests = 32
+        for (testData <- 0 until numTests) {
+          for (testAdr <- 0 until depth) {
+            for (w <- 0 until numWritePorts) {
+              dut.io.wp(w).enable.poke(true.B)
+              dut.io.wp(w).addr.poke(testAdr.U)
+              dut.io.wp(w).data.poke(testData.U)
+              dut.clock.step(1)
 
-            // Check the read data
-            if (r == w) {
-              dut.io.readPorts(0).data.expect(d.U)
-              dut.io.readPorts(1).data.expect(d.U)
+              for (r <- 0 until numReadPorts) {
+                dut.io.rip(r).addr.poke(testAdr.U)
+                if (r == testAdr) {
+                  dut.io.rop(r).data.expect(testData.U)
+                }
+              }
             }
           }
         }
       }
-    }
+  }
+
+  "DecoupledBlockRAM" should s"work ${numReadPorts}r ${numWritePorts}w" in {
+    test(new DecoupledBlockRAM(BlockRAMParams(dataWidth, depth, numReadPorts, numWritePorts)))
+      .withAnnotations(Seq(VerilatorBackendAnnotation, WriteVcdAnnotation)) { dut =>
+        val numTests = 32
+
+        // Initialize the sources and sinks
+        val rips = dut.io.rip.map(_.initSource())
+        val rops = dut.io.rop.map(_.initSink())
+        val wps = dut.io.wp.map(_.initSource())
+
+        // Create a sequence of testData
+        val numData = 100
+        val numbers = 1 to numData
+        val testReadISeq = numbers.map(i =>
+          new ReadPortI(dataWidth, log2Ceil(depth)).Lit(
+            _.addr -> i.U
+          )
+        )
+        val testReadOSeq = numbers.map(i =>
+          new ReadPortO(dataWidth, log2Ceil(depth)).Lit(
+            _.data -> i.U,
+            _.addr -> i.U
+          )
+        )
+
+        val testWriteSeq = numbers.map(i =>
+          new WritePortI(dataWidth, log2Ceil(depth)).Lit(
+            _.addr -> i.U,
+            _.data -> i.U,
+            _.enable -> true.B
+          )
+        )
+
+        fork {
+          wps(0).enqueueSeq(testWriteSeq)
+        }.fork {
+          wps(1).enqueueSeq(testWriteSeq)
+        }.joinAndStep()
+
+        fork {
+          rips(0).enqueueSeq(testReadISeq)
+        }.fork {
+          rops(0).expectDequeueSeq(testReadOSeq)
+        }.joinAndStep()
+
+        dut.clock.step(1)
+      }
   }
 }
