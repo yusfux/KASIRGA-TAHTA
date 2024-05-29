@@ -59,6 +59,7 @@
             pkgs.bloop
             pkgs.verilator
             (pkgs.callPackage ./nix/gtkwave.nix {})
+            (pkgs.callPackage ./nix/surfer.nix {})
           ];
         };
       }
