@@ -9,6 +9,12 @@ import wood._
 object ALUOp extends ChiselEnum {
   val sub, add, xor, or, and, sll, srl, sra, slt, sltu, pass = Value
   val values = IndexedSeq(sub, add, xor, or, and, sll, srl, sra, slt, sltu, pass)
+
+  def toBitpat(op: ALUOp.Type): BitPat =
+    BitPat(op.litValue.U(getWidth.W))
+
+  def toString(op: ALUOp.Type): String =
+    toBitpat(op).rawString
 }
 
 class ALU(dataWidth: Int, tagWidth: Int, opWidth: Int) extends Module {

@@ -14,7 +14,10 @@
   }:
     flake-utils.lib.eachDefaultSystem (
       system: let
-        pkgs = import nixpkgs {inherit system;};
+        pkgs = import nixpkgs {
+          inherit system;
+          config.allowUnfree = true;
+        };
       in {
         checks = {
           pre-commit-check = pre-commit-hooks.lib.${system}.run {
@@ -58,6 +61,7 @@
             pkgs.metals
             pkgs.bloop
             pkgs.verilator
+            pkgs.espresso
             (pkgs.callPackage ./nix/gtkwave.nix {})
             (pkgs.callPackage ./nix/surfer.nix {})
           ];
