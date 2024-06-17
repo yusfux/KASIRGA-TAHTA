@@ -3,6 +3,7 @@ package dcdemux
 import chisel3._
 import chiseltest._
 import org.scalatest.flatspec.AnyFlatSpec
+import wood.GenerateVerilog
 
 class DCDemuxSpec extends AnyFlatSpec with ChiselScalatestTester {
 
@@ -10,11 +11,11 @@ class DCDemuxSpec extends AnyFlatSpec with ChiselScalatestTester {
     test(new DCDemux(UInt(8.W))(1, 1)).withAnnotations(Seq(VerilatorBackendAnnotation, WriteVcdAnnotation)) { dut =>
       // Initialize the sources and sinks
       val inSources = dut.io.in.map(_.initSource())
-      val outSinks = dut.io.out(0).map(_.initSink())
+      val outSinks  = dut.io.out(0).map(_.initSink())
 
-      val data = 8.U
+      val data    = 8.U
       val numData = 100
-      val inputs = Seq.fill(numData)(data)
+      val inputs  = Seq.fill(numData)(data)
 
       fork {
         inSources(0).enqueueSeq(inputs)
@@ -29,13 +30,13 @@ class DCDemuxSpec extends AnyFlatSpec with ChiselScalatestTester {
   "DCDemux" should "work 1 x 2" in {
     test(new DCDemux(UInt(8.W))(1, 2)).withAnnotations(Seq(VerilatorBackendAnnotation, WriteVcdAnnotation)) { dut =>
       // Initialize the sources and sinks
-      val inSource = dut.io.in.head.initSource()
+      val inSource  = dut.io.in.head.initSource()
       val outSink_0 = dut.io.out(0).head.initSink()
       val outSink_1 = dut.io.out(1).head.initSink()
 
       // Create a sequence of data
       val numData = 100
-      val data = Seq.fill(numData)(8.U)
+      val data    = Seq.fill(numData)(8.U)
 
       // Set sel to 0 and expect the data on the first output
       dut.io.sel.head.poke(0.U)
@@ -65,7 +66,7 @@ class DCDemuxSpec extends AnyFlatSpec with ChiselScalatestTester {
 
         // Create a sequence of data
         val numData = 100
-        val data = Seq.fill(numData)(8.U)
+        val data    = Seq.fill(numData)(8.U)
 
         // Test each output by setting sel and expecting the data
         for (n <- 0 until N) {
@@ -83,14 +84,14 @@ class DCDemuxSpec extends AnyFlatSpec with ChiselScalatestTester {
   "DCDemux" should "work 2 x 2" in {
     test(new DCDemux(UInt(8.W))(2, 2)).withAnnotations(Seq(VerilatorBackendAnnotation, WriteVcdAnnotation)) { dut =>
       // Initialize the sources and sinks
-      val inSources = dut.io.in.map(_.initSource())
+      val inSources  = dut.io.in.map(_.initSource())
       val outSinks_0 = dut.io.out(0).map(_.initSink())
       val outSinks_1 = dut.io.out(1).map(_.initSink())
 
       // Create a sequence of zeros and ones
       val numData = 100
-      val zeros = Seq.fill(numData)(0.U)
-      val ones = Seq.fill(numData)(1.U)
+      val zeros   = Seq.fill(numData)(0.U)
+      val ones    = Seq.fill(numData)(1.U)
 
       // Set sel signals for both demuxes to 0
       dut.io.sel(0).poke(0.U)
@@ -128,12 +129,12 @@ class DCDemuxSpec extends AnyFlatSpec with ChiselScalatestTester {
       test(new DCDemux(UInt(8.W))(2, N)).withAnnotations(Seq(VerilatorBackendAnnotation, WriteVcdAnnotation)) { dut =>
         // Initialize the sources and sinks
         val inSources = dut.io.in.map(_.initSource())
-        val outSinks = Array.tabulate(N)(n => dut.io.out(n).map(_.initSink()))
+        val outSinks  = Array.tabulate(N)(n => dut.io.out(n).map(_.initSink()))
 
         // Create a sequence of zeros and ones
         val numData = 100
-        val zeros = Seq.fill(numData)(0.U)
-        val ones = Seq.fill(numData)(1.U)
+        val zeros   = Seq.fill(numData)(0.U)
+        val ones    = Seq.fill(numData)(1.U)
 
         // Test each combination of select signals
         for (sel0 <- 0 until N) {
@@ -158,5 +159,9 @@ class DCDemuxSpec extends AnyFlatSpec with ChiselScalatestTester {
         }
       }
     }
+  }
+
+  "DCDemux" should "emit Verilog" in {
+    GenerateVerilog(new DCDemux(UInt(8.W))(1, 2))
   }
 }

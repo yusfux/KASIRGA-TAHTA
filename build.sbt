@@ -1,6 +1,9 @@
 ThisBuild / scalaVersion := "2.13.12"
-ThisBuild / version := "0.1.0"
+ThisBuild / version      := "0.1.0"
 ThisBuild / organization := "com.github.kasirgalabs"
+
+ThisBuild / semanticdbEnabled := true
+ThisBuild / semanticdbVersion := scalafixSemanticdb.revision
 
 val chiselVersion = "6.2.0"
 
@@ -17,7 +20,11 @@ lazy val root = (project in file("."))
       "-deprecation",
       "-feature",
       "-Xcheckinit",
-      "-Ymacro-annotations"
+      "-Ymacro-annotations",
+      "-Wunused:imports",
+      "-Yrangepos",
+      "-Xfatal-warnings"
     ),
+    addCompilerPlugin(("org.scalameta" % "semanticdb-scalac" % "4.9.5").cross(CrossVersion.full)),
     addCompilerPlugin(("org.chipsalliance" % "chisel-plugin" % chiselVersion).cross(CrossVersion.full))
   )

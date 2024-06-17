@@ -1,14 +1,11 @@
 package alu
-
-import circt.stage.ChiselStage
 import chisel3._
 import chisel3.util._
-
 import wood._
 
 object ALUOp extends ChiselEnum {
   val sub, add, xor, or, and, sll, srl, sra, slt, sltu, pass = Value
-  val values = IndexedSeq(sub, add, xor, or, and, sll, srl, sra, slt, sltu, pass)
+  val values                                                 = IndexedSeq(sub, add, xor, or, and, sll, srl, sra, slt, sltu, pass)
 
   def toBitpat(op: ALUOp.Type): BitPat =
     BitPat(op.litValue.U(getWidth.W))
@@ -20,7 +17,7 @@ object ALUOp extends ChiselEnum {
 class ALU(dataWidth: Int, tagWidth: Int, opWidth: Int) extends Module {
   val io = IO(new Bundle {
     val microOp = Flipped(Decoupled(new MicroOperation(dataWidth, tagWidth, opWidth)))
-    val tagBus = Decoupled(new TagBus(dataWidth, tagWidth))
+    val tagBus  = Decoupled(new TagBus(dataWidth, tagWidth))
   })
 
   val shamt = if (dataWidth > 1) log2Ceil(dataWidth) - 1 else 0 // Shift amount.
@@ -33,7 +30,7 @@ class ALU(dataWidth: Int, tagWidth: Int, opWidth: Int) extends Module {
 
   val arithmeticData1 = Mux(control === ALUOp.sub, Cat(data1, 1.U(1.W)), Cat(data1, 0.U(1.W)))
   val arithmeticData2 = Mux(control === ALUOp.sub, Cat(~data2, 1.U(1.W)), Cat(data2, 0.U(1.W)))
-  val resultAdd = arithmeticData1 + arithmeticData2
+  val resultAdd       = arithmeticData1 + arithmeticData2
 
   val result = Wire(UInt(dataWidth.W))
   result := 0.U
@@ -50,11 +47,7 @@ class ALU(dataWidth: Int, tagWidth: Int, opWidth: Int) extends Module {
     is(ALUOp.pass) { result := data2 }
   }
   io.tagBus.bits.data := result
-  io.tagBus.bits.tag := io.microOp.bits.tag
-  io.tagBus.valid := io.microOp.valid
-  io.microOp.ready := 1.U(1.W)
-}
-
-object ALUMain extends App {
-  GenerateVerilog(new ALU(32, 5, 4))
+  io.tagBus.bits.tag  := io.microOp.bits.tag
+  io.tagBus.valid     := io.microOp.valid
+  io.microOp.ready    := 1.U(1.W)
 }

@@ -6,13 +6,14 @@ import chisel3.experimental.BundleLiterals._
 import chiseltest._
 
 import org.scalatest.flatspec.AnyFlatSpec
+import wood.GenerateVerilog
 
 class BlockRAMSpec extends AnyFlatSpec with ChiselScalatestTester {
 
   val numWritePorts = 2
-  val numReadPorts = 2
-  val depth = 128
-  val dataWidth = 32
+  val numReadPorts  = 2
+  val depth         = 128
+  val dataWidth     = 32
 
   "BlockRAM" should s"work ${numReadPorts}r ${numWritePorts}w" in {
     test(new BlockRAM(BlockRAMParams(dataWidth, depth, numReadPorts, numWritePorts)))
@@ -38,6 +39,10 @@ class BlockRAMSpec extends AnyFlatSpec with ChiselScalatestTester {
       }
   }
 
+  "BlockRAM" should "emit Verilog" in {
+    GenerateVerilog(new BlockRAM(BlockRAMParams(dataWidth, depth, numReadPorts, numWritePorts)))
+  }
+
   "DecoupledBlockRAM" should s"work ${numReadPorts}r ${numWritePorts}w" in {
     test(new DecoupledBlockRAM(BlockRAMParams(dataWidth, depth, numReadPorts, numWritePorts)))
       .withAnnotations(Seq(VerilatorBackendAnnotation, WriteVcdAnnotation)) { dut =>
@@ -46,7 +51,7 @@ class BlockRAMSpec extends AnyFlatSpec with ChiselScalatestTester {
         // Initialize the sources and sinks
         val rips = dut.io.rip.map(_.initSource())
         val rops = dut.io.rop.map(_.initSink())
-        val wps = dut.io.wp.map(_.initSource())
+        val wps  = dut.io.wp.map(_.initSource())
 
         // Create a sequence of testData
         val numData = 100
@@ -65,8 +70,8 @@ class BlockRAMSpec extends AnyFlatSpec with ChiselScalatestTester {
 
         val testWriteSeq = numbers.map(i =>
           new WritePortI(dataWidth, log2Ceil(depth)).Lit(
-            _.addr -> i.U,
-            _.data -> i.U,
+            _.addr   -> i.U,
+            _.data   -> i.U,
             _.enable -> true.B
           )
         )
@@ -85,5 +90,9 @@ class BlockRAMSpec extends AnyFlatSpec with ChiselScalatestTester {
 
         dut.clock.step(1)
       }
+  }
+
+  "DecoupledBlockRAM" should "emit Verilog" in {
+    GenerateVerilog(new DecoupledBlockRAM(BlockRAMParams(dataWidth, depth, numReadPorts, numWritePorts)))
   }
 }

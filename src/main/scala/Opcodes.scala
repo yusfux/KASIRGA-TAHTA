@@ -967,7 +967,7 @@ object CSRs {
     res.toArray
   }
   val all32 = {
-    val res = collection.mutable.ArrayBuffer(all:_*)
+    val res = collection.mutable.ArrayBuffer(all.toIndexedSeq: _*)
     res += sieh
     res += siph
     res += stimecmph

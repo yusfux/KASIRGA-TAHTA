@@ -33,13 +33,19 @@
                 enable = true;
                 name = "scalafmt";
                 entry = "${pkgs.scalafmt}/bin/scalafmt --respect-project-filters";
-                types = ["scala"];
+                types = ["scala" "sbt"];
               };
               verible = {
                 enable = true;
                 name = "verible-verilog-vormat";
                 entry = "${pkgs.verible}/bin/verible-verilog-format --wrap_spaces 3 --indentation_spaces 3 --inplace";
                 types = ["verilog"];
+              };
+              scalafix = {
+                enable = true;
+                name = "scalafix";
+                entry = "${pkgs.bash}/bin/bash -c '${pkgs.sbt}/bin/sbt --batch -Dsbt.server.forcestart=true scalafix'";
+                types = ["scala"];
               };
             };
             settings = {
@@ -48,7 +54,6 @@
         };
         devShells.default = pkgs.mkShell {
           CHISEL_FIRTOOL_PATH = "${pkgs.circt}/bin";
-
           inherit (self.checks.${system}.pre-commit-check) shellHook;
           packages = [
             pkgs.mill

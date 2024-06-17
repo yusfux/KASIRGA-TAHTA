@@ -5,7 +5,7 @@ import chiseltest._
 
 import org.scalatest.flatspec.AnyFlatSpec
 
-import wood._
+import wood.{Fetch, GenerateVerilog}
 
 class DecodeSpec extends AnyFlatSpec with ChiselScalatestTester {
   "Decoder" should s"work on smoketest" in {

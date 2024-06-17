@@ -1,16 +1,11 @@
 package decode
-import chisel3.util.experimental.decode.decoder
-import chisel3.util.experimental.decode.EspressoMinimizer
 
-import circt.stage.ChiselStage
+import alu.ALUOp
 import chisel3._
 import chisel3.util._
-import chisel3.util.experimental.decode.TruthTable
-import chisel3.util.experimental.decode.decoder
-
-import wood._
+import chisel3.util.experimental.decode.{EspressoMinimizer, TruthTable, decoder}
 import opcodes.Instructions._
-import alu.ALUOp
+import wood._
 
 class ExpandBits(bitVectors: List[String]) {
   // Calculate the max width
@@ -182,11 +177,11 @@ object Config {
 }
 
 class DecoderMI_IO extends Bundle {
-  val mi = UInt(Config.outWidth.W)
+  val mi  = UInt(Config.outWidth.W)
   val imm = UInt(32.W)
   val rs1 = UInt(5.W)
   val rs2 = UInt(5.W)
-  val rd = UInt(5.W)
+  val rd  = UInt(5.W)
 }
 
 class DecodeStageMI_IO(pcIndexWidth: Int) extends DecoderMI_IO {
@@ -195,7 +190,7 @@ class DecodeStageMI_IO(pcIndexWidth: Int) extends DecoderMI_IO {
 class Decoder() extends Module {
   val io = IO(new Bundle {
     val inst = Input(UInt(32.W))
-    val out = Output(new DecoderMI_IO)
+    val out  = Output(new DecoderMI_IO)
   })
 
   // format: off
@@ -224,27 +219,27 @@ class Decoder() extends Module {
 
   io.out.imm := Map(
     Config.SYS_Type -> (() => Cat(Fill(15, io.inst(31)), io.inst(19, 15), io.inst(31, 20))),
-    Config.I_Type -> (() => Cat(Fill(20, io.inst(31)), io.inst(31, 20))),
-    Config.S_Type -> (() => Cat(Fill(20, io.inst(31)), io.inst(31, 25), io.inst(11, 7))),
-    Config.B_Type -> (() => Cat(Fill(20, io.inst(31)), io.inst(7), io.inst(30, 25), io.inst(11, 8), 0.U(1.W))),
-    Config.J_Type -> (() => Cat(Fill(12, io.inst(31)), io.inst(19, 12), io.inst(20), io.inst(30, 21), 0.U(1.W))),
-    Config.U_Type -> (() => Cat(io.inst(31, 12), 0.U(12.W)))
+    Config.I_Type   -> (() => Cat(Fill(20, io.inst(31)), io.inst(31, 20))),
+    Config.S_Type   -> (() => Cat(Fill(20, io.inst(31)), io.inst(31, 25), io.inst(11, 7))),
+    Config.B_Type   -> (() => Cat(Fill(20, io.inst(31)), io.inst(7), io.inst(30, 25), io.inst(11, 8), 0.U(1.W))),
+    Config.J_Type   -> (() => Cat(Fill(12, io.inst(31)), io.inst(19, 12), io.inst(20), io.inst(30, 21), 0.U(1.W))),
+    Config.U_Type   -> (() => Cat(io.inst(31, 12), 0.U(12.W)))
   ).getOrElse(inst_type, () => 0.U(32.W))()
 }
 
 class DecodeStage(numOut: Int, pcIndexWidth: Int) extends Module {
   val io = IO(new Bundle {
-    val inst = Flipped(Vec(numOut, Decoupled(UInt(32.W))))
+    val inst   = Flipped(Vec(numOut, Decoupled(UInt(32.W))))
     val pc_idx = Flipped(Decoupled(UInt(pcIndexWidth.W)))
-    val out = Vec(numOut, Decoupled(new DecodeStageMI_IO(pcIndexWidth)))
+    val out    = Vec(numOut, Decoupled(new DecodeStageMI_IO(pcIndexWidth)))
   })
 
   val decoders = Seq.fill(numOut)(Module(new Decoder()))
 
   val out_ready = Wire(Vec(numOut, Bool()))
-  val in_valid = Wire(Vec(numOut + 1, Bool()))
+  val in_valid  = Wire(Vec(numOut + 1, Bool()))
   out_ready := io.out.map(_.ready)
-  in_valid := io.inst.map(_.valid) ++ Seq(io.pc_idx.valid)
+  in_valid  := io.inst.map(_.valid) ++ Seq(io.pc_idx.valid)
 
   // all inputs have to be valid and all outputs have to be ready to not stall
   val valid = in_valid.asUInt.andR
@@ -253,13 +248,13 @@ class DecodeStage(numOut: Int, pcIndexWidth: Int) extends Module {
 
   for (j <- 0 until numOut) {
     decoders(j).io.inst := io.inst(j).bits
-    io.inst(j).ready := ready
+    io.inst(j).ready    := ready
 
     val decoded = Wire(new DecodeStageMI_IO(pcIndexWidth))
-    decoded := decoders(j).io.asTypeOf(new DecodeStageMI_IO(pcIndexWidth))
+    decoded        := decoders(j).io.asTypeOf(new DecodeStageMI_IO(pcIndexWidth))
     decoded.pc_idx := io.pc_idx.bits
 
-    io.out(j).bits := RegEnable(decoded, stall)
+    io.out(j).bits  := RegEnable(decoded, stall)
     io.out(j).valid := RegEnable(io.inst(j).valid, 0.U, stall)
   }
 

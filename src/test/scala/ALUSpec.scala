@@ -41,7 +41,7 @@ trait ALUBehavior {
             val result = op(ua, ub) & mask
             val tagBus = new TagBus(dataWidth, tagWidth).Lit(
               _.data -> result.U(dataWidth.W),
-              _.tag -> fn.litValue.U
+              _.tag  -> fn.litValue.U
             )
             results.enqueue(tagBus)
           }
@@ -51,8 +51,8 @@ trait ALUBehavior {
               val microOp = new MicroOperation(dataWidth, tagWidth, opWidth).Lit(
                 _.data1 -> a.U,
                 _.data2 -> b.U,
-                _.tag -> fn.litValue.U,
-                _.op -> fn.litValue.U
+                _.tag   -> fn.litValue.U,
+                _.op    -> fn.litValue.U
               )
               microOp
           }
@@ -77,9 +77,9 @@ trait ALUBehavior {
 class ALUSpec extends AnyFlatSpec with ALUBehavior with ChiselScalatestTester with Matchers {
   behavior.of("ALU")
   val tagWidth = 5
-  val opWidth = log2Ceil(ALUOp.values.length)
+  val opWidth  = log2Ceil(ALUOp.values.length)
   val dataWidths: List[Int] = List(32, 64)
-  val numVectors: Int = 100 // Number of random test vectors
+  val numVectors: Int       = 100 // Number of random test vectors
   val rand = new Random()
 
   dataWidths.foreach { dataWidth =>
@@ -140,6 +140,10 @@ class ALUSpec extends AnyFlatSpec with ALUBehavior with ChiselScalatestTester wi
 
     operations.foreach { op =>
       (it should behave).like(testOperation(testData, dataWidth, tagWidth, opWidth, op._2, op._1))
+    }
+
+    "ALU" should s"emit Verilog with dataWidth:$dataWidth, tagWidth:$tagWidth, opWidth:$opWidth" in {
+      GenerateVerilog(new ALU(dataWidth, tagWidth, opWidth))
     }
   }
 }

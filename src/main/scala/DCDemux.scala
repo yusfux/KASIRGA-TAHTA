@@ -3,8 +3,6 @@ package dcdemux
 import chisel3._
 import chisel3.util._
 
-import wood._
-
 /*
 @note DCDemux is numIn to numIn * numRepl demux.
 @param numIn: number of inputs
@@ -18,7 +16,7 @@ import wood._
 class DCDemux[T <: Data](gen: T)(numIn: Int, numRepl: Int) extends Module {
   val io = IO(new Bundle {
     val sel = Input(Vec(numIn, UInt(log2Ceil(numRepl).W)))
-    val in = Flipped(Vec(numIn, Decoupled(gen.cloneType)))
+    val in  = Flipped(Vec(numIn, Decoupled(gen.cloneType)))
     val out = Vec(numRepl, Vec(numIn, Decoupled(gen.cloneType)))
   })
 
@@ -42,8 +40,4 @@ class DCDemux[T <: Data](gen: T)(numIn: Int, numRepl: Int) extends Module {
     // if io.sel == 3 then OH is 1000 so, third bit is set, then choose third bool from rdys(i)
     io.in(i).ready := MuxCase(0.U, (0 until numRepl).map(j => (UIntToOH(io.sel(i))(j), rdys(i)(j))))
   }
-}
-object DCDemuxMain extends App {
-  // GenerateVerilog(new DCDemux(UInt(8.W))(3, 2))
-  GenerateVerilog(new DCDemux(UInt(8.W))(1, 2))
 }
