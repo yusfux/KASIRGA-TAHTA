@@ -3,6 +3,7 @@ package wood
 import _root_.circt.stage.ChiselStage
 import chisel3._
 import chisel3.util._
+import chiseltest.{IcarusBackendAnnotation, TreadleBackendAnnotation, VerilatorBackendAnnotation, WriteVcdAnnotation}
 
 class TagBus(dataWidth: Int, tagWidth: Int) extends Bundle {
   val tag  = UInt(tagWidth.W)
@@ -55,6 +56,25 @@ object GenerateVerilog {
         "-O=release"
       )
     )
+  }
+}
+
+object GetBackendAnnotation {
+  def apply() = {
+    val backend = sys.props.getOrElse("backend", "verilator")
+    val wave    = sys.props.get("wave").isDefined
+    println(s"Chosen simulator: $backend")
+    println(if (wave) "Waveforms enabled" else "Waveforms disabled")
+
+    val baseAnnotations = backend match {
+      case "verilator" => Seq(VerilatorBackendAnnotation)
+      case "treadle"   => Seq(TreadleBackendAnnotation)
+      case "iverilog"  => Seq(IcarusBackendAnnotation)
+      // Add other simulators here
+      case _ => throw new IllegalArgumentException(s"Unknown simulator: $backend")
+    }
+
+    if (wave) baseAnnotations :+ WriteVcdAnnotation else baseAnnotations
   }
 }
 

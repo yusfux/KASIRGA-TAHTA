@@ -5,12 +5,12 @@ import chiseltest._
 
 import org.scalatest.flatspec.AnyFlatSpec
 
-import wood.{Fetch, GenerateVerilog}
+import wood.{Fetch, GenerateVerilog, GetBackendAnnotation}
 
 class DecodeSpec extends AnyFlatSpec with ChiselScalatestTester {
   "Decoder" should s"work on smoketest" in {
-    // riscvopcodes repo which is already verified
-    test(new Decoder()).withAnnotations(Seq(VerilatorBackendAnnotation, WriteVcdAnnotation)) { dut =>
+    // riscvopcodes repo is already verified
+    test(new Decoder()).withAnnotations(GetBackendAnnotation()) { dut =>
       dut.io.inst.poke(0x0009c797) // auipc a5, 156
       dut.clock.step(1)
       if (0x69420.asUInt == dut.io.inst) {

@@ -6,7 +6,7 @@ import chisel3.experimental.BundleLiterals._
 import chiseltest._
 
 import org.scalatest.flatspec.AnyFlatSpec
-import wood.GenerateVerilog
+import wood.{GenerateVerilog, GetBackendAnnotation}
 
 class BlockRAMSpec extends AnyFlatSpec with ChiselScalatestTester {
 
@@ -17,7 +17,7 @@ class BlockRAMSpec extends AnyFlatSpec with ChiselScalatestTester {
 
   "BlockRAM" should s"work ${numReadPorts}r ${numWritePorts}w" in {
     test(new BlockRAM(BlockRAMParams(dataWidth, depth, numReadPorts, numWritePorts)))
-      .withAnnotations(Seq(VerilatorBackendAnnotation, WriteVcdAnnotation)) { dut =>
+      .withAnnotations(GetBackendAnnotation()) { dut =>
         val numTests = 32
         for (testData <- 0 until numTests) {
           for (testAdr <- 0 until depth) {
@@ -45,7 +45,7 @@ class BlockRAMSpec extends AnyFlatSpec with ChiselScalatestTester {
 
   "DecoupledBlockRAM" should s"work ${numReadPorts}r ${numWritePorts}w" in {
     test(new DecoupledBlockRAM(BlockRAMParams(dataWidth, depth, numReadPorts, numWritePorts)))
-      .withAnnotations(Seq(VerilatorBackendAnnotation, WriteVcdAnnotation)) { dut =>
+      .withAnnotations(GetBackendAnnotation()) { dut =>
         val numTests = 32
 
         // Initialize the sources and sinks

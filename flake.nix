@@ -66,6 +66,7 @@
             pkgs.metals
             pkgs.bloop
             pkgs.verilator
+            pkgs.verilog
             pkgs.espresso
             (pkgs.callPackage ./nix/gtkwave.nix {})
             (pkgs.callPackage ./nix/surfer.nix {})
