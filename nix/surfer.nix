@@ -18,8 +18,8 @@ rustPlatform.buildRustPackage rec {
   src = fetchFromGitLab {
     owner = "surfer-project";
     repo = pname;
-    rev = "448b8dc7cf7778d4506cc01bdf5df7704a890340";
-    hash = "sha256-v158F5iOSki0HQrNqAkZckGuLPuMen1pIc+QuTnU37Y=";
+    rev = "068d37cefc331ff4fd4a0a9c298b089d1df88d78";
+    hash = "sha256-woxQN5FlS7Qko0Sdh+B22inkxB6m3b5C41ZSs50tF/8";
     fetchSubmodules = true;
   };
 
