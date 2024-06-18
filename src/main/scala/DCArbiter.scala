@@ -14,17 +14,17 @@ import chisel3.util._
    Beware, there are more input ports than output ports. If all inputs are valid: io.out(0) := io.in(0) and io.out(1) := io.in(1), other inputs will get not ready.
   new DCArbiter(UInt(16.W))(4, 2)
  */
-class DCArbiter[T <: Data](gen: T)(numIn: Int, numOut: Int) extends Module {
+class DCArbiter[T <: Data](gen: T)(numInputs: Int, numOutputs: Int) extends Module {
   val io = IO(new Bundle {
-    val in  = Flipped(Vec(numIn, Decoupled(gen.cloneType)))
-    val out = Vec(numOut, Decoupled(gen.cloneType))
+    val in  = Flipped(Vec(numInputs, Decoupled(gen.cloneType)))
+    val out = Vec(numOutputs, Decoupled(gen.cloneType))
   })
 
-  val arbiters = Seq.fill(numOut)(Module(new Arbiter(gen.cloneType, numIn)))
-  val masks    = Wire(Vec(numOut, UInt(numIn.W)))
+  val arbiters = Seq.fill(numOutputs)(Module(new Arbiter(gen.cloneType, numInputs)))
+  val masks    = Wire(Vec(numOutputs, UInt(numInputs.W)))
 
-  for (j <- 0 until numOut) {
-    for (i <- 0 until numIn) {
+  for (j <- 0 until numOutputs) {
+    for (i <- 0 until numInputs) {
       arbiters(j).io.in(i).valid := io.in(i).valid && !(if (j == 0) false.B else masks(j - 1)(i))
       arbiters(j).io.in(i).bits  := io.in(i).bits
     }
@@ -43,11 +43,11 @@ class DCArbiter[T <: Data](gen: T)(numIn: Int, numOut: Int) extends Module {
                  })
   }
 
-  for (i <- 0 until numIn) {
-    io.in(i).ready := masks(numOut - 1)(i)
+  for (i <- 0 until numInputs) {
+    io.in(i).ready := masks(numOutputs - 1)(i)
   }
 
-  for (j <- 0 until numOut) {
+  for (j <- 0 until numOutputs) {
     io.out(j) <> arbiters(j).io.out
   }
 }
