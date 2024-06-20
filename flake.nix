@@ -25,6 +25,7 @@
             hooks = {
               alejandra.enable = true;
               ruff.enable = true;
+              checkmake.enable = true;
               clang-format = {
                 enable = true;
                 types_or = pkgs.lib.mkForce ["c" "c++"];

@@ -1,4 +1,4 @@
-package blockram
+package wood.std
 
 import chisel3._
 import chisel3.util._
@@ -6,7 +6,7 @@ import chisel3.experimental.BundleLiterals._
 import chiseltest._
 
 import org.scalatest.flatspec.AnyFlatSpec
-import wood.{GenerateVerilog, GetBackendAnnotation}
+import wood.util.{GenerateVerilog, GetBackendAnnotation}
 
 class BlockRAMSpec extends AnyFlatSpec with ChiselScalatestTester {
 

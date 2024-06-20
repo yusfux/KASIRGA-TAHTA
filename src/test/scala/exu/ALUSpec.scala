@@ -1,4 +1,4 @@
-package alu
+package wood.exu
 
 import chisel3._
 import chisel3.util._
@@ -12,8 +12,8 @@ import scala.util.Random
 import scala.math.log10
 
 import scala.collection.mutable.Queue
-import alu.ALUOp
-import wood.{GetBackendAnnotation, MicroOperation, TagBus}
+import wood.exu.ALUOp
+import wood.util.{GetBackendAnnotation}
 
 trait ALUBehavior {
   this: AnyFlatSpec with ChiselScalatestTester =>

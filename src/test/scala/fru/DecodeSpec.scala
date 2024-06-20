@@ -5,7 +5,8 @@ import chiseltest._
 
 import org.scalatest.flatspec.AnyFlatSpec
 
-import wood.{Fetch, GenerateVerilog, GetBackendAnnotation}
+import wood.util.{Fetch, GenerateVerilog, GetBackendAnnotation}
+import wood.fru.{DecodeConfig, DecodeStage, Decoder}
 
 class DecodeSpec extends AnyFlatSpec with ChiselScalatestTester {
   "Decoder" should s"work on smoketest" in {
@@ -20,6 +21,13 @@ class DecodeSpec extends AnyFlatSpec with ChiselScalatestTester {
   }
 
   "Decoder" should "emit Verilog" in {
+    println(s"defaultDecSeq: ${DecodeConfig.defaultDecSeq}")
+    println(s"defaultDec: ${DecodeConfig.defaultDec}")
+    println(s"width: ${DecodeConfig.width}")
+    println(s"subWidths: ${DecodeConfig.subWidths}")
+    for (range <- DecodeConfig.bitRanges) {
+      println(s"bitRanges: ${range}")
+    }
     GenerateVerilog(new Decoder())
   }
   "DecodeStage" should "emit Verilog" in {

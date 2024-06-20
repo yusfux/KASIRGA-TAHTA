@@ -1,9 +1,7 @@
-package dccrossbar
+package wood.std
 
 import chisel3._
 import chisel3.util._
-import dcarbiter.DCArbiter
-import dcdemux.DCDemux
 
 /*
 @note DCCrossbar is an crossbar connecting a single numInputs number of ports input interface to numOut.length number of output interfaces each having numOut[idx] number of identical ports.

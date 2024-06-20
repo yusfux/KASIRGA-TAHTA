@@ -1,9 +1,9 @@
-package dccrossbar
+package wood.std
 
 import chisel3._
 import chiseltest._
 import org.scalatest.flatspec.AnyFlatSpec
-import wood.{GenerateVerilog, GetBackendAnnotation}
+import wood.util.{GenerateVerilog, GetBackendAnnotation}
 
 class DCCrossbarSpec extends AnyFlatSpec with ChiselScalatestTester {
 
