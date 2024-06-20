@@ -292,8 +292,8 @@ class DecodeStage(numOut: Int, pcIndexWidth: Int) extends Module {
     decoded        := decoders(j).io.asTypeOf(new DecodeStageMI_IO(pcIndexWidth))
     decoded.pc_idx := io.pc_idx.bits
 
-    io.out(j).bits  := RegEnable(decoded, stall)
-    io.out(j).valid := RegEnable(io.inst(j).valid, 0.U, stall)
+    io.out(j).bits  := RegEnable(decoded, !stall)
+    io.out(j).valid := RegEnable(io.inst(j).valid, 0.U, !stall)
   }
 
   io.pc_idx.ready := ready
