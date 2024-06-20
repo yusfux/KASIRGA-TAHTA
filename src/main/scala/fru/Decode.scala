@@ -200,7 +200,7 @@ object DecodeConfig {
 }
 
 // class MI(bitRanges: List[(Int, Int)]) extends Bundle {
-class MI extends Bundle {
+class _MI extends Bundle {
   val isFloat  = UInt(DecodeConfig.subWidths(0).W)
   val operand  = UInt(DecodeConfig.subWidths(1).W)
   val write_rf = UInt(DecodeConfig.subWidths(2).W)
@@ -212,13 +212,13 @@ class MI extends Bundle {
   val rd       = UInt(5.W)
 }
 
-class DecodeStageMI_IO(pcIndexWidth: Int) extends MI {
-  val pc_idx = UInt(pcIndexWidth.W)
+class MI() extends _MI {
+  val pc_idx = UInt(FetchConfig.pcIndexWidth.W)
 }
 class Decoder() extends Module {
   val io = IO(new Bundle {
     val inst = Input(UInt(32.W))
-    val out  = Output(new MI)
+    val out  = Output(new _MI)
   })
 
   val instDecoder: UInt = decoder(minimizer = EspressoMinimizer, input = io.inst, truthTable = DecodeConfig.miTable)
@@ -265,11 +265,11 @@ class Decoder() extends Module {
   ).getOrElse(inst_type, () => 0.U(32.W))()
 }
 
-class DecodeStage(numOut: Int, pcIndexWidth: Int) extends Module {
+class DecodeStage(numOut: Int) extends Module {
   val io = IO(new Bundle {
     val inst   = Flipped(Vec(numOut, Decoupled(UInt(32.W))))
-    val pc_idx = Flipped(Decoupled(UInt(pcIndexWidth.W)))
-    val out    = Vec(numOut, Decoupled(new DecodeStageMI_IO(pcIndexWidth)))
+    val pc_idx = Flipped(Decoupled(UInt(FetchConfig.pcIndexWidth.W)))
+    val out    = Vec(numOut, Decoupled(new MI()))
   })
 
   val decoders = Seq.fill(numOut)(Module(new Decoder()))
@@ -288,8 +288,8 @@ class DecodeStage(numOut: Int, pcIndexWidth: Int) extends Module {
     decoders(j).io.inst := io.inst(j).bits
     io.inst(j).ready    := ready
 
-    val decoded = Wire(new DecodeStageMI_IO(pcIndexWidth))
-    decoded        := decoders(j).io.asTypeOf(new DecodeStageMI_IO(pcIndexWidth))
+    val decoded = Wire(new MI())
+    decoded        := decoders(j).io.asTypeOf(new MI())
     decoded.pc_idx := io.pc_idx.bits
 
     io.out(j).bits  := RegEnable(decoded, !stall)

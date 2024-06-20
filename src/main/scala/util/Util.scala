@@ -50,7 +50,3 @@ object GetBackendAnnotation {
     if (wave) baseAnnotations :+ WriteVcdAnnotation else baseAnnotations
   }
 }
-
-object Fetch {
-  val pcIndexWidth: Int = 6
-}

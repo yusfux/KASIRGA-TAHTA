@@ -5,7 +5,7 @@ import chiseltest._
 
 import org.scalatest.flatspec.AnyFlatSpec
 
-import wood.util.{Fetch, GenerateVerilog, GetBackendAnnotation}
+import wood.util.{GenerateVerilog, GetBackendAnnotation}
 import wood.fru.{DecodeConfig, DecodeStage, Decoder}
 
 class DecodeSpec extends AnyFlatSpec with ChiselScalatestTester {
@@ -32,6 +32,6 @@ class DecodeSpec extends AnyFlatSpec with ChiselScalatestTester {
   }
   "DecodeStage" should "emit Verilog" in {
     val numOut = 4
-    GenerateVerilog(new DecodeStage(numOut, Fetch.pcIndexWidth))
+    GenerateVerilog(new DecodeStage(numOut))
   }
 }
