@@ -2,13 +2,13 @@ package wood.fru
 
 import chisel3._
 import chisel3.util._
+import wood.fru.DecodeConfig.{TYPE_FLOAT, TYPE_INT}
 import wood.fru.MI
 import wood.std.DCCrossbar
 
 class DistributeStage(numInputs: Int, numOutInt: Int, numOutFloat: Int) extends Module {
   val io = IO(new Bundle {
     val in      = Flipped(Vec(numInputs, Decoupled(new MI())))
-    val sel     = Input(Vec(numInputs, UInt(1.W)))
     val toFloat = Vec(numOutFloat, Decoupled(new MI()))
     val toInt   = Vec(numOutInt, Decoupled(new MI()))
   })
@@ -17,7 +17,7 @@ class DistributeStage(numInputs: Int, numOutInt: Int, numOutFloat: Int) extends 
 
   val crossbar = Module(new DCCrossbar(new MI())(numInputs, List(numOutFloat, numOutInt)))
 
-  crossbar.io.sel := io.sel
+  crossbar.io.sel := io.in.map(_.bits.isFloat)
 
   (0 until numInputs).foreach(j => crossbar.io.in(j) <> io.in(j))
 
@@ -33,15 +33,16 @@ class DistributeStage(numInputs: Int, numOutInt: Int, numOutFloat: Int) extends 
   val stall = !(valid && ready)
 
   for (j <- 0 until numOutInt) {
-    io.toInt(j).bits            := RegEnable(crossbar.io.out(0)(j).bits, 0.U.asTypeOf(new MI()), !stall)
-    io.toInt(j).valid           := RegEnable(crossbar.io.out(0)(j).valid, 0.B, !stall)
-    crossbar.io.out(0)(j).ready := io.toInt(j).ready
+    io.toInt(j).bits                         := RegEnable(crossbar.io.out(TYPE_INT.toInt)(j).bits, 0.U.asTypeOf(new MI()), !stall)
+    io.toInt(j).valid                        := RegEnable(crossbar.io.out(TYPE_INT.toInt)(j).valid, 0.B, !stall)
+    crossbar.io.out(TYPE_INT.toInt)(j).ready := io.toInt(j).ready
   }
 
   for (j <- 0 until numOutFloat) {
-    io.toFloat(j).bits          := RegEnable(crossbar.io.out(1)(j).bits, 0.U.asTypeOf(new MI()), !stall)
-    io.toFloat(j).valid         := RegEnable(crossbar.io.out(1)(j).valid, 0.B, !stall)
-    crossbar.io.out(1)(j).ready := io.toFloat(j).ready
+    io.toFloat(j).bits                         := RegEnable(crossbar.io.out(TYPE_FLOAT.toInt)(j).bits, 0.U.asTypeOf(new MI()), !stall)
+    io.toFloat(j).valid                        := RegEnable(crossbar.io.out(TYPE_FLOAT.toInt)(j).valid, 0.B, !stall)
+    crossbar.io.out(TYPE_FLOAT.toInt)(j).ready := io.toFloat(j).ready
+
   }
 
 }

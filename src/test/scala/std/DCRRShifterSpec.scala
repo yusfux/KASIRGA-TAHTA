@@ -55,7 +55,8 @@ class DCRRShifterSpec extends AnyFlatSpec with ChiselScalatestTester {
   }
 
   "DCRRShifter" should s"work with 3 ports" in {
-    test(new DCRRShifter(UInt(8.W))(3)).withAnnotations(GetBackendAnnotation()) { dut =>
+    val numPorts = 3
+    test(new DCRRShifter(UInt(8.W))(numPorts)).withAnnotations(GetBackendAnnotation()) { dut =>
       val inSources = dut.io.in.map(_.initSource())
       val outSinks  = dut.io.out.map(_.initSink())
 
@@ -73,22 +74,51 @@ class DCRRShifterSpec extends AnyFlatSpec with ChiselScalatestTester {
         outSinks(0).expectDequeue(0.U)
       }.fork {
         outSinks(1).expectDequeue(1.U)
+      }.fork {
+        outSinks(2).expectInvalid()
       }.joinAndStep()
 
       // Now shift should be 2
       fork {
-        inSources(0).enqueueSeq(zeros)
+        inSources(0).enqueue(0.U)
       }.fork {
-        inSources(1).enqueueSeq(ones)
+        inSources(1).enqueue(1.U)
       }.fork {
-        inSources(2).enqueueSeq(twos)
+        inSources(2).enqueue(2.U)
       }.fork {
-        outSinks(0).expectDequeueSeq(ones)
+        outSinks(0).expectDequeue(1.U)
       }.fork {
-        outSinks(1).expectDequeueSeq(twos)
+        outSinks(1).expectDequeue(2.U)
       }.fork {
-        outSinks(2).expectDequeueSeq(zeros)
+        outSinks(2).expectDequeue(0.U)
       }.joinAndStep()
+
+      // Shift should not change, still 2
+      fork {
+        inSources(0).enqueue(0.U)
+      }.fork {
+        inSources(1).enqueue(1.U)
+      }.fork {
+        outSinks(0).expectDequeue(1.U)
+      }.fork {
+        outSinks(1).expectInvalid()
+      }.fork {
+        outSinks(2).expectDequeue(0.U)
+      }.joinAndStep()
+
+      // Shift should be 1 now
+      fork {
+        inSources(0).enqueue(0.U)
+      }.fork {
+        inSources(1).enqueue(1.U)
+      }.fork {
+        outSinks(0).expectInvalid()
+      }.fork {
+        outSinks(1).expectDequeue(0.U)
+      }.fork {
+        outSinks(2).expectDequeue(1.U)
+      }.joinAndStep()
+
     }
   }
 

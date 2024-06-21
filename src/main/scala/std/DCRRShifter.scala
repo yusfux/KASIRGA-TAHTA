@@ -12,9 +12,8 @@ import chisel3.util._
  */
 class DCRRShifter[T <: Data](gen: T)(numPorts: Int) extends Module {
   val io = IO(new Bundle {
-    val in    = Flipped(Vec(numPorts, Decoupled(gen.cloneType)))
-    val stall = Input(Bool())
-    val out   = Vec(numPorts, Decoupled(gen.cloneType))
+    val in  = Flipped(Vec(numPorts, Decoupled(gen.cloneType)))
+    val out = Vec(numPorts, Decoupled(gen.cloneType))
   })
 
   val number_of_valid_inputs = Mux(io.in.count(_.valid) === numPorts.U, 0.U, io.in.count(_.valid))
@@ -22,8 +21,21 @@ class DCRRShifter[T <: Data](gen: T)(numPorts: Int) extends Module {
   val shamt_next = Wire(UInt(log2Ceil(numPorts).W))
   val shamt      = Wire(UInt(log2Ceil(numPorts).W))
 
-  shamt_next := (number_of_valid_inputs + shamt) % numPorts.asUInt
-  shamt      := RegEnable(shamt_next, 0.U, !io.stall)
+  val in_valid = Wire(Vec(numPorts, Bool()))
+  val stall    = Wire(Bool())
+  in_valid := io.in.map(_.valid)
+
+  // at least one input has to be valid
+  stall := !(in_valid.asUInt.orR)
+
+  val tmp_var = Wire(UInt((log2Ceil(numPorts) + 1).W)) // Overflows if size is inferred
+  tmp_var := (number_of_valid_inputs +& shamt) // Addition (with width expansion)
+  if (shamt == 0) {
+    shamt_next := numPorts.U - (tmp_var % numPorts.U)
+  } else {
+    shamt_next := (tmp_var) % numPorts.U
+  }
+  shamt := RegEnable(shamt_next, 0.U, !stall)
 
   val shifter = Module(new DCShifter(gen.cloneType)(numPorts))
 
