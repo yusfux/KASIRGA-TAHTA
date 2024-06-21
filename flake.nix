@@ -38,7 +38,7 @@
               };
               verible = {
                 enable = true;
-                name = "verible-verilog-vormat";
+                name = "verible-verilog-format";
                 entry = "${pkgs.verible}/bin/verible-verilog-format --wrap_spaces 3 --indentation_spaces 3 --inplace";
                 types = ["verilog"];
               };

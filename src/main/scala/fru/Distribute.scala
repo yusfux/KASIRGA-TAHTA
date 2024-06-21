@@ -21,6 +21,27 @@ class DistributeStage(numInputs: Int, numOutInt: Int, numOutFloat: Int) extends 
 
   (0 until numInputs).foreach(j => crossbar.io.in(j) <> io.in(j))
 
-  io.toInt   <> crossbar.io.out(0)
-  io.toFloat <> crossbar.io.out(1)
+  val in_ready = Wire(Vec(numInputs, Bool()))
+  val in_valid = Wire(Vec(numInputs, Bool()))
+
+  in_ready := io.in.map(_.ready)
+  in_valid := io.in.map(_.valid)
+
+  // all inputs have to be valid and all outputs have to be ready to not stall
+  val valid = in_valid.asUInt.andR
+  val ready = in_ready.asUInt.andR
+  val stall = !(valid && ready)
+
+  for (j <- 0 until numOutInt) {
+    io.toInt(j).bits            := RegEnable(crossbar.io.out(0)(j).bits, 0.U.asTypeOf(new MI()), !stall)
+    io.toInt(j).valid           := RegEnable(crossbar.io.out(0)(j).valid, 0.B, !stall)
+    crossbar.io.out(0)(j).ready := io.toInt(j).ready
+  }
+
+  for (j <- 0 until numOutFloat) {
+    io.toFloat(j).bits          := RegEnable(crossbar.io.out(1)(j).bits, 0.U.asTypeOf(new MI()), !stall)
+    io.toFloat(j).valid         := RegEnable(crossbar.io.out(1)(j).valid, 0.B, !stall)
+    crossbar.io.out(1)(j).ready := io.toFloat(j).ready
+  }
+
 }
