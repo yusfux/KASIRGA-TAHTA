@@ -2,7 +2,6 @@ package wood.fru
 
 import chisel3._
 import chiseltest._
-import chisel3.experimental.BundleLiterals._
 
 import org.scalatest.flatspec.AnyFlatSpec
 import wood.util.{GenerateVerilog, GetBackendAnnotation}
@@ -13,58 +12,14 @@ class DistributeStageSpec extends AnyFlatSpec with ChiselScalatestTester {
   val numData = 100
   val TOINT   = TYPE_INT.toInt.U
   val TOFLOAT = TYPE_FLOAT.toInt.U
+  var zero    = new MI()
+  var one     = new MI()
+  var two     = new MI()
 
-  val zero_to_float = new MI().Lit(
-    _.isFloat  -> TOFLOAT,
-    _.operand  -> 0.U,
-    _.write_rf -> 0.U,
-    _.exEngine -> 0.U,
-    _.exOp     -> 0.U,
-    _.imm      -> 0.U,
-    _.rs1      -> 0.U,
-    _.rs2      -> 0.U,
-    _.rd       -> 0.U,
-    _.pc_idx   -> 0.U
-  )
-
-  val zero_to_int = new MI().Lit(
-    _.isFloat  -> TOINT,
-    _.operand  -> 0.U,
-    _.write_rf -> 0.U,
-    _.exEngine -> 0.U,
-    _.exOp     -> 0.U,
-    _.imm      -> 0.U,
-    _.rs1      -> 0.U,
-    _.rs2      -> 0.U,
-    _.rd       -> 0.U,
-    _.pc_idx   -> 0.U
-  )
-
-  val one_to_int = new MI().Lit(
-    _.isFloat  -> TOINT,
-    _.operand  -> 1.U,
-    _.write_rf -> 1.U,
-    _.exEngine -> 1.U,
-    _.exOp     -> 1.U,
-    _.imm      -> 1.U,
-    _.rs1      -> 1.U,
-    _.rs2      -> 1.U,
-    _.rd       -> 1.U,
-    _.pc_idx   -> 1.U
-  )
-
-  val one_to_float = new MI().Lit(
-    _.isFloat  -> TOFLOAT,
-    _.operand  -> 1.U,
-    _.write_rf -> 1.U,
-    _.exEngine -> 1.U,
-    _.exOp     -> 1.U,
-    _.imm      -> 1.U,
-    _.rs1      -> 1.U,
-    _.rs2      -> 1.U,
-    _.rd       -> 1.U,
-    _.pc_idx   -> 1.U
-  )
+  val zero_to_int   = MI(0.U, Map("isFloat" -> 0.U))
+  val zero_to_float = MI(0.U, Map("isFloat" -> 1.U))
+  val one_to_int    = MI(1.U, Map("isFloat" -> 0.U))
+  val one_to_float  = MI(1.U, Map("isFloat" -> 1.U))
 
   val zero_to_ints   = Seq.fill(numData)(zero_to_int)
   val zero_to_floats = Seq.fill(numData)(zero_to_float)
@@ -136,13 +91,12 @@ class DistributeStageSpec extends AnyFlatSpec with ChiselScalatestTester {
       }.joinAndStep()
     }
   }
-  
+
   "DistributeStage" should "work 2 to (2,2) (float,int)" in {
     test(new DistributeStage(2, 2, 2)).withAnnotations(GetBackendAnnotation()) { dut =>
       val inSources     = dut.io.in.map(_.initSource())
       val outFloatSinks = dut.io.toFloat.map(_.initSink())
       val outIntSinks   = dut.io.toInt.map(_.initSink())
-
 
       fork {
         inSources(0).enqueueSeq(zero_to_ints)

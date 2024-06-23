@@ -1,9 +1,10 @@
 package wood.fru
 
 import chisel3._
+import chisel3.experimental.BundleLiterals._
 import chisel3.util._
 import chisel3.util.experimental.decode.{EspressoMinimizer, TruthTable, decoder}
-import wood.exu.{ALUOp, ExEngine}
+import wood.exu.{ALUOp, ExConfig, ExEngine}
 import wood.fru.Instructions._
 
 class ExpandBits(bitVectors: List[String]) {
@@ -200,7 +201,7 @@ object DecodeConfig {
 }
 
 // class MI(bitRanges: List[(Int, Int)]) extends Bundle {
-class _MI extends Bundle {
+class MI extends Bundle {
   val isFloat  = UInt(DecodeConfig.subWidths(0).W)
   val operand  = UInt(DecodeConfig.subWidths(1).W)
   val write_rf = UInt(DecodeConfig.subWidths(2).W)
@@ -210,15 +211,36 @@ class _MI extends Bundle {
   val rs1      = UInt(5.W)
   val rs2      = UInt(5.W)
   val rd       = UInt(5.W)
+  val pc_idx   = UInt(FetchConfig.pcIndexWidth.W)
+  val rs1_tag  = UInt(ExConfig.tagWidth.W)
+  val rs2_tag  = UInt(ExConfig.tagWidth.W)
+  val rd_tag   = UInt(ExConfig.tagWidth.W)
 }
 
-class MI() extends _MI {
-  val pc_idx = UInt(FetchConfig.pcIndexWidth.W)
+object MI { // for testbench only
+  def apply(value: UInt, overrides: Map[String, UInt] = Map.empty): MI = {
+    val mi = new MI().Lit(
+      _.isFloat  -> overrides.getOrElse("isFloat", value),
+      _.operand  -> overrides.getOrElse("operand", value),
+      _.write_rf -> overrides.getOrElse("write_rf", value),
+      _.exEngine -> overrides.getOrElse("exEngine", value),
+      _.exOp     -> overrides.getOrElse("exOp", value),
+      _.imm      -> overrides.getOrElse("imm", value),
+      _.rs1      -> overrides.getOrElse("rs1", value),
+      _.rs2      -> overrides.getOrElse("rs2", value),
+      _.rd       -> overrides.getOrElse("rd", value),
+      _.pc_idx   -> overrides.getOrElse("pc_idx", value),
+      _.rs1_tag  -> overrides.getOrElse("rs1_tag", value),
+      _.rs2_tag  -> overrides.getOrElse("rs2_tag", value),
+      _.rd_tag   -> overrides.getOrElse("rd_tag", value)
+    )
+    mi
+  }
 }
 class Decoder() extends Module {
   val io = IO(new Bundle {
     val inst = Input(UInt(32.W))
-    val out  = Output(new _MI)
+    val out  = Output(new MI)
   })
 
   val instDecoder: UInt = decoder(minimizer = EspressoMinimizer, input = io.inst, truthTable = DecodeConfig.miTable)
@@ -239,6 +261,11 @@ class Decoder() extends Module {
   io.out.rs2      := io.inst(24, 20)
   io.out.rd       := io.inst(11,  7)
   // format: on
+
+  io.out.pc_idx  := DontCare
+  io.out.rs1_tag := DontCare
+  io.out.rs2_tag := DontCare
+  io.out.rd_tag  := DontCare
 
   val inst_type = WireDefault(DecodeConfig.I_Type)
   switch(io.inst(6, 2)) {

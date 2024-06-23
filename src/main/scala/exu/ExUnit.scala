@@ -13,3 +13,8 @@ object ExEngine extends ChiselEnum {
   def toString(op: ExEngine.Type): String =
     toBitpat(op).rawString
 }
+
+object ExConfig {
+  val prfDepth = 128
+  val tagWidth = log2Ceil(prfDepth)
+}

@@ -1,4 +1,4 @@
-package decode
+package wood.fru
 
 import chisel3._
 import chiseltest._
