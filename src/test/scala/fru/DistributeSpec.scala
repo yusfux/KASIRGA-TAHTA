@@ -12,9 +12,6 @@ class DistributeStageSpec extends AnyFlatSpec with ChiselScalatestTester {
   val numData = 100
   val TOINT   = TYPE_INT.toInt.U
   val TOFLOAT = TYPE_FLOAT.toInt.U
-  var zero    = new MI()
-  var one     = new MI()
-  var two     = new MI()
 
   val zero_to_int   = MI(0.U, Map("isFloat" -> 0.U))
   val zero_to_float = MI(0.U, Map("isFloat" -> 1.U))

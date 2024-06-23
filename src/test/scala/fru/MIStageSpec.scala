@@ -10,12 +10,9 @@ class MIStageSpec extends AnyFlatSpec with ChiselScalatestTester {
   val defaultDepth = 55
   val numData      = 100
 
-  var zero = new MI()
-  var one  = new MI()
-  var two  = new MI()
-  zero = MI(0.U)
-  one  = MI(1.U)
-  two  = MI(2.U)
+  val zero = MI(0.U)
+  val one  = MI(1.U)
+  val two  = MI(2.U)
 
   val zeros = Seq.fill(numData)(zero)
   val ones  = Seq.fill(numData)(one)
