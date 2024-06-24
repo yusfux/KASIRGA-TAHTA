@@ -9,8 +9,11 @@ import wood.std.DCArbiter
 class ReservationStationRow(val numPorts: Int) extends Module {
   val io = IO(new Bundle {
     val in       = Flipped(Decoupled(new MI()))
-    val tagBuses = Flipped(Vec(numPorts, new TagBus()))
+    val tagBuses = Flipped(Vec(numPorts, Decoupled(new TagBus())))
     val out      = Decoupled(new MI())
+
+    val r1Valid = Input(UInt(1.W))
+    val r2Valid = Input(UInt(1.W))
 
     val stall = Input(UInt(1.W))
     val clear = Input(UInt(1.W))
@@ -30,15 +33,16 @@ class ReservationStationRow(val numPorts: Int) extends Module {
 
   val busR1Matches = Wire(Vec(numPorts, Bool()))
   for (j <- 0 until numPorts) {
-    busR1Matches(j) := io.tagBuses(j).valid & (row.rs1 === io.tagBuses(j).tag)
+    busR1Matches(j) := io.tagBuses(j).valid & (row.rs1 === io.tagBuses(j).bits.tag)
   }
 
   val busR2Matches = Wire(Vec(numPorts, Bool()))
   for (j <- 0 until numPorts) {
-    busR2Matches(j) := io.tagBuses(j).valid & (row.rs2 === io.tagBuses(j).tag)
+    busR2Matches(j) := io.tagBuses(j).valid & (row.rs2 === io.tagBuses(j).bits.tag)
   }
 
-  when(io.in.valid && io.we.asBool) {
+  val updateRow = io.in.valid && io.we.asBool
+  when(updateRow) {
     row := io.in.bits
   }
 
@@ -46,7 +50,8 @@ class ReservationStationRow(val numPorts: Int) extends Module {
     r1Valid,
     Seq(
       io.clear.asBool         -> 0.U,
-      busR1Matches.asUInt.orR -> 1.U
+      busR1Matches.asUInt.orR -> 1.U,
+      updateRow               -> io.r1Valid
     )
   )
 
@@ -54,7 +59,8 @@ class ReservationStationRow(val numPorts: Int) extends Module {
     r2Valid,
     Seq(
       io.clear.asBool         -> 0.U,
-      busR2Matches.asUInt.orR -> 1.U
+      busR2Matches.asUInt.orR -> 1.U,
+      updateRow               -> io.r2Valid
     )
   )
 
@@ -70,42 +76,53 @@ class ReservationStationRow(val numPorts: Int) extends Module {
   io.out.bits  := row
   io.out.valid := r1Valid & r2Valid
 
-  io.in.ready := 1.U // TODO
+  // TODO
+  io.in.ready := 1.U
+  for (j <- 0 until numPorts) {
+    io.tagBuses(j).ready := 1.U
+  }
 }
 
 class ReservationStation(val numPorts: Int) extends Module {
   val io = IO(new Bundle {
     val in       = Flipped(Decoupled(new MI()))
-    val tagBuses = Flipped(Vec(numPorts, new TagBus()))
+    val tagBuses = Flipped(Vec(numPorts, Decoupled(new TagBus())))
     val out      = Decoupled(new MI())
+
+    val r1Valid = Input(UInt(1.W))
+    val r2Valid = Input(UInt(1.W))
 
     val stall = Input(UInt(1.W))
   })
 
   val rows = Seq.fill(ExConfig.rsDepth)(Module(new ReservationStationRow(numPorts)))
 
-  val rowFull       = Wire(Vec(ExConfig.rsDepth, UInt(1.W)))
-  val rowEmpty      = Wire(Vec(ExConfig.rsDepth, UInt(1.W)))
-  val rowValid      = Wire(Vec(ExConfig.rsDepth, UInt(1.W)))
-  val rowDispatched = Wire(Vec(ExConfig.rsDepth, UInt(1.W)))
+  val rowTagReady  = Wire(Vec(ExConfig.rsDepth, UInt(1.W)))
+  val rowFull      = Wire(Vec(ExConfig.rsDepth, UInt(1.W)))
+  val rowEmpty     = Wire(Vec(ExConfig.rsDepth, UInt(1.W)))
+  val rowValid     = Wire(Vec(ExConfig.rsDepth, UInt(1.W)))
+  val rowScheduled = Wire(Vec(ExConfig.rsDepth, UInt(1.W)))
   (0 until ExConfig.rsDepth).foreach(j => {
-    rowValid(j)      := rows(j).io.out.valid
-    rowEmpty(j)      := rows(j).io.empty
-    rowFull(j)       := !rows(j).io.empty
-    rowDispatched(j) := rows(j).io.out.ready & rows(j).io.out.valid
+    rowValid(j)     := rows(j).io.out.valid
+    rowEmpty(j)     := rows(j).io.empty
+    rowFull(j)      := !rows(j).io.empty
+    rowScheduled(j) := rows(j).io.out.ready & rows(j).io.out.valid
+    rowTagReady(j)  := rows(j).io.tagBuses.asUInt.andR
   })
 
-  val rowEmptyIndex      = PriorityEncoder(rowEmpty.asUInt)
-  val rowDispatchedIndex = PriorityEncoder(rowDispatched.asUInt)
-  val rowWe              = UIntToOH(rowEmptyIndex)
+  val rowEmptyIndex     = PriorityEncoder(rowEmpty.asUInt)
+  val rowScheduledIndex = PriorityEncoder(rowScheduled.asUInt)
+  val rowWe             = UIntToOH(rowEmptyIndex)
   (0 until ExConfig.rsDepth).foreach(j => {
     rows(j).io.we    := rowWe(j)
-    rows(j).io.clear := rowDispatched(j)
+    rows(j).io.clear := rowScheduled(j)
     rows(j).io.stall := io.stall
   })
 
   (0 until ExConfig.rsDepth).foreach(j => {
     rows(j).io.in       <> io.in
+    rows(j).io.r1Valid  <> io.r1Valid
+    rows(j).io.r2Valid  <> io.r2Valid
     rows(j).io.tagBuses <> io.tagBuses
   })
 
@@ -113,8 +130,12 @@ class ReservationStation(val numPorts: Int) extends Module {
 
   (0 until ExConfig.rsDepth).foreach(j => {
     arbiter.io.in(j) <> rows(j).io.out
+    (0 until numPorts).foreach(k => {
+      rows(j).io.tagBuses(k).bits  := io.tagBuses(k).bits
+      rows(j).io.tagBuses(k).valid := io.tagBuses(k).valid
+      io.tagBuses(k).ready         := rowTagReady.asUInt.andR
+    })
   })
 
   arbiter.io.out(0) <> io.out
-
 }

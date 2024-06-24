@@ -7,21 +7,21 @@ import wood.std.{BlockRAMParams, DecoupledBlockRAM}
 
 class RenameStage(numPorts: Int) extends Module {
   val io = IO(new Bundle {
-    val in              = Flipped(Vec(numPorts, Decoupled(new MI())))
-    val in_flist_retire = Flipped(Vec(numPorts, Decoupled(UInt(ExConfig.tagWidth.W))))
-    val out             = Vec(numPorts, Decoupled(new MI()))
+    val in         = Flipped(Vec(numPorts, Decoupled(new MI())))
+    val retiredBus = Flipped(Vec(numPorts, Decoupled(new Tag())))
+    val out        = Vec(numPorts, Decoupled(new MI()))
   })
 
   val numReadPorts  = (numPorts * 2)
   val numWritePorts = numPorts
 
   val flist = Module(new FreeList(numPorts))
-  flist.io.in <> io.in_flist_retire
+  flist.io.in <> io.retiredBus
 
   val frfDepth = 32
   val frontEndRegisterFile = Module(
-    new DecoupledBlockRAM(
-      BlockRAMParams(ExConfig.tagWidth, frfDepth, numReadPorts, numWritePorts)
+    new DecoupledBlockRAM(new Tag())(
+      BlockRAMParams(frfDepth, numReadPorts, numWritePorts)
     )
   )
 
@@ -37,12 +37,11 @@ class RenameStage(numPorts: Int) extends Module {
 
   (0 until numPorts).foreach(j => {
     val read_freelist = io.in(j).bits.write_rf === BitPat(s"b${DecodeConfig.WRITE_RF_1}")
-    val rd_tag        = flist.io.out(j).bits
     flist.io.out(j).ready := io.in(j).valid & read_freelist & frontEndRegisterFile.io.wp(j).ready
     io.in(j).ready        := flist.io.out(j).valid
 
     frontEndRegisterFile.io.wp(j).bits.addr   := io.in(j).bits.rd
-    frontEndRegisterFile.io.wp(j).bits.data   := rd_tag
+    frontEndRegisterFile.io.wp(j).bits.data   := flist.io.out(j).bits
     frontEndRegisterFile.io.wp(j).valid       := flist.io.out(j).valid
     frontEndRegisterFile.io.wp(j).bits.enable := flist.io.out(j).valid
   })
@@ -55,7 +54,7 @@ class RenameStage(numPorts: Int) extends Module {
   })
 
   (0 until numPorts).foreach(j => {
-    io.out(j).bits.rs1_tag := frontEndRegisterFile.io.rop(j).bits.data
-    io.out(j).bits.rs2_tag := frontEndRegisterFile.io.rop(j + numPorts).bits.data
+    io.out(j).bits.rs1_tag := frontEndRegisterFile.io.rop(j).bits.data.tag
+    io.out(j).bits.rs2_tag := frontEndRegisterFile.io.rop(j + numPorts).bits.data.tag
   })
 }

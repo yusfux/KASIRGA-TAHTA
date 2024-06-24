@@ -22,10 +22,12 @@ object ExConfig {
   val tagWidth  = log2Ceil(prfDepth)
 }
 
-class TagBus extends Bundle {
-  val data  = UInt(ExConfig.dataWidth.W)
-  val tag   = UInt(ExConfig.tagWidth.W)
-  val valid = UInt(1.W)
+class Tag extends Bundle {
+  val tag = UInt(ExConfig.tagWidth.W)
+}
+
+class TagBus extends Tag {
+  val data = UInt(ExConfig.dataWidth.W)
 }
 
 class WriteBack extends Bundle {

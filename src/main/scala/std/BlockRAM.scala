@@ -3,37 +3,37 @@ package wood.std
 import chisel3._
 import chisel3.util._
 
-class ReadPortI(dataWidth: Int, addrWidth: Int) extends Bundle {
+class ReadPortI[T <: Data](gen: T)(addrWidth: Int) extends Bundle {
   val addr = UInt(addrWidth.W)
 }
-class ReadPortO(dataWidth: Int, addrWidth: Int) extends Bundle {
-  val data = UInt(dataWidth.W)
+class ReadPortO[T <: Data](gen: T)(addrWidth: Int) extends Bundle {
+  val data = gen.cloneType
   val addr = UInt(addrWidth.W)
 }
 
-class WritePortI(dataWidth: Int, addrWidth: Int) extends Bundle {
+class WritePortI[T <: Data](gen: T)(addrWidth: Int) extends Bundle {
   val enable = Bool()
   val addr   = UInt(addrWidth.W)
-  val data   = UInt(dataWidth.W)
+  val data   = gen.cloneType
 }
 
-class BlockRAMIO(dataWidth: Int, addrWidth: Int, numReadPorts: Int, numWritePorts: Int) extends Bundle {
-  val rip = Vec(numReadPorts, Input(new ReadPortI(dataWidth, addrWidth)))
-  val rop = Vec(numReadPorts, Output(new ReadPortO(dataWidth, addrWidth)))
-  val wp  = Vec(numWritePorts, Input(new WritePortI(dataWidth, addrWidth)))
+class BlockRAMIO[T <: Data](gen: T)(addrWidth: Int, numReadPorts: Int, numWritePorts: Int) extends Bundle {
+  val rip = Vec(numReadPorts, Input(new ReadPortI(gen.cloneType)(addrWidth)))
+  val rop = Vec(numReadPorts, Output(new ReadPortO(gen.cloneType)(addrWidth)))
+  val wp  = Vec(numWritePorts, Input(new WritePortI(gen.cloneType)(addrWidth)))
 }
 
-class DecoupledBlockRAMIO(dataWidth: Int, addrWidth: Int, numReadPorts: Int, numWritePorts: Int) extends Bundle {
-  val rip = Vec(numReadPorts, Flipped(Decoupled(new ReadPortI(dataWidth, addrWidth))))
-  val rop = Vec(numReadPorts, Decoupled(new ReadPortO(dataWidth, addrWidth)))
-  val wp  = Vec(numWritePorts, Flipped(Decoupled(new WritePortI(dataWidth, addrWidth))))
+class DecoupledBlockRAMIO[T <: Data](gen: T)(addrWidth: Int, numReadPorts: Int, numWritePorts: Int) extends Bundle {
+  val rip = Vec(numReadPorts, Flipped(Decoupled(new ReadPortI(gen.cloneType)(addrWidth))))
+  val rop = Vec(numReadPorts, Decoupled(new ReadPortO(gen.cloneType)(addrWidth)))
+  val wp  = Vec(numWritePorts, Flipped(Decoupled(new WritePortI(gen.cloneType)(addrWidth))))
 }
 
-case class BlockRAMParams(dataWidth: Int, depth: Int, numReadPorts: Int, numWritePorts: Int)
+case class BlockRAMParams(depth: Int, numReadPorts: Int, numWritePorts: Int)
 
-class BlockRAM(params: BlockRAMParams) extends Module {
-  val io  = IO(new BlockRAMIO(params.dataWidth, log2Ceil(params.depth), params.numReadPorts, params.numWritePorts))
-  val mem = Mem(params.depth, UInt(params.dataWidth.W))
+class BlockRAM[T <: Data](gen: T)(params: BlockRAMParams) extends Module {
+  val io  = IO(new BlockRAMIO(gen.cloneType)(log2Ceil(params.depth), params.numReadPorts, params.numWritePorts))
+  val mem = Mem(params.depth, gen.cloneType)
 
   for (i <- 0 until params.numWritePorts) {
     when(io.wp(i).enable) {
@@ -47,11 +47,11 @@ class BlockRAM(params: BlockRAMParams) extends Module {
   }
 }
 
-class DecoupledBlockRAM(params: BlockRAMParams) extends Module {
+class DecoupledBlockRAM[T <: Data](gen: T)(params: BlockRAMParams) extends Module {
   val io = IO(
-    new DecoupledBlockRAMIO(params.dataWidth, log2Ceil(params.depth), params.numReadPorts, params.numWritePorts)
+    new DecoupledBlockRAMIO(gen.cloneType)(log2Ceil(params.depth), params.numReadPorts, params.numWritePorts)
   )
-  val mem = Mem(params.depth, UInt(params.dataWidth.W))
+  val mem = Mem(params.depth, gen.cloneType)
 
   for (i <- 0 until params.numWritePorts) {
     when(io.wp(i).bits.enable & io.wp(i).valid) {

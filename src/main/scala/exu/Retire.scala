@@ -20,8 +20,8 @@ class RetireStage(numPorts: Int) extends Module {
 
   val frfDepth = 32
   val frontEndRegisterFile = Module(
-    new DecoupledBlockRAM(
-      BlockRAMParams(ExConfig.tagWidth, frfDepth, numReadPorts, numWritePorts)
+    new DecoupledBlockRAM(new Tag())(
+      BlockRAMParams(frfDepth, numReadPorts, numWritePorts)
     )
   )
 

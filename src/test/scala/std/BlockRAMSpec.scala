@@ -13,10 +13,9 @@ class BlockRAMSpec extends AnyFlatSpec with ChiselScalatestTester {
   val numWritePorts = 2
   val numReadPorts  = 2
   val depth         = 128
-  val dataWidth     = 32
 
   "BlockRAM" should s"work ${numReadPorts}r ${numWritePorts}w" in {
-    test(new BlockRAM(BlockRAMParams(dataWidth, depth, numReadPorts, numWritePorts)))
+    test(new BlockRAM(UInt(8.W))(BlockRAMParams(depth, numReadPorts, numWritePorts)))
       .withAnnotations(GetBackendAnnotation()) { dut =>
         val numTests = 32
         for (testData <- 0 until numTests) {
@@ -40,11 +39,11 @@ class BlockRAMSpec extends AnyFlatSpec with ChiselScalatestTester {
   }
 
   "BlockRAM" should "emit Verilog" in {
-    GenerateVerilog(new BlockRAM(BlockRAMParams(dataWidth, depth, numReadPorts, numWritePorts)))
+    GenerateVerilog(new BlockRAM(UInt(8.W))(BlockRAMParams(depth, numReadPorts, numWritePorts)))
   }
 
   "DecoupledBlockRAM" should s"work ${numReadPorts}r ${numWritePorts}w" in {
-    test(new DecoupledBlockRAM(BlockRAMParams(dataWidth, depth, numReadPorts, numWritePorts)))
+    test(new DecoupledBlockRAM(UInt(8.W))(BlockRAMParams(depth, numReadPorts, numWritePorts)))
       .withAnnotations(GetBackendAnnotation()) { dut =>
         val numTests = 32
 
@@ -57,19 +56,19 @@ class BlockRAMSpec extends AnyFlatSpec with ChiselScalatestTester {
         val numData = 100
         val numbers = 1 to numData
         val testReadISeq = numbers.map(i =>
-          new ReadPortI(dataWidth, log2Ceil(depth)).Lit(
+          new ReadPortI(UInt(8.W))(log2Ceil(depth)).Lit(
             _.addr -> i.U
           )
         )
         val testReadOSeq = numbers.map(i =>
-          new ReadPortO(dataWidth, log2Ceil(depth)).Lit(
+          new ReadPortO(UInt(8.W))(log2Ceil(depth)).Lit(
             _.data -> i.U,
             _.addr -> i.U
           )
         )
 
         val testWriteSeq = numbers.map(i =>
-          new WritePortI(dataWidth, log2Ceil(depth)).Lit(
+          new WritePortI(UInt(8.W))(log2Ceil(depth)).Lit(
             _.addr   -> i.U,
             _.data   -> i.U,
             _.enable -> true.B
@@ -93,6 +92,6 @@ class BlockRAMSpec extends AnyFlatSpec with ChiselScalatestTester {
   }
 
   "DecoupledBlockRAM" should "emit Verilog" in {
-    GenerateVerilog(new DecoupledBlockRAM(BlockRAMParams(dataWidth, depth, numReadPorts, numWritePorts)))
+    GenerateVerilog(new DecoupledBlockRAM(UInt(8.W))(BlockRAMParams(depth, numReadPorts, numWritePorts)))
   }
 }
