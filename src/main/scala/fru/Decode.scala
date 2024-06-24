@@ -207,7 +207,7 @@ class MI extends Bundle {
   val write_rf = UInt(DecodeConfig.subWidths(2).W)
   val exEngine = UInt(DecodeConfig.subWidths(3).W)
   val exOp     = UInt(DecodeConfig.subWidths(4).W)
-  val imm      = UInt(32.W)
+  val imm      = UInt(32.W) // TODO
   val rs1      = UInt(5.W)
   val rs2      = UInt(5.W)
   val rd       = UInt(5.W)
@@ -215,6 +215,9 @@ class MI extends Bundle {
   val rs1_tag  = UInt(ExConfig.tagWidth.W)
   val rs2_tag  = UInt(ExConfig.tagWidth.W)
   val rd_tag   = UInt(ExConfig.tagWidth.W)
+  val rs1_data = UInt(ExConfig.dataWidth.W)
+  val rs2_data = UInt(ExConfig.dataWidth.W)
+  val rd_data  = UInt(ExConfig.dataWidth.W)
 }
 
 object MI { // for testbench only
@@ -232,7 +235,10 @@ object MI { // for testbench only
       _.pc_idx   -> overrides.getOrElse("pc_idx", value),
       _.rs1_tag  -> overrides.getOrElse("rs1_tag", value),
       _.rs2_tag  -> overrides.getOrElse("rs2_tag", value),
-      _.rd_tag   -> overrides.getOrElse("rd_tag", value)
+      _.rd_tag   -> overrides.getOrElse("rd_tag", value),
+      _.rs1_data -> overrides.getOrElse("rs1_data", value),
+      _.rs2_data -> overrides.getOrElse("rs2_data", value),
+      _.rd_data  -> overrides.getOrElse("rd_data", value)
     )
     mi
   }
