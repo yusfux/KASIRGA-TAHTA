@@ -9,7 +9,7 @@ import wood.fru.Instructions._
 
 class ExpandBits(bitVectors: List[String]) {
   // Calculate the max width
-  private val maxWidth: Int = bitVectors.map(_.length).max
+  val maxWidth: Int = bitVectors.map(_.length).max
 
   // Method to extend a bit vector to the max width
   def e(bitVector: String): String = {

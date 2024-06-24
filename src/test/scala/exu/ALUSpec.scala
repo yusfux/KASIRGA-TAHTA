@@ -1,7 +1,7 @@
 package wood.exu
 
 import chisel3._
-import chisel3.util._
+// import chisel3.util._
 import chisel3.experimental.BundleLiterals._
 
 import chiseltest._
@@ -14,6 +14,7 @@ import scala.math.log10
 import scala.collection.mutable.Queue
 import wood.exu.ALUOp
 import wood.util.{GetBackendAnnotation}
+import wood.fru.DecodeConfig
 
 trait ALUBehavior {
   this: AnyFlatSpec with ChiselScalatestTester =>
@@ -39,7 +40,7 @@ trait ALUBehavior {
             val ua: BigInt = a & mask
             val ub: BigInt = b & mask
             val result = op(ua, ub) & mask
-            val tagBus = new TagBus(dataWidth, tagWidth).Lit(
+            val tagBus = new TagBus().Lit(
               _.data -> result.U(dataWidth.W),
               _.tag  -> fn.litValue.U
             )
@@ -48,7 +49,7 @@ trait ALUBehavior {
         }.fork {
           val microOps = data.map {
             case (a, b) =>
-              val microOp = new MicroOperation(dataWidth, tagWidth, opWidth).Lit(
+              val microOp = new MicroOperation().Lit(
                 _.data1 -> a.U,
                 _.data2 -> b.U,
                 _.tag   -> fn.litValue.U,
@@ -76,9 +77,9 @@ trait ALUBehavior {
 
 class ALUSpec extends AnyFlatSpec with ALUBehavior with ChiselScalatestTester with Matchers {
   behavior.of("ALU")
-  val tagWidth = 5
-  val opWidth  = log2Ceil(ALUOp.values.length)
-  val dataWidths: List[Int] = List(32, 64)
+  val tagWidth = ExConfig.tagWidth
+  val opWidth  = DecodeConfig.op.maxWidth
+  val dataWidths: List[Int] = List(ExConfig.dataWidth)
   val numVectors: Int       = 100 // Number of random test vectors
   val rand = new Random()
 

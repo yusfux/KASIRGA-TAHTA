@@ -3,34 +3,6 @@ package wood.exu
 import chisel3._
 import chisel3.util._
 
-/* Until ExUnit is implemented these stay here */
-class TagBus(dataWidth: Int, tagWidth: Int) extends Bundle {
-  val tag  = UInt(tagWidth.W)
-  val data = UInt(dataWidth.W)
-}
-
-class WriteBack(dataWidth: Int, tagWidth: Int) extends Bundle {
-  val tag  = UInt(tagWidth.W)
-  val data = UInt(dataWidth.W)
-}
-
-class MicroOperation(dataWidth: Int, tagWidth: Int, opWidth: Int) extends Bundle {
-  val data1 = UInt(dataWidth.W)
-  val data2 = UInt(dataWidth.W)
-  val tag   = UInt(tagWidth.W)
-  val op    = UInt(opWidth.W)
-}
-
-class MicroInstruction(dataWidth: Int, tagWidth: Int, opWidth: Int) extends Bundle {
-  val readtag1 = UInt(tagWidth.W)
-  val readtag2 = UInt(tagWidth.W)
-  val writetag = UInt(tagWidth.W)
-  val data     = UInt(dataWidth.W)
-  val tag      = UInt(tagWidth.W)
-  val op       = UInt(opWidth.W)
-}
-/* *************************************** */
-
 object ALUOp extends ChiselEnum {
   val sub, add, xor, or, and, sll, srl, sra, slt, sltu, pass = Value
   val values                                                 = IndexedSeq(sub, add, xor, or, and, sll, srl, sra, slt, sltu, pass)
@@ -44,8 +16,8 @@ object ALUOp extends ChiselEnum {
 
 class ALU(dataWidth: Int, tagWidth: Int, opWidth: Int) extends Module {
   val io = IO(new Bundle {
-    val microOp = Flipped(Decoupled(new MicroOperation(dataWidth, tagWidth, opWidth)))
-    val tagBus  = Decoupled(new TagBus(dataWidth, tagWidth))
+    val microOp = Flipped(Decoupled(new MicroOperation()))
+    val tagBus  = Decoupled(new TagBus())
   })
 
   val shamt = if (dataWidth > 1) log2Ceil(dataWidth) - 1 else 0 // Shift amount.
