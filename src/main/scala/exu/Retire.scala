@@ -2,60 +2,113 @@ package wood.exu
 
 import chisel3._
 import chisel3.util._
-import wood.fru.{DecodeConfig, MI}
-import wood.std.{BlockRAMParams, DecoupledBlockRAM}
+import wood.fru.MI
+import wood.std.{BlockRAMParams, DCArbiter, DCRRQueue, DecoupledBlockRAM}
 
-class RetireStage(numPorts: Int) extends Module {
+class ROBStage(numPorts: Int, queueDepth: Int) extends Module {
   val io = IO(new Bundle {
-    val in              = Flipped(Vec(numPorts, Decoupled(new MI())))
-    val in_flist_retire = Flipped(Vec(numPorts, Decoupled(UInt(ExConfig.tagWidth.W))))
-    val out             = Vec(numPorts, Decoupled(new MI()))
+    val in  = Flipped(Vec(numPorts, Decoupled(new MI())))
+    val out = Vec(numPorts, Decoupled(new MI()))
   })
 
-  val numReadPorts  = (numPorts * 2)
-  val numWritePorts = numPorts
+  val q = Module(new DCRRQueue(new MI())(numPorts, queueDepth))
+  q.io.in  <> io.in
+  q.io.out <> io.out
+}
 
-  val flist = Module(new FreeList(numPorts))
-  flist.io.in <> io.in_flist_retire
+class RetiredStatusStage(numPorts: Int) extends Module {
+  val io = IO(new Bundle {
+    val in          = Flipped(Vec(numPorts, Decoupled(new MI())))
+    val tagBuses    = Flipped(Vec(numPorts, Decoupled(new TagBus())))
+    val commitBuses = Flipped(Vec(numPorts, Decoupled(new MI())))
 
-  val frfDepth = 32
-  val frontEndRegisterFile = Module(
+    val out = Vec(numPorts, Decoupled(new MI()))
+  })
+
+  val arbiters = Seq.tabulate(numPorts) { j =>
+    Module(new DCArbiter(UInt(1.W))(2, 1))
+  }
+
+  val retiredStatusRegisterFile = Module(
+    new DecoupledBlockRAM(UInt(1.W))(
+      BlockRAMParams(ExConfig.prfDepth, numPorts, (numPorts * 2))
+    )
+  )
+
+  val readyForTag    = Wire(Vec(numPorts, Bool()))
+  val readyForCommit = Wire(Vec(numPorts, Bool()))
+
+  (0 until numPorts).foreach(j => {
+    readyForTag(j)       := retiredStatusRegisterFile.io.wp(j).ready & arbiters(j).io.in(1).ready
+    io.tagBuses(j).ready := readyForTag(j)
+
+    readyForCommit(j)       := retiredStatusRegisterFile.io.wp(j + numPorts).ready
+    io.commitBuses(j).ready := readyForCommit(j)
+  })
+
+  (0 until numPorts).foreach(j => {
+    io.out(j).bits         := io.in(j).bits
+    io.out(j).valid        := io.in(j).valid
+    io.out(j).bits.retired := arbiters(j).io.out(0).bits
+
+    retiredStatusRegisterFile.io.rip(j).bits.addr := io.in(j).bits.rd_tag
+    retiredStatusRegisterFile.io.rip(j).valid     := io.in(j).valid
+    io.in(j).ready                                := retiredStatusRegisterFile.io.rip(j).ready
+    arbiters(j).io.in(0).bits                     := retiredStatusRegisterFile.io.rop(j).bits.data
+    arbiters(j).io.in(0).valid                    := retiredStatusRegisterFile.io.rop(j).valid
+    retiredStatusRegisterFile.io.rop(j).ready     := arbiters(j).io.in(0).ready
+
+    arbiters(j).io.in(1).bits  := 1.U
+    arbiters(j).io.in(1).valid := io.tagBuses(j).bits.tag === io.in(j).bits.rd_tag
+
+    arbiters(j).io.out(0).ready := io.out(j).valid
+  })
+
+  (0 until numPorts).foreach(j => {
+    retiredStatusRegisterFile.io.wp(j).bits.addr   := io.tagBuses(j).bits.tag
+    retiredStatusRegisterFile.io.wp(j).valid       := io.tagBuses(j).valid
+    retiredStatusRegisterFile.io.wp(j).bits.enable := io.tagBuses(j).valid
+    retiredStatusRegisterFile.io.wp(j).bits.data   := 1.U
+
+    retiredStatusRegisterFile.io.wp(j + numPorts).bits.addr   := io.commitBuses(j).bits.rd_tag
+    retiredStatusRegisterFile.io.wp(j + numPorts).valid       := io.commitBuses(j).valid
+    retiredStatusRegisterFile.io.wp(j + numPorts).bits.enable := io.commitBuses(j).valid
+    retiredStatusRegisterFile.io.wp(j + numPorts).bits.data   := 0.U
+
+    io.tagBuses(j).ready := retiredStatusRegisterFile.io.wp(j).ready
+  })
+}
+
+class ArchRegisterFileStage(numPorts: Int) extends Module {
+  val io = IO(new Bundle {
+    val in = Flipped(Vec(numPorts, Decoupled(new MI())))
+
+    val commitBuses = Vec(numPorts, Decoupled(new MI()))
+    val retiredBus  = Vec(numPorts, Decoupled(new Tag()))
+  })
+
+  val arfDepth = 32
+  val archRegisterFile = Module(
     new DecoupledBlockRAM(new Tag())(
-      BlockRAMParams(frfDepth, numReadPorts, numWritePorts)
+      BlockRAMParams(arfDepth, numPorts, numPorts)
     )
   )
 
   (0 until numPorts).foreach(j => {
-    frontEndRegisterFile.io.rip(j).bits.addr := io.in(j).bits.rs1
-    frontEndRegisterFile.io.rip(j).valid     := io.in(j).valid
+    io.commitBuses(j).bits  := io.in(j).bits
+    io.commitBuses(j).valid := io.in(j).valid
 
-    frontEndRegisterFile.io.rip(j + numPorts).bits.addr := io.in(j).bits.rs2
-    frontEndRegisterFile.io.rip(j + numPorts).valid     := io.in(j).valid
+    archRegisterFile.io.wp(j).bits.addr     := io.in(j).bits.rd
+    archRegisterFile.io.wp(j).valid         := io.in(j).valid
+    archRegisterFile.io.wp(j).bits.enable   := io.in(j).valid
+    archRegisterFile.io.wp(j).bits.data.tag := io.in(j).bits.rd_tag
 
-    io.in(j).ready := frontEndRegisterFile.io.rip(j + numPorts).ready & frontEndRegisterFile.io.rip(j).ready
-  })
+    archRegisterFile.io.rip(j).bits.addr := io.in(j).bits.rd
+    archRegisterFile.io.rip(j).valid     := io.in(j).valid
+    io.in(j).ready                       := archRegisterFile.io.rip(j).ready
 
-  (0 until numPorts).foreach(j => {
-    val read_freelist = io.in(j).bits.write_rf === BitPat(s"b${DecodeConfig.WRITE_RF_1}")
-    val rd_tag        = flist.io.out(j).bits
-    flist.io.out(j).ready := io.in(j).valid & read_freelist & frontEndRegisterFile.io.wp(j).ready
-    io.in(j).ready        := flist.io.out(j).valid
-
-    frontEndRegisterFile.io.wp(j).bits.addr   := io.in(j).bits.rd
-    frontEndRegisterFile.io.wp(j).bits.data   := rd_tag
-    frontEndRegisterFile.io.wp(j).valid       := flist.io.out(j).valid
-    frontEndRegisterFile.io.wp(j).bits.enable := flist.io.out(j).valid
-  })
-
-  (0 until numPorts).foreach(j => {
-    io.out(j).bits                                  := io.in(j).bits
-    io.out(j).valid                                 := frontEndRegisterFile.io.rop(j).valid & frontEndRegisterFile.io.rop(j + numPorts).valid
-    frontEndRegisterFile.io.rop(j).ready            := io.out(j).ready
-    frontEndRegisterFile.io.rop(j + numPorts).ready := io.out(j).ready
-  })
-
-  (0 until numPorts).foreach(j => {
-    io.out(j).bits.rs1_tag := frontEndRegisterFile.io.rop(j).bits.data
-    io.out(j).bits.rs2_tag := frontEndRegisterFile.io.rop(j + numPorts).bits.data
+    io.retiredBus(j).bits.tag        := archRegisterFile.io.rop(j).bits.data.tag
+    io.retiredBus(j).valid           := archRegisterFile.io.rop(j).valid
+    archRegisterFile.io.rop(j).ready := io.retiredBus(j).ready
   })
 }

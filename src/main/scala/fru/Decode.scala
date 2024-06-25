@@ -218,6 +218,7 @@ class MI extends Bundle {
   val rs1_data = UInt(ExConfig.dataWidth.W)
   val rs2_data = UInt(ExConfig.dataWidth.W)
   val rd_data  = UInt(ExConfig.dataWidth.W)
+  val retired  = UInt(1.W)
 }
 
 object MI { // for testbench only
@@ -238,7 +239,8 @@ object MI { // for testbench only
       _.rd_tag   -> overrides.getOrElse("rd_tag", value),
       _.rs1_data -> overrides.getOrElse("rs1_data", value),
       _.rs2_data -> overrides.getOrElse("rs2_data", value),
-      _.rd_data  -> overrides.getOrElse("rd_data", value)
+      _.rd_data  -> overrides.getOrElse("rd_data", value),
+      _.retired  -> overrides.getOrElse("retired", value)
     )
     mi
   }
@@ -272,6 +274,7 @@ class Decoder() extends Module {
   io.out.rs1_tag := DontCare
   io.out.rs2_tag := DontCare
   io.out.rd_tag  := DontCare
+  io.out.retired := DontCare
 
   val inst_type = WireDefault(DecodeConfig.I_Type)
   switch(io.inst(6, 2)) {
