@@ -24,6 +24,7 @@
 *.jar
 *.war
 *.ear
+*.cmd
 
 # Compiled Static libraries
 *.lai
@@ -45,3 +46,5 @@
 *.lo
 *.o
 *.obj
+*.in
+*.out

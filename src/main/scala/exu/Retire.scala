@@ -19,7 +19,7 @@ class ROBStage(numPorts: Int, queueDepth: Int) extends Module {
 class RetiredStatusStage(numPorts: Int) extends Module {
   val io = IO(new Bundle {
     val in          = Flipped(Vec(numPorts, Decoupled(new MI())))
-    val tagBuses    = Flipped(Vec(numPorts, Decoupled(new TagBus())))
+    val tagBuses    = Flipped(Vec(numPorts, Decoupled(new ForwardBus())))
     val commitBuses = Flipped(Vec(numPorts, Decoupled(new MI())))
 
     val out = Vec(numPorts, Decoupled(new MI()))

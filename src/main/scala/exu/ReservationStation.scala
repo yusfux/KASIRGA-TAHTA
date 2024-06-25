@@ -9,7 +9,7 @@ import wood.std.DCArbiter
 class ReservationStationRow(val numPorts: Int) extends Module {
   val io = IO(new Bundle {
     val in       = Flipped(Decoupled(new MI()))
-    val tagBuses = Flipped(Vec(numPorts, Decoupled(new TagBus())))
+    val tagBuses = Flipped(Vec(numPorts, Decoupled(new ForwardBus())))
     val out      = Decoupled(new MI())
 
     val r1Valid = Input(UInt(1.W))
@@ -86,7 +86,7 @@ class ReservationStationRow(val numPorts: Int) extends Module {
 class ReservationStation(val numPorts: Int) extends Module {
   val io = IO(new Bundle {
     val in       = Flipped(Decoupled(new MI()))
-    val tagBuses = Flipped(Vec(numPorts, Decoupled(new TagBus())))
+    val tagBuses = Flipped(Vec(numPorts, Decoupled(new ForwardBus())))
     val out      = Decoupled(new MI())
 
     val r1Valid = Input(UInt(1.W))

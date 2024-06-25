@@ -270,11 +270,14 @@ class Decoder() extends Module {
   io.out.rd       := io.inst(11,  7)
   // format: on
 
-  io.out.pc_idx  := DontCare
-  io.out.rs1_tag := DontCare
-  io.out.rs2_tag := DontCare
-  io.out.rd_tag  := DontCare
-  io.out.retired := DontCare
+  io.out.pc_idx   := DontCare
+  io.out.rs1_tag  := DontCare
+  io.out.rs2_tag  := DontCare
+  io.out.rd_tag   := DontCare
+  io.out.retired  := DontCare
+  io.out.rs1_data := DontCare
+  io.out.rs2_data := DontCare
+  io.out.rd_data  := DontCare
 
   val inst_type = WireDefault(DecodeConfig.I_Type)
   switch(io.inst(6, 2)) {

@@ -2,6 +2,7 @@ package wood.exu
 
 import chisel3._
 import chisel3.util._
+import wood.fru.MI
 
 object ALUOp extends ChiselEnum {
   val sub, add, xor, or, and, sll, srl, sra, slt, sltu, pass = Value
@@ -14,28 +15,28 @@ object ALUOp extends ChiselEnum {
     toBitpat(op).rawString
 }
 
-class ALU(dataWidth: Int, tagWidth: Int, opWidth: Int) extends Module {
+class ALU() extends Module {
   val io = IO(new Bundle {
-    val microOp = Flipped(Decoupled(new MicroOperation()))
-    val tagBus  = Decoupled(new TagBus())
+    val mi  = Flipped(Decoupled(new MI()))
+    val out = Decoupled(new MI())
   })
 
-  val shamt = if (dataWidth > 1) log2Ceil(dataWidth) - 1 else 0 // Shift amount.
+  val shamt = if (ExConfig.dataWidth > 1) log2Ceil(ExConfig.dataWidth) - 1 else 0 // Shift amount.
 
-  val (control, valid) = ALUOp.safe(io.microOp.bits.op)
-  assert(valid, "Enum state must be valid, got %d!", io.microOp.bits.op)
+  val (control, valid) = ALUOp.safe(io.mi.bits.exOp)
+  // assert(valid, "Enum state must be valid, got %d!", io.mi.bits.exOp) // https://github.com/llvm/circt/issues/6970
 
-  val data1 = io.microOp.bits.data1
-  val data2 = io.microOp.bits.data2
+  val data1 = io.mi.bits.rs1_data
+  val data2 = io.mi.bits.rs2_data
 
   val arithmeticData1 = Mux(control === ALUOp.sub, Cat(data1, 1.U(1.W)), Cat(data1, 0.U(1.W)))
   val arithmeticData2 = Mux(control === ALUOp.sub, Cat(~data2, 1.U(1.W)), Cat(data2, 0.U(1.W)))
   val resultAdd       = arithmeticData1 + arithmeticData2
 
-  val result = Wire(UInt(dataWidth.W))
+  val result = Wire(UInt(ExConfig.dataWidth.W))
   result := 0.U
   switch(control) {
-    is(ALUOp.sub, ALUOp.add) { result := resultAdd(dataWidth, 1) }
+    is(ALUOp.sub, ALUOp.add) { result := resultAdd(ExConfig.dataWidth, 1) }
     is(ALUOp.xor) { result := data1 ^ data2 }
     is(ALUOp.or) { result := data1 | data2 }
     is(ALUOp.and) { result := data1 & data2 }
@@ -46,8 +47,9 @@ class ALU(dataWidth: Int, tagWidth: Int, opWidth: Int) extends Module {
     is(ALUOp.sltu) { result := (data1 < data2).asUInt }
     is(ALUOp.pass) { result := data2 }
   }
-  io.tagBus.bits.data := result
-  io.tagBus.bits.tag  := io.microOp.bits.tag
-  io.tagBus.valid     := io.microOp.valid
-  io.microOp.ready    := 1.U(1.W)
+
+  io.out.bits         := io.mi.bits
+  io.out.bits.rd_data := result
+  io.out.valid        := io.mi.valid
+  io.mi.ready         := io.out.ready
 }

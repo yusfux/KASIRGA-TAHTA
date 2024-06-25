@@ -2,7 +2,6 @@ package wood.exu
 
 import chisel3._
 // import chisel3.util._
-import chisel3.experimental.BundleLiterals._
 
 import chiseltest._
 import chiseltest.ChiselScalatestTester
@@ -15,6 +14,7 @@ import scala.collection.mutable.Queue
 import wood.exu.ALUOp
 import wood.util.{GetBackendAnnotation}
 import wood.fru.DecodeConfig
+import wood.fru.MI
 
 trait ALUBehavior {
   this: AnyFlatSpec with ChiselScalatestTester =>
@@ -28,40 +28,37 @@ trait ALUBehavior {
     fn:        ALUOp.Type
   ): Unit = {
     val mask: BigInt = (BigInt(1) << dataWidth) - 1
-    var results = Queue[TagBus]()
+    var results = Queue[MI]()
 
     it should s"$fn on width:$dataWidth" in {
-      test(new ALU(dataWidth, tagWidth, opWidth)).withAnnotations(GetBackendAnnotation()) { dut =>
-        dut.io.microOp.initSource()
-        dut.io.tagBus.initSink()
+      test(new ALU()).withAnnotations(GetBackendAnnotation()) { dut =>
+        dut.io.mi.initSource()
+        dut.io.out.initSink()
 
         fork {
           for ((a, b) <- data) {
             val ua: BigInt = a & mask
             val ub: BigInt = b & mask
             val result = op(ua, ub) & mask
-            val tagBus = new TagBus().Lit(
-              _.data -> result.U(dataWidth.W),
-              _.tag  -> fn.litValue.U
-            )
-            results.enqueue(tagBus)
+            val mi =
+              MI(
+                0.U,
+                Map("rs1_data" -> a.U, "rs2_data" -> b.U, "exOp" -> fn.litValue.U, "rd_data" -> result.U(dataWidth.W))
+              )
+            results.enqueue(mi)
           }
         }.fork {
-          val microOps = data.map {
+          val mis = data.map {
             case (a, b) =>
-              val microOp = new MicroOperation().Lit(
-                _.data1 -> a.U,
-                _.data2 -> b.U,
-                _.tag   -> fn.litValue.U,
-                _.op    -> fn.litValue.U
-              )
-              microOp
+              val mi =
+                MI(0.U, Map("rs1_data" -> a.U, "rs2_data" -> b.U, "exOp" -> fn.litValue.U))
+              mi
           }
-          dut.io.microOp.enqueueSeq(microOps)
+          dut.io.mi.enqueueSeq(mis)
         }.fork {
           for ((expected, index) <- results.zipWithIndex) {
             try {
-              dut.io.tagBus.expectDequeue(expected)
+              dut.io.out.expectDequeue(expected)
             } catch {
               case e: Exception =>
                 println("\u001b[31m" + s"${fn} on (0x${data(index)._1.toString(16)}, 0x${data(index)._2

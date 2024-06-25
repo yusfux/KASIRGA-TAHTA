@@ -2,7 +2,6 @@ package wood.exu
 
 import chisel3._
 import chisel3.util._
-import wood.fru.DecodeConfig
 
 object ExEngine extends ChiselEnum {
   val alu, lsu, float, none = Value
@@ -20,24 +19,18 @@ object ExConfig {
   val prfDepth  = 128
   val rsDepth   = 4 // Reservation station depth
   val tagWidth  = log2Ceil(prfDepth)
+  val numALUs   = 4
 }
 
 class Tag extends Bundle {
   val tag = UInt(ExConfig.tagWidth.W)
 }
 
-class TagBus extends Tag {
+class ForwardBus extends Tag {
   val data = UInt(ExConfig.dataWidth.W)
 }
 
 class WriteBack extends Bundle {
   val tag  = UInt(ExConfig.tagWidth.W)
   val data = UInt(ExConfig.dataWidth.W)
-}
-
-class MicroOperation extends Bundle {
-  val data1 = UInt(ExConfig.dataWidth.W)
-  val data2 = UInt(ExConfig.dataWidth.W)
-  val tag   = UInt(ExConfig.tagWidth.W)
-  val op    = UInt(DecodeConfig.op.maxWidth.W)
 }
