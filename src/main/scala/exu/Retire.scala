@@ -5,22 +5,22 @@ import chisel3.util._
 import wood.fru.MI
 import wood.std.{BlockRAMParams, DCArbiter, DCRRQueue, DecoupledBlockRAM}
 
-class ROBStage(numPorts: Int, queueDepth: Int) extends Module {
+class ROBStage(numPorts: Int) extends Module {
   val io = IO(new Bundle {
     val in  = Flipped(Vec(numPorts, Decoupled(new MI())))
     val out = Vec(numPorts, Decoupled(new MI()))
   })
 
-  val q = Module(new DCRRQueue(new MI())(numPorts, queueDepth))
+  val q = Module(new DCRRQueue(new MI())(numPorts, ExConfig.prfDepth))
   q.io.in  <> io.in
   q.io.out <> io.out
 }
 
 class RetiredStatusStage(numPorts: Int) extends Module {
   val io = IO(new Bundle {
-    val in          = Flipped(Vec(numPorts, Decoupled(new MI())))
-    val tagBuses    = Flipped(Vec(numPorts, Decoupled(new ForwardBus())))
-    val commitBuses = Flipped(Vec(numPorts, Decoupled(new MI())))
+    val in                    = Flipped(Vec(numPorts, Decoupled(new MI())))
+    val tagBuses              = Flipped(Vec(numPorts, Decoupled(new Tag())))
+    val previousRetiredStatus = Flipped(Vec(numPorts, Decoupled(new MI())))
 
     val out = Vec(numPorts, Decoupled(new MI()))
   })
@@ -42,8 +42,8 @@ class RetiredStatusStage(numPorts: Int) extends Module {
     readyForTag(j)       := retiredStatusRegisterFile.io.wp(j).ready & arbiters(j).io.in(1).ready
     io.tagBuses(j).ready := readyForTag(j)
 
-    readyForCommit(j)       := retiredStatusRegisterFile.io.wp(j + numPorts).ready
-    io.commitBuses(j).ready := readyForCommit(j)
+    readyForCommit(j)                 := retiredStatusRegisterFile.io.wp(j + numPorts).ready
+    io.previousRetiredStatus(j).ready := readyForCommit(j)
   })
 
   (0 until numPorts).foreach(j => {
@@ -70,9 +70,9 @@ class RetiredStatusStage(numPorts: Int) extends Module {
     retiredStatusRegisterFile.io.wp(j).bits.enable := io.tagBuses(j).valid
     retiredStatusRegisterFile.io.wp(j).bits.data   := 1.U
 
-    retiredStatusRegisterFile.io.wp(j + numPorts).bits.addr   := io.commitBuses(j).bits.rd_tag
-    retiredStatusRegisterFile.io.wp(j + numPorts).valid       := io.commitBuses(j).valid
-    retiredStatusRegisterFile.io.wp(j + numPorts).bits.enable := io.commitBuses(j).valid
+    retiredStatusRegisterFile.io.wp(j + numPorts).bits.addr   := io.previousRetiredStatus(j).bits.rd_tag
+    retiredStatusRegisterFile.io.wp(j + numPorts).valid       := io.previousRetiredStatus(j).valid
+    retiredStatusRegisterFile.io.wp(j + numPorts).bits.enable := io.previousRetiredStatus(j).valid
     retiredStatusRegisterFile.io.wp(j + numPorts).bits.data   := 0.U
 
     io.tagBuses(j).ready := retiredStatusRegisterFile.io.wp(j).ready
@@ -83,8 +83,8 @@ class ArchRegisterFileStage(numPorts: Int) extends Module {
   val io = IO(new Bundle {
     val in = Flipped(Vec(numPorts, Decoupled(new MI())))
 
-    val commitBuses = Vec(numPorts, Decoupled(new MI()))
-    val retiredBus  = Vec(numPorts, Decoupled(new Tag()))
+    val previousRetiredStatus = Vec(numPorts, Decoupled(new MI()))
+    val retiredBus            = Vec(numPorts, Decoupled(new Tag()))
   })
 
   val arfDepth = 32
@@ -95,8 +95,8 @@ class ArchRegisterFileStage(numPorts: Int) extends Module {
   )
 
   (0 until numPorts).foreach(j => {
-    io.commitBuses(j).bits  := io.in(j).bits
-    io.commitBuses(j).valid := io.in(j).valid
+    io.previousRetiredStatus(j).bits  := io.in(j).bits
+    io.previousRetiredStatus(j).valid := io.in(j).valid
 
     archRegisterFile.io.wp(j).bits.addr     := io.in(j).bits.rd
     archRegisterFile.io.wp(j).valid         := io.in(j).valid

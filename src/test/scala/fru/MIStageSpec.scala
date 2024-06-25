@@ -7,8 +7,7 @@ import org.scalatest.flatspec.AnyFlatSpec
 import wood.util.{GenerateVerilog, GetBackendAnnotation}
 
 class MIStageSpec extends AnyFlatSpec with ChiselScalatestTester {
-  val defaultDepth = 55
-  val numData      = 100
+  val numData = 100
 
   val zero = MI(0.U)
   val one  = MI(1.U)
@@ -19,7 +18,7 @@ class MIStageSpec extends AnyFlatSpec with ChiselScalatestTester {
   val twos  = Seq.fill(numData)(two)
 
   "MIStage" should "work width 2 all valid" in {
-    test(new MIStage(2, defaultDepth)).withAnnotations(GetBackendAnnotation()) { dut =>
+    test(new MIStage(2)).withAnnotations(GetBackendAnnotation()) { dut =>
       val inSources = dut.io.in.map(_.initSource())
       val outSinks  = dut.io.out.map(_.initSink())
 
@@ -36,7 +35,7 @@ class MIStageSpec extends AnyFlatSpec with ChiselScalatestTester {
   }
 
   "MIStage" should "work width 2 only 1 valid" in {
-    test(new MIStage(2, defaultDepth)).withAnnotations(GetBackendAnnotation()) { dut =>
+    test(new MIStage(2)).withAnnotations(GetBackendAnnotation()) { dut =>
       val inSources = dut.io.in.map(_.initSource())
       val outSinks  = dut.io.out.map(_.initSink())
 
@@ -60,7 +59,7 @@ class MIStageSpec extends AnyFlatSpec with ChiselScalatestTester {
   }
 
   "MIStage" should "work width 3 only 2 valid" in {
-    test(new MIStage(3, defaultDepth)).withAnnotations(GetBackendAnnotation()) { dut =>
+    test(new MIStage(3)).withAnnotations(GetBackendAnnotation()) { dut =>
       val inSources = dut.io.in.map(_.initSource())
       val outSinks  = dut.io.out.map(_.initSink())
 
@@ -89,8 +88,7 @@ class MIStageSpec extends AnyFlatSpec with ChiselScalatestTester {
   }
 
   "MIStage" should "emit Verilog" in {
-    val numPorts   = 2
-    val queueDepth = 122
-    GenerateVerilog(new MIStage(numPorts, queueDepth))
+    val numPorts = 2
+    GenerateVerilog(new MIStage(numPorts))
   }
 }

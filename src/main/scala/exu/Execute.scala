@@ -35,5 +35,4 @@ class ExecuteStage(numPorts: Int) extends Module {
 
     alus(j).io.out.ready := io.out(j).ready & io.forwardBuses(j).ready
   })
-
 }

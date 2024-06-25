@@ -13,7 +13,7 @@ class RetireSpec extends AnyFlatSpec with ChiselScalatestTester {
   "ROBStage" should "emit Verilog" in {
     val numPorts = 2
     val robDepth = 24
-    GenerateVerilog(new ROBStage(numPorts, robDepth))
+    GenerateVerilog(new ROBStage(numPorts))
   }
   "RetiredStatusStage" should "emit Verilog" in {
     val numPorts = 2

@@ -24,7 +24,7 @@ class DistributeStageSpec extends AnyFlatSpec with ChiselScalatestTester {
   val one_to_floats  = Seq.fill(numData)(one_to_float)
 
   "DistributeStage" should "work 2 to (2,2) (int,int)" in {
-    test(new DistributeStage(2, 2, 2)).withAnnotations(GetBackendAnnotation()) { dut =>
+    test(new DistributeStage(2)).withAnnotations(GetBackendAnnotation()) { dut =>
       val inSources     = dut.io.in.map(_.initSource())
       val outFloatSinks = dut.io.toFloat.map(_.initSink())
       val outIntSinks   = dut.io.toInt.map(_.initSink())
@@ -46,7 +46,7 @@ class DistributeStageSpec extends AnyFlatSpec with ChiselScalatestTester {
   }
 
   "DistributeStage" should "work 2 to (2,2) (int,float)" in {
-    test(new DistributeStage(2, 2, 2)).withAnnotations(GetBackendAnnotation()) { dut =>
+    test(new DistributeStage(2)).withAnnotations(GetBackendAnnotation()) { dut =>
       val inSources     = dut.io.in.map(_.initSource())
       val outFloatSinks = dut.io.toFloat.map(_.initSink())
       val outIntSinks   = dut.io.toInt.map(_.initSink())
@@ -68,7 +68,7 @@ class DistributeStageSpec extends AnyFlatSpec with ChiselScalatestTester {
   }
 
   "DistributeStage" should "work 2 to (2,2) (float,float)" in {
-    test(new DistributeStage(2, 2, 2)).withAnnotations(GetBackendAnnotation()) { dut =>
+    test(new DistributeStage(2)).withAnnotations(GetBackendAnnotation()) { dut =>
       val inSources     = dut.io.in.map(_.initSource())
       val outFloatSinks = dut.io.toFloat.map(_.initSink())
       val outIntSinks   = dut.io.toInt.map(_.initSink())
@@ -90,7 +90,7 @@ class DistributeStageSpec extends AnyFlatSpec with ChiselScalatestTester {
   }
 
   "DistributeStage" should "work 2 to (2,2) (float,int)" in {
-    test(new DistributeStage(2, 2, 2)).withAnnotations(GetBackendAnnotation()) { dut =>
+    test(new DistributeStage(2)).withAnnotations(GetBackendAnnotation()) { dut =>
       val inSources     = dut.io.in.map(_.initSource())
       val outFloatSinks = dut.io.toFloat.map(_.initSink())
       val outIntSinks   = dut.io.toInt.map(_.initSink())
@@ -112,9 +112,7 @@ class DistributeStageSpec extends AnyFlatSpec with ChiselScalatestTester {
   }
 
   "DistributeStage" should "emit Verilog" in {
-    val numInputs   = 4
-    val numOutInt   = 4
-    val numOutFloat = 4
-    GenerateVerilog(new DistributeStage(numInputs, numOutInt, numOutFloat))
+    val numPorts = 4
+    GenerateVerilog(new DistributeStage(numPorts))
   }
 }

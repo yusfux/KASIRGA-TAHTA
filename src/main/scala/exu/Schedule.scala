@@ -8,7 +8,7 @@ import wood.std.{BlockRAMParams, DecoupledBlockRAM}
 class ScheduleStage(numPorts: Int) extends Module {
   val io = IO(new Bundle {
     val in         = Flipped(Vec(numPorts, Decoupled(new MI())))
-    val tagBuses   = Flipped(Vec(numPorts, Decoupled(new ForwardBus())))
+    val tagBuses   = Flipped(Vec(numPorts, Decoupled(new Tag())))
     val retiredBus = Flipped(Vec(numPorts, Decoupled(new Tag())))
     val stall      = Input(UInt(1.W))
 

@@ -19,6 +19,7 @@ class ExpandBits(bitVectors: List[String]) {
 
 // format: off
 object DecodeConfig {
+  val miQueueDepth = 8
 
   val I_Type   = 0.U(3.W)
   val S_Type   = 1.U(3.W)
@@ -306,9 +307,9 @@ class Decoder() extends Module {
 
 class DecodeStage(numOut: Int) extends Module {
   val io = IO(new Bundle {
-    val inst   = Flipped(Vec(numOut, Decoupled(UInt(32.W))))
-    val pc_idx = Flipped(Decoupled(UInt(FetchConfig.pcIndexWidth.W)))
-    val out    = Vec(numOut, Decoupled(new MI()))
+    val inst  = Flipped(Vec(numOut, Decoupled(UInt(32.W))))
+    val pcIdx = Flipped(Decoupled(UInt(FetchConfig.pcIndexWidth.W)))
+    val out   = Vec(numOut, Decoupled(new MI()))
   })
 
   val decoders = Seq.fill(numOut)(Module(new Decoder()))
@@ -316,7 +317,7 @@ class DecodeStage(numOut: Int) extends Module {
   val out_ready = Wire(Vec(numOut, Bool()))
   val in_valid  = Wire(Vec(numOut + 1, Bool()))
   out_ready := io.out.map(_.ready)
-  in_valid  := io.inst.map(_.valid) ++ Seq(io.pc_idx.valid)
+  in_valid  := io.inst.map(_.valid) ++ Seq(io.pcIdx.valid)
 
   // all inputs have to be valid and all outputs have to be ready to not stall
   val valid = in_valid.asUInt.andR
@@ -329,11 +330,11 @@ class DecodeStage(numOut: Int) extends Module {
 
     val decoded = Wire(new MI())
     decoded        := decoders(j).io.asTypeOf(new MI())
-    decoded.pc_idx := io.pc_idx.bits
+    decoded.pc_idx := io.pcIdx.bits
 
     io.out(j).bits  := RegEnable(decoded, !stall)
     io.out(j).valid := RegEnable(io.inst(j).valid, 0.U, !stall)
   }
 
-  io.pc_idx.ready := ready
+  io.pcIdx.ready := ready
 }
