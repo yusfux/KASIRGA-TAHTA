@@ -41,7 +41,7 @@ class DistributeStage(numPorts: Int) extends Module {
 
   for (j <- 0 until ExConfig.numPortsFloat) {
     io.toFloat(j).bits                         := RegEnable(crossbar.io.out(TYPE_FLOAT.toInt)(j).bits, 0.U.asTypeOf(new MI()), !stall)
-    io.toFloat(j).valid                        := RegEnable(crossbar.io.out(TYPE_FLOAT.toInt)(j).valid, 0.B, !stall)
+    io.toFloat(j).valid                        := RegEnable(crossbar.io.out(TYPE_FLOAT.toInt)(j).valid, 1.B, !stall)
     crossbar.io.out(TYPE_FLOAT.toInt)(j).ready := io.toFloat(j).ready
 
   }

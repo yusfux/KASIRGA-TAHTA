@@ -333,7 +333,7 @@ class DecodeStage(numOut: Int) extends Module {
     decoded.pc_idx := io.pcIdx.bits
 
     io.out(j).bits  := RegEnable(decoded, !stall)
-    io.out(j).valid := RegEnable(io.inst(j).valid, 0.U, !stall)
+    io.out(j).valid := RegEnable(io.inst(j).valid, 1.U, !stall)
   }
 
   io.pcIdx.ready := ready
