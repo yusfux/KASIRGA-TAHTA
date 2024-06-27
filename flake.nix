@@ -55,6 +55,8 @@
         };
         devShells.default = pkgs.mkShell {
           CHISEL_FIRTOOL_PATH = "${pkgs.circt}/bin";
+          RISCV_PREFIX = "${pkgs.pkgsCross.riscv32-embedded.stdenv.cc}/bin/riscv32-none-elf-";
+
           inherit (self.checks.${system}.pre-commit-check) shellHook;
           packages = [
             pkgs.mill
@@ -69,6 +71,13 @@
             pkgs.verilator
             pkgs.verilog
             pkgs.espresso
+
+            (pkgs.spike.overrideAttrs
+              (oldAttrs: {
+                configureFlags = oldAttrs.configureFlags or [] ++ ["--enable-commitlog" "--enable-misaligned"];
+              }))
+            pkgs.dtc
+
             (pkgs.callPackage ./nix/gtkwave.nix {})
             (pkgs.callPackage ./nix/surfer.nix {})
           ];

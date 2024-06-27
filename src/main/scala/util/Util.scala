@@ -2,6 +2,7 @@ package wood.util
 
 import _root_.circt.stage.ChiselStage
 import chisel3._
+import chiseltest.simulator.VerilatorFlags
 import chiseltest.{IcarusBackendAnnotation, TreadleBackendAnnotation, VerilatorBackendAnnotation, WriteVcdAnnotation}
 import treadle2.MemoryToVCD
 
@@ -36,19 +37,22 @@ object GenerateVerilog {
 object GetBackendAnnotation {
   def apply() = {
     val backend = sys.props.getOrElse("backend", "verilator")
+    val threads = sys.props.getOrElse("threads", "1")
     val wave    = sys.props.get("wave").isDefined
     println(s"Chosen simulator: $backend")
+    println(s"Num threads: ${threads}")
     println(if (wave) "Waveforms enabled" else "Waveforms disabled")
 
     val baseAnnotations = backend match {
-      case "verilator"   => Seq(VerilatorBackendAnnotation)
+      case "verilator"   => Seq(VerilatorBackendAnnotation, VerilatorFlags(Seq("--threads", s"${threads}")))
       case "treadle"     => Seq(TreadleBackendAnnotation)
-      case "treadle_mem" => Seq(MemoryToVCD("all"), TreadleBackendAnnotation)
+      case "treadle_mem" => Seq(TreadleBackendAnnotation, MemoryToVCD("all"))
       case "iverilog"    => Seq(IcarusBackendAnnotation)
       // Add other simulators here
       case _ => throw new IllegalArgumentException(s"Unknown simulator: $backend")
     }
 
     if (wave) baseAnnotations :+ WriteVcdAnnotation else baseAnnotations
+
   }
 }

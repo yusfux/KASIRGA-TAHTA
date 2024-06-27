@@ -2,25 +2,26 @@ package wood.exu
 
 import chisel3._
 import chisel3.util._
+import wood.WoodConfig
 import wood.fru.MI
 import wood.std.DCCrossbar
 
-class ExecuteStage(numPorts: Int) extends Module {
+class ExecuteStage(config: WoodConfig) extends Module {
   val io = IO(new Bundle {
-    val in           = Flipped(Vec(numPorts, Decoupled(new MI())))
-    val forwardBuses = Vec(numPorts, Decoupled(new ForwardBus()))
+    val in           = Flipped(Vec(config.nWide, Decoupled(new MI(config))))
+    val forwardBuses = Vec(config.nWide, Decoupled(new ForwardBus(config)))
 
-    val out = Vec(numPorts, Decoupled(new MI()))
+    val out = Vec(config.nWide, Decoupled(new MI(config)))
   })
 
-  val crossbarInterfaceList = List(ExConfig.numALUs)
-  val crossbar              = Module(new DCCrossbar(new MI())(numPorts, crossbarInterfaceList))
+  val crossbarInterfaceList = List(config.numALUs)
+  val crossbar              = Module(new DCCrossbar(new MI(config))(config.nWide, crossbarInterfaceList))
 
-  val alus = Seq.tabulate(numPorts) { j =>
-    Module(new ALU())
+  val alus = Seq.tabulate(config.nWide) { j =>
+    Module(new ALU(config))
   }
 
-  (0 until numPorts).foreach(j => {
+  (0 until config.nWide).foreach(j => {
     crossbar.io.sel(j) := io.in(j).bits.exEngine === ExEngine.alu.asUInt
 
     crossbar.io.in(j) <> io.in(j)

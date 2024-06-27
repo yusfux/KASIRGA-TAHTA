@@ -1,26 +1,17 @@
 package wood.fru
 
-import chisel3._
 import chiseltest._
 
 import org.scalatest.flatspec.AnyFlatSpec
 
-import wood.util.{GenerateVerilog, GetBackendAnnotation}
-import wood.fru.{DecodeConfig, DecodeStage, Decoder}
+import wood.util.GenerateVerilog
+import wood.fru.{DecodeConfig, Decoder}
+import wood.WoodConfig
+import wood.TestConfig
 
 class DecodeSpec extends AnyFlatSpec with ChiselScalatestTester {
-  "Decoder" should s"work on smoketest" in {
-    // riscvopcodes repo is already verified
-    test(new Decoder()).withAnnotations(GetBackendAnnotation()) { dut =>
-      dut.io.inst.poke(0x0009c797) // auipc a5, 156
-      dut.clock.step(1)
-      if (0x69420.asUInt == dut.io.inst) {
-        println("\u001b[31m" + "nice" + "\u001b[0m")
-      }
-    }
-  }
 
-  "Decoder" should "emit Verilog" in {
+  "Decoder" should "display its config" in {
     println(s"defaultDecSeq: ${DecodeConfig.defaultDecSeq}")
     println(s"defaultDec: ${DecodeConfig.defaultDec}")
     println(s"width: ${DecodeConfig.width}")
@@ -28,10 +19,35 @@ class DecodeSpec extends AnyFlatSpec with ChiselScalatestTester {
     for (range <- DecodeConfig.bitRanges) {
       println(s"bitRanges: ${range}")
     }
-    GenerateVerilog(new Decoder())
   }
-  "DecodeStage" should "emit Verilog" in {
-    val numOut = 4
-    GenerateVerilog(new DecodeStage(numOut))
-  }
+
+  val tconfig = new TestConfig()
+  (1 to tconfig.maxWidth).foreach(j => {
+    "Decoder" should s"emit Verilog ${j} wide" in {
+      val config          = new WoodConfig(nWide = j)
+      val currentTestName = testNames.toList.map(_.replaceAll(" ", "_"))(j - 1)
+      val testRunDir      = s"test_run_dir/$currentTestName"
+      val dir             = new java.io.File(testRunDir)
+
+      if (!dir.exists()) {
+        dir.mkdirs()
+      }
+
+      GenerateVerilog(new Decoder(config), path = testRunDir)
+    }
+  })
+  (1 to tconfig.maxWidth).foreach(j => {
+    "DecodeStage" should s"emit Verilog ${j} wide" in {
+      val config          = new WoodConfig(nWide = j)
+      val currentTestName = testNames.toList.map(_.replaceAll(" ", "_"))(j - 1)
+      val testRunDir      = s"test_run_dir/$currentTestName"
+      val dir             = new java.io.File(testRunDir)
+
+      if (!dir.exists()) {
+        dir.mkdirs()
+      }
+
+      GenerateVerilog(new DecodeStage(config), path = testRunDir)
+    }
+  })
 }

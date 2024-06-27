@@ -13,11 +13,15 @@ import scala.math.log10
 import scala.collection.mutable.Queue
 import wood.exu.ALUOp
 import wood.util.{GetBackendAnnotation}
-import wood.fru.DecodeConfig
-import wood.fru.MI
+import wood.fru.{DecodeConfig, MI}
+import wood.WoodConfig
+import wood.TestConfig
+import wood.util.GenerateVerilog
 
 trait ALUBehavior {
   this: AnyFlatSpec with ChiselScalatestTester =>
+
+  val config = new WoodConfig()
 
   def testOperation(
     data:      Seq[(BigInt, BigInt)],
@@ -31,7 +35,7 @@ trait ALUBehavior {
     var results = Queue[MI]()
 
     it should s"$fn on width:$dataWidth" in {
-      test(new ALU()).withAnnotations(GetBackendAnnotation()) { dut =>
+      test(new ALU(config)).withAnnotations(GetBackendAnnotation()) { dut =>
         dut.io.mi.initSource()
         dut.io.out.initSink()
 
@@ -42,6 +46,7 @@ trait ALUBehavior {
             val result = op(ua, ub) & mask
             val mi =
               MI(
+                config,
                 0.U,
                 Map("rs1_data" -> a.U, "rs2_data" -> b.U, "exOp" -> fn.litValue.U, "rd_data" -> result.U(dataWidth.W))
               )
@@ -51,7 +56,7 @@ trait ALUBehavior {
           val mis = data.map {
             case (a, b) =>
               val mi =
-                MI(0.U, Map("rs1_data" -> a.U, "rs2_data" -> b.U, "exOp" -> fn.litValue.U))
+                MI(config, 0.U, Map("rs1_data" -> a.U, "rs2_data" -> b.U, "exOp" -> fn.litValue.U))
               mi
           }
           dut.io.mi.enqueueSeq(mis)
@@ -74,9 +79,9 @@ trait ALUBehavior {
 
 class ALUSpec extends AnyFlatSpec with ALUBehavior with ChiselScalatestTester with Matchers {
   behavior.of("ALU")
-  val tagWidth = ExConfig.tagWidth
+  val tagWidth = config.tagWidth
   val opWidth  = DecodeConfig.op.maxWidth
-  val dataWidths: List[Int] = List(ExConfig.dataWidth)
+  val dataWidths: List[Int] = List(config.dataWidth)
   val numVectors: Int       = 100 // Number of random test vectors
   val rand = new Random()
 
@@ -140,9 +145,22 @@ class ALUSpec extends AnyFlatSpec with ALUBehavior with ChiselScalatestTester wi
       (it should behave).like(testOperation(testData, dataWidth, tagWidth, opWidth, op._2, op._1))
     }
 
-  // BUG: https://github.com/llvm/circt/issues/6970
-  // "ALU" should s"emit Verilog with dataWidth:$dataWidth, tagWidth:$tagWidth, opWidth:$opWidth" in {
-  //   GenerateVerilog(new ALU(dataWidth, tagWidth, opWidth))
-  // }
   }
+
+  val tconfig = new TestConfig()
+  (1 to tconfig.maxWidth).foreach(j => {
+    "ALU" should s"emit Verilog ${j} wide" in {
+      val config          = new WoodConfig(nWide = j)
+      val currentTestName = testNames.toList.map(_.replaceAll(" ", "_"))(j - 1)
+      val testRunDir      = s"test_run_dir/$currentTestName"
+      val dir             = new java.io.File(testRunDir)
+
+      if (!dir.exists()) {
+        dir.mkdirs()
+      }
+
+      GenerateVerilog(new ALU(config), path = testRunDir)
+    }
+  })
+
 }

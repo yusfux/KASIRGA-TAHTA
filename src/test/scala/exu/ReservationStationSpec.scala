@@ -1,22 +1,41 @@
 package wood.exu
 
-// import chisel3._
 import chiseltest._
-// import wood.fru.MI
-
 import org.scalatest.flatspec.AnyFlatSpec
-// import wood.util.{GenerateVerilog, GetBackendAnnotation}
-import wood.util.{GenerateVerilog}
+import wood.WoodConfig
+import wood.util.GenerateVerilog
+import wood.TestConfig
 
 class ReservationStationSpec extends AnyFlatSpec with ChiselScalatestTester {
+  val tconfig = new TestConfig()
+  (1 to tconfig.maxWidth).foreach(j => {
+    "ReservationStation" should s"emit Verilog ${j} wide" in {
+      val config          = new WoodConfig(nWide = j)
+      val currentTestName = testNames.toList.map(_.replaceAll(" ", "_"))(j - 1)
+      val testRunDir      = s"test_run_dir/$currentTestName"
+      val dir             = new java.io.File(testRunDir)
 
-  "ReservationStationRow" should "emit Verilog" in {
-    val numPorts = 2
-    GenerateVerilog(new ReservationStationRow(numPorts))
-  }
-  "ReservationStation" should "emit Verilog" in {
-    val numPorts = 2
-    GenerateVerilog(new ReservationStation(numPorts))
-  }
+      if (!dir.exists()) {
+        dir.mkdirs()
+      }
+
+      GenerateVerilog(new ReservationStation(config), path = testRunDir)
+    }
+  })
+
+  (1 to tconfig.maxWidth).foreach(j => {
+    "ReservationStationRow" should s"emit Verilog ${j} wide" in {
+      val config          = new WoodConfig(nWide = j)
+      val currentTestName = testNames.toList.map(_.replaceAll(" ", "_"))(j - 1)
+      val testRunDir      = s"test_run_dir/$currentTestName"
+      val dir             = new java.io.File(testRunDir)
+
+      if (!dir.exists()) {
+        dir.mkdirs()
+      }
+
+      GenerateVerilog(new ReservationStationRow(config), path = testRunDir)
+    }
+  })
 
 }

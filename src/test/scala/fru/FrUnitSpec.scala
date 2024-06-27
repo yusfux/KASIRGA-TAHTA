@@ -1,15 +1,18 @@
-package wood.exu
+package wood.fru
 
+// import chisel3._
 import chiseltest._
 import org.scalatest.flatspec.AnyFlatSpec
-import wood.WoodConfig
-import wood.TestConfig
 import wood.util.GenerateVerilog
+import wood.{TestConfig, WoodConfig}
+import wood.fru.FrUnit
 
-class ScheduleSpec extends AnyFlatSpec with ChiselScalatestTester {
+class FrUnitSpec extends AnyFlatSpec with ChiselScalatestTester {
+
   val tconfig = new TestConfig()
+
   (1 to tconfig.maxWidth).foreach(j => {
-    "ScheduleStage" should s"emit Verilog ${j} wide" in {
+    "FrUnit" should s"emit Verilog ${j} wide" in {
       val config          = new WoodConfig(nWide = j)
       val currentTestName = testNames.toList.map(_.replaceAll(" ", "_"))(j - 1)
       val testRunDir      = s"test_run_dir/$currentTestName"
@@ -19,7 +22,7 @@ class ScheduleSpec extends AnyFlatSpec with ChiselScalatestTester {
         dir.mkdirs()
       }
 
-      GenerateVerilog(new ScheduleStage(config), path = testRunDir)
+      GenerateVerilog(new FrUnit(config), path = testRunDir)
     }
   })
 

@@ -1,18 +1,27 @@
 package wood.exu
 
-// import chisel3._
 import chiseltest._
-// import wood.fru.MI
 
 import org.scalatest.flatspec.AnyFlatSpec
-// import wood.util.{GenerateVerilog, GetBackendAnnotation}
-import wood.util.{GenerateVerilog}
+import wood.WoodConfig
+import wood.util.GenerateVerilog
+import wood.TestConfig
 
 class ExecuteSpec extends AnyFlatSpec with ChiselScalatestTester {
+  val tconfig = new TestConfig()
+  (1 to tconfig.maxWidth).foreach(j => {
+    "ExecuteStage" should s"emit Verilog ${j} wide" in {
+      val config          = new WoodConfig(nWide = j)
+      val currentTestName = testNames.toList.map(_.replaceAll(" ", "_"))(j - 1)
+      val testRunDir      = s"test_run_dir/$currentTestName"
+      val dir             = new java.io.File(testRunDir)
 
-  "ExecuteStage" should "emit Verilog" in {
-    val numPorts = 4
-    GenerateVerilog(new ExecuteStage(numPorts))
-  }
+      if (!dir.exists()) {
+        dir.mkdirs()
+      }
+
+      GenerateVerilog(new ExecuteStage(config), path = testRunDir)
+    }
+  })
 
 }

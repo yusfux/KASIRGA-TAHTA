@@ -2,7 +2,8 @@ package wood.exu
 
 import chisel3._
 import chisel3.util._
-import wood.fru.{DecodeStage, DistributeStage, FetchConfig, MIStage}
+import wood.WoodConfig
+import wood.fru.MI
 
 object ExEngine extends ChiselEnum {
   val alu, lsu, float, none = Value
@@ -15,59 +16,41 @@ object ExEngine extends ChiselEnum {
     toBitpat(op).rawString
 }
 
-object ExConfig {
-  val dataWidth     = 32
-  val prfDepth      = 128
-  val rsDepth       = 4 // Reservation station depth
-  val tagWidth      = log2Ceil(prfDepth)
-  val numALUs       = 4
-  val numPortsFloat = 4
-  val numPortsInt   = 4
+class Tag(config: WoodConfig) extends Bundle {
+  val tag = UInt(config.tagWidth.W)
 }
 
-class Tag extends Bundle {
-  val tag = UInt(ExConfig.tagWidth.W)
+class ForwardBus(config: WoodConfig) extends Tag(config) {
+  val data = UInt(config.dataWidth.W)
 }
 
-class ForwardBus extends Tag {
-  val data = UInt(ExConfig.dataWidth.W)
+class WriteBack(config: WoodConfig) extends Bundle {
+  val tag  = UInt(config.tagWidth.W)
+  val data = UInt(config.dataWidth.W)
 }
 
-class WriteBack extends Bundle {
-  val tag  = UInt(ExConfig.tagWidth.W)
-  val data = UInt(ExConfig.dataWidth.W)
-}
-
-class ExUnit(numPorts: Int) extends Module {
+class ExUnit(config: WoodConfig) extends Module {
   val io = IO(new Bundle {
-    val inst  = Flipped(Vec(numPorts, Decoupled(UInt(32.W))))
-    val pcIdx = Flipped(Decoupled(UInt(FetchConfig.pcIndexWidth.W)))
+    val in = Flipped(Vec(config.nWide, Decoupled(new MI(config))))
 
-    val forwardBuses = Vec(numPorts, Decoupled(new ForwardBus()))
+    val forwardBuses = Vec(config.nWide, Decoupled(new ForwardBus(config)))
   })
 
-  val destage = Module(new DecodeStage(numPorts))
-  val distage = Module(new DistributeStage(numPorts))
-  val mistage = Module(new MIStage(numPorts))
-  val restage = Module(new RenameStage(numPorts))
-  val scstage = Module(new ScheduleStage(numPorts))
-  val rrstage = Module(new RegisterReadStage(numPorts))
-  val exstage = Module(new ExecuteStage(numPorts))
+  val restage = Module(new RenameStage(config))
+  val scstage = Module(new ScheduleStage(config))
+  val rrstage = Module(new RegisterReadStage(config))
+  val exstage = Module(new ExecuteStage(config))
 
-  val wbstage = Module(new WriteBackStage(numPorts))
+  val wbstage = Module(new WriteBackStage(config))
 
-  val rbstage = Module(new ROBStage(numPorts))
-  val rsstage = Module(new RetiredStatusStage(numPorts))
-  val arstage = Module(new ArchRegisterFileStage(numPorts))
+  val rbstage = Module(new ROBStage(config))
+  val rsstage = Module(new RetiredStatusStage(config))
+  val arstage = Module(new ArchRegisterFileStage(config))
 
-  destage.io.inst  <> io.inst
-  destage.io.pcIdx <> io.pcIdx
-  destage.io.out   <> distage.io.in
-  distage.io.toInt <> mistage.io.in
-  mistage.io.out   <> restage.io.in
-  restage.io.out   <> scstage.io.in
-  scstage.io.out   <> rrstage.io.in
-  rrstage.io.out   <> exstage.io.in
+  io.in          <> restage.io.in
+  restage.io.out <> scstage.io.in
+  scstage.io.out <> rrstage.io.in
+  rrstage.io.out <> exstage.io.in
 
   exstage.io.out <> wbstage.io.in
 
@@ -87,13 +70,11 @@ class ExUnit(numPorts: Int) extends Module {
   rrstage.io.stall := 0.U // TODO
   scstage.io.stall := 0.U // TODO
 
-  val tagsReady = Wire(Vec(numPorts, Bool()))
+  val tagsReady = Wire(Vec(config.nWide, Bool()))
 
-  (0 until numPorts).foreach(j => {
+  (0 until config.nWide).foreach(j => {
     tagsReady(j)                 := exstage.io.forwardBuses(j).ready
     wbstage.io.tagBuses(j).ready := tagsReady.asUInt.andR
-
-    distage.io.toFloat(j).ready := 1.U
   })
 
   // exstage.io.out   <>

@@ -2,15 +2,15 @@ package wood.exu
 
 import chisel3._
 import chisel3.util._
-import wood.exu.ExConfig
+import wood.WoodConfig
 import wood.fru.MI
 import wood.std.DCArbiter
 
-class ReservationStationRow(val numPorts: Int) extends Module {
+class ReservationStationRow(config: WoodConfig) extends Module {
   val io = IO(new Bundle {
-    val in       = Flipped(Decoupled(new MI()))
-    val tagBuses = Flipped(Vec(numPorts, Decoupled(new Tag())))
-    val out      = Decoupled(new MI())
+    val in       = Flipped(Decoupled(new MI(config)))
+    val tagBuses = Flipped(Vec(config.nWide, Decoupled(new Tag(config))))
+    val out      = Decoupled(new MI(config))
 
     val r1Valid = Input(UInt(1.W))
     val r2Valid = Input(UInt(1.W))
@@ -31,13 +31,13 @@ class ReservationStationRow(val numPorts: Int) extends Module {
   val rowEmpty = RegEnable(rowEmptyNext, 0.U, !io.stall)
   val row      = RegEnable(io.in.bits, !io.stall)
 
-  val busR1Matches = Wire(Vec(numPorts, Bool()))
-  for (j <- 0 until numPorts) {
+  val busR1Matches = Wire(Vec(config.nWide, Bool()))
+  for (j <- 0 until config.nWide) {
     busR1Matches(j) := io.tagBuses(j).valid & (row.rs1 === io.tagBuses(j).bits.tag)
   }
 
-  val busR2Matches = Wire(Vec(numPorts, Bool()))
-  for (j <- 0 until numPorts) {
+  val busR2Matches = Wire(Vec(config.nWide, Bool()))
+  for (j <- 0 until config.nWide) {
     busR2Matches(j) := io.tagBuses(j).valid & (row.rs2 === io.tagBuses(j).bits.tag)
   }
 
@@ -78,16 +78,16 @@ class ReservationStationRow(val numPorts: Int) extends Module {
 
   // TODO
   io.in.ready := 1.U
-  for (j <- 0 until numPorts) {
+  for (j <- 0 until config.nWide) {
     io.tagBuses(j).ready := 1.U
   }
 }
 
-class ReservationStation(val numPorts: Int) extends Module {
+class ReservationStation(config: WoodConfig) extends Module {
   val io = IO(new Bundle {
-    val in       = Flipped(Decoupled(new MI()))
-    val tagBuses = Flipped(Vec(numPorts, Decoupled(new Tag())))
-    val out      = Decoupled(new MI())
+    val in       = Flipped(Decoupled(new MI(config)))
+    val tagBuses = Flipped(Vec(config.nWide, Decoupled(new Tag(config))))
+    val out      = Decoupled(new MI(config))
 
     val r1Valid = Input(UInt(1.W))
     val r2Valid = Input(UInt(1.W))
@@ -95,14 +95,14 @@ class ReservationStation(val numPorts: Int) extends Module {
     val stall = Input(UInt(1.W))
   })
 
-  val rows = Seq.fill(ExConfig.rsDepth)(Module(new ReservationStationRow(numPorts)))
+  val rows = Seq.fill(config.rsDepth)(Module(new ReservationStationRow(config)))
 
-  val rowTagReady  = Wire(Vec(ExConfig.rsDepth, UInt(1.W)))
-  val rowFull      = Wire(Vec(ExConfig.rsDepth, UInt(1.W)))
-  val rowEmpty     = Wire(Vec(ExConfig.rsDepth, UInt(1.W)))
-  val rowValid     = Wire(Vec(ExConfig.rsDepth, UInt(1.W)))
-  val rowScheduled = Wire(Vec(ExConfig.rsDepth, UInt(1.W)))
-  (0 until ExConfig.rsDepth).foreach(j => {
+  val rowTagReady  = Wire(Vec(config.rsDepth, UInt(1.W)))
+  val rowFull      = Wire(Vec(config.rsDepth, UInt(1.W)))
+  val rowEmpty     = Wire(Vec(config.rsDepth, UInt(1.W)))
+  val rowValid     = Wire(Vec(config.rsDepth, UInt(1.W)))
+  val rowScheduled = Wire(Vec(config.rsDepth, UInt(1.W)))
+  (0 until config.rsDepth).foreach(j => {
     rowValid(j)     := rows(j).io.out.valid
     rowEmpty(j)     := rows(j).io.empty
     rowFull(j)      := !rows(j).io.empty
@@ -113,24 +113,24 @@ class ReservationStation(val numPorts: Int) extends Module {
   val rowEmptyIndex     = PriorityEncoder(rowEmpty.asUInt)
   val rowScheduledIndex = PriorityEncoder(rowScheduled.asUInt)
   val rowWe             = UIntToOH(rowEmptyIndex)
-  (0 until ExConfig.rsDepth).foreach(j => {
+  (0 until config.rsDepth).foreach(j => {
     rows(j).io.we    := rowWe(j)
     rows(j).io.clear := rowScheduled(j)
     rows(j).io.stall := io.stall
   })
 
-  (0 until ExConfig.rsDepth).foreach(j => {
+  (0 until config.rsDepth).foreach(j => {
     rows(j).io.in       <> io.in
     rows(j).io.r1Valid  <> io.r1Valid
     rows(j).io.r2Valid  <> io.r2Valid
     rows(j).io.tagBuses <> io.tagBuses
   })
 
-  val arbiter = Module(new DCArbiter(new MI())(ExConfig.rsDepth, 1))
+  val arbiter = Module(new DCArbiter(new MI(config))(config.rsDepth, 1))
 
-  (0 until ExConfig.rsDepth).foreach(j => {
+  (0 until config.rsDepth).foreach(j => {
     arbiter.io.in(j) <> rows(j).io.out
-    (0 until numPorts).foreach(k => {
+    (0 until config.nWide).foreach(k => {
       rows(j).io.tagBuses(k).bits  := io.tagBuses(k).bits
       rows(j).io.tagBuses(k).valid := io.tagBuses(k).valid
       io.tagBuses(k).ready         := rowTagReady.asUInt.andR

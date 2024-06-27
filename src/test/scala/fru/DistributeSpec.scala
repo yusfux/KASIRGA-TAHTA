@@ -7,16 +7,19 @@ import org.scalatest.flatspec.AnyFlatSpec
 import wood.util.{GenerateVerilog, GetBackendAnnotation}
 import wood.fru.MI
 import wood.fru.DecodeConfig.{TYPE_FLOAT, TYPE_INT}
+import wood.{TestConfig, WoodConfig}
 
 class DistributeStageSpec extends AnyFlatSpec with ChiselScalatestTester {
+  val config = new WoodConfig(nWide = 2)
+
   val numData = 100
   val TOINT   = TYPE_INT.toInt.U
   val TOFLOAT = TYPE_FLOAT.toInt.U
 
-  val zero_to_int   = MI(0.U, Map("isFloat" -> 0.U))
-  val zero_to_float = MI(0.U, Map("isFloat" -> 1.U))
-  val one_to_int    = MI(1.U, Map("isFloat" -> 0.U))
-  val one_to_float  = MI(1.U, Map("isFloat" -> 1.U))
+  val zero_to_int   = MI(config, 0.U, Map("isFloat" -> 0.U))
+  val zero_to_float = MI(config, 0.U, Map("isFloat" -> 1.U))
+  val one_to_int    = MI(config, 1.U, Map("isFloat" -> 0.U))
+  val one_to_float  = MI(config, 1.U, Map("isFloat" -> 1.U))
 
   val zero_to_ints   = Seq.fill(numData)(zero_to_int)
   val zero_to_floats = Seq.fill(numData)(zero_to_float)
@@ -24,7 +27,7 @@ class DistributeStageSpec extends AnyFlatSpec with ChiselScalatestTester {
   val one_to_floats  = Seq.fill(numData)(one_to_float)
 
   "DistributeStage" should "work 2 to (2,2) (int,int)" in {
-    test(new DistributeStage(2)).withAnnotations(GetBackendAnnotation()) { dut =>
+    test(new DistributeStage(config)).withAnnotations(GetBackendAnnotation()) { dut =>
       val inSources     = dut.io.in.map(_.initSource())
       val outFloatSinks = dut.io.toFloat.map(_.initSink())
       val outIntSinks   = dut.io.toInt.map(_.initSink())
@@ -46,7 +49,7 @@ class DistributeStageSpec extends AnyFlatSpec with ChiselScalatestTester {
   }
 
   "DistributeStage" should "work 2 to (2,2) (int,float)" in {
-    test(new DistributeStage(2)).withAnnotations(GetBackendAnnotation()) { dut =>
+    test(new DistributeStage(config)).withAnnotations(GetBackendAnnotation()) { dut =>
       val inSources     = dut.io.in.map(_.initSource())
       val outFloatSinks = dut.io.toFloat.map(_.initSink())
       val outIntSinks   = dut.io.toInt.map(_.initSink())
@@ -68,7 +71,7 @@ class DistributeStageSpec extends AnyFlatSpec with ChiselScalatestTester {
   }
 
   "DistributeStage" should "work 2 to (2,2) (float,float)" in {
-    test(new DistributeStage(2)).withAnnotations(GetBackendAnnotation()) { dut =>
+    test(new DistributeStage(config)).withAnnotations(GetBackendAnnotation()) { dut =>
       val inSources     = dut.io.in.map(_.initSource())
       val outFloatSinks = dut.io.toFloat.map(_.initSink())
       val outIntSinks   = dut.io.toInt.map(_.initSink())
@@ -90,7 +93,7 @@ class DistributeStageSpec extends AnyFlatSpec with ChiselScalatestTester {
   }
 
   "DistributeStage" should "work 2 to (2,2) (float,int)" in {
-    test(new DistributeStage(2)).withAnnotations(GetBackendAnnotation()) { dut =>
+    test(new DistributeStage(config)).withAnnotations(GetBackendAnnotation()) { dut =>
       val inSources     = dut.io.in.map(_.initSource())
       val outFloatSinks = dut.io.toFloat.map(_.initSink())
       val outIntSinks   = dut.io.toInt.map(_.initSink())
@@ -111,8 +114,20 @@ class DistributeStageSpec extends AnyFlatSpec with ChiselScalatestTester {
     }
   }
 
-  "DistributeStage" should "emit Verilog" in {
-    val numPorts = 4
-    GenerateVerilog(new DistributeStage(numPorts))
-  }
+  val tconfig = new TestConfig()
+  (1 to tconfig.maxWidth).foreach(j => {
+    "DistributeStage" should s"emit Verilog ${j} wide" in {
+      val config          = new WoodConfig(nWide = j)
+      val currentTestName = testNames.toList.map(_.replaceAll(" ", "_"))(j - 1)
+      val testRunDir      = s"test_run_dir/$currentTestName"
+      val dir             = new java.io.File(testRunDir)
+
+      if (!dir.exists()) {
+        dir.mkdirs()
+      }
+
+      GenerateVerilog(new DistributeStage(config), path = testRunDir)
+    }
+  })
+
 }

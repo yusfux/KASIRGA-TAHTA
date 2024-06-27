@@ -1,18 +1,25 @@
 package wood.exu
 
-// import chisel3._
 import chiseltest._
-// import wood.fru.MI
-
 import org.scalatest.flatspec.AnyFlatSpec
-// import wood.util.{GenerateVerilog, GetBackendAnnotation}
-import wood.util.{GenerateVerilog}
+import wood.util.GenerateVerilog
+import wood.{TestConfig, WoodConfig}
 
 class WriteBackSpec extends AnyFlatSpec with ChiselScalatestTester {
+  val tconfig = new TestConfig()
 
-  "WriteBackStage" should "emit Verilog" in {
-    val numPorts = 2
-    GenerateVerilog(new WriteBackStage(numPorts))
-  }
+  (1 to tconfig.maxWidth).foreach(j => {
+    "WriteBackStage" should s"emit Verilog ${j} wide" in {
+      val config          = new WoodConfig(nWide = j)
+      val currentTestName = testNames.toList.map(_.replaceAll(" ", "_"))(j - 1)
+      val testRunDir      = s"test_run_dir/$currentTestName"
+      val dir             = new java.io.File(testRunDir)
 
+      if (!dir.exists()) {
+        dir.mkdirs()
+      }
+
+      GenerateVerilog(new WriteBackStage(config), path = testRunDir)
+    }
+  })
 }

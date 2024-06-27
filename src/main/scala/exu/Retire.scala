@@ -2,51 +2,52 @@ package wood.exu
 
 import chisel3._
 import chisel3.util._
+import wood.WoodConfig
 import wood.fru.MI
 import wood.std.{BlockRAMParams, DCArbiter, DCRRQueue, DecoupledBlockRAM}
 
-class ROBStage(numPorts: Int) extends Module {
+class ROBStage(config: WoodConfig) extends Module {
   val io = IO(new Bundle {
-    val in  = Flipped(Vec(numPorts, Decoupled(new MI())))
-    val out = Vec(numPorts, Decoupled(new MI()))
+    val in  = Flipped(Vec(config.nWide, Decoupled(new MI(config))))
+    val out = Vec(config.nWide, Decoupled(new MI(config)))
   })
 
-  val q = Module(new DCRRQueue(new MI())(numPorts, ExConfig.prfDepth))
+  val q = Module(new DCRRQueue(new MI(config))(config.nWide, config.prfDepth))
   q.io.in  <> io.in
   q.io.out <> io.out
 }
 
-class RetiredStatusStage(numPorts: Int) extends Module {
+class RetiredStatusStage(config: WoodConfig) extends Module {
   val io = IO(new Bundle {
-    val in                    = Flipped(Vec(numPorts, Decoupled(new MI())))
-    val tagBuses              = Flipped(Vec(numPorts, Decoupled(new Tag())))
-    val previousRetiredStatus = Flipped(Vec(numPorts, Decoupled(new MI())))
+    val in                    = Flipped(Vec(config.nWide, Decoupled(new MI(config))))
+    val tagBuses              = Flipped(Vec(config.nWide, Decoupled(new Tag(config))))
+    val previousRetiredStatus = Flipped(Vec(config.nWide, Decoupled(new MI(config))))
 
-    val out = Vec(numPorts, Decoupled(new MI()))
+    val out = Vec(config.nWide, Decoupled(new MI(config)))
   })
 
-  val arbiters = Seq.tabulate(numPorts) { j =>
+  val arbiters = Seq.tabulate(config.nWide) { j =>
     Module(new DCArbiter(UInt(1.W))(2, 1))
   }
 
   val retiredStatusRegisterFile = Module(
     new DecoupledBlockRAM(UInt(1.W))(
-      BlockRAMParams(ExConfig.prfDepth, numPorts, (numPorts * 2))
+      BlockRAMParams(config.prfDepth, config.nWide, (config.nWide * 2))
     )
   )
 
-  val readyForTag    = Wire(Vec(numPorts, Bool()))
-  val readyForCommit = Wire(Vec(numPorts, Bool()))
+  val readyForTag    = Wire(Vec(config.nWide, Bool()))
+  val readyForCommit = Wire(Vec(config.nWide, Bool()))
 
-  (0 until numPorts).foreach(j => {
+  (0 until config.nWide).foreach(j => {
     readyForTag(j)       := retiredStatusRegisterFile.io.wp(j).ready & arbiters(j).io.in(1).ready
     io.tagBuses(j).ready := readyForTag(j)
 
-    readyForCommit(j)                 := retiredStatusRegisterFile.io.wp(j + numPorts).ready
+    readyForCommit(j)                 := retiredStatusRegisterFile.io.wp(j + config.nWide).ready
     io.previousRetiredStatus(j).ready := readyForCommit(j)
   })
 
-  (0 until numPorts).foreach(j => {
+  (0 until config.nWide).foreach(j => {
     io.out(j).bits         := io.in(j).bits
     io.out(j).valid        := io.in(j).valid
     io.out(j).bits.retired := arbiters(j).io.out(0).bits
@@ -64,37 +65,37 @@ class RetiredStatusStage(numPorts: Int) extends Module {
     arbiters(j).io.out(0).ready := io.out(j).valid
   })
 
-  (0 until numPorts).foreach(j => {
+  (0 until config.nWide).foreach(j => {
     retiredStatusRegisterFile.io.wp(j).bits.addr   := io.tagBuses(j).bits.tag
     retiredStatusRegisterFile.io.wp(j).valid       := io.tagBuses(j).valid
     retiredStatusRegisterFile.io.wp(j).bits.enable := io.tagBuses(j).valid
     retiredStatusRegisterFile.io.wp(j).bits.data   := 1.U
 
-    retiredStatusRegisterFile.io.wp(j + numPorts).bits.addr   := io.previousRetiredStatus(j).bits.rd_tag
-    retiredStatusRegisterFile.io.wp(j + numPorts).valid       := io.previousRetiredStatus(j).valid
-    retiredStatusRegisterFile.io.wp(j + numPorts).bits.enable := io.previousRetiredStatus(j).valid
-    retiredStatusRegisterFile.io.wp(j + numPorts).bits.data   := 0.U
+    retiredStatusRegisterFile.io.wp(j + config.nWide).bits.addr   := io.previousRetiredStatus(j).bits.rd_tag
+    retiredStatusRegisterFile.io.wp(j + config.nWide).valid       := io.previousRetiredStatus(j).valid
+    retiredStatusRegisterFile.io.wp(j + config.nWide).bits.enable := io.previousRetiredStatus(j).valid
+    retiredStatusRegisterFile.io.wp(j + config.nWide).bits.data   := 0.U
 
     io.tagBuses(j).ready := retiredStatusRegisterFile.io.wp(j).ready
   })
 }
 
-class ArchRegisterFileStage(numPorts: Int) extends Module {
+class ArchRegisterFileStage(config: WoodConfig) extends Module {
   val io = IO(new Bundle {
-    val in = Flipped(Vec(numPorts, Decoupled(new MI())))
+    val in = Flipped(Vec(config.nWide, Decoupled(new MI(config))))
 
-    val previousRetiredStatus = Vec(numPorts, Decoupled(new MI()))
-    val retiredBus            = Vec(numPorts, Decoupled(new Tag()))
+    val previousRetiredStatus = Vec(config.nWide, Decoupled(new MI(config)))
+    val retiredBus            = Vec(config.nWide, Decoupled(new Tag(config)))
   })
 
   val arfDepth = 32
   val archRegisterFile = Module(
-    new DecoupledBlockRAM(new Tag())(
-      BlockRAMParams(arfDepth, numPorts, numPorts)
+    new DecoupledBlockRAM(new Tag(config))(
+      BlockRAMParams(arfDepth, config.nWide, config.nWide)
     )
   )
 
-  (0 until numPorts).foreach(j => {
+  (0 until config.nWide).foreach(j => {
     io.previousRetiredStatus(j).bits  := io.in(j).bits
     io.previousRetiredStatus(j).valid := io.in(j).valid
 

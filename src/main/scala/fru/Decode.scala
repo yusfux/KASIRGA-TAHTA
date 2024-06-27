@@ -1,10 +1,10 @@
 package wood.fru
 
 import chisel3._
-import chisel3.experimental.BundleLiterals._
 import chisel3.util._
 import chisel3.util.experimental.decode.{EspressoMinimizer, TruthTable, decoder}
-import wood.exu.{ALUOp, ExConfig, ExEngine}
+import wood.WoodConfig
+import wood.exu.{ALUOp, ExEngine}
 import wood.fru.Instructions._
 
 class ExpandBits(bitVectors: List[String]) {
@@ -19,8 +19,6 @@ class ExpandBits(bitVectors: List[String]) {
 
 // format: off
 object DecodeConfig {
-  val miQueueDepth = 8
-
   val I_Type   = 0.U(3.W)
   val S_Type   = 1.U(3.W)
   val R_Type   = 2.U(3.W)
@@ -201,55 +199,10 @@ object DecodeConfig {
   // format: on
 }
 
-// class MI(bitRanges: List[(Int, Int)]) extends Bundle {
-class MI extends Bundle {
-  val isFloat  = UInt(DecodeConfig.subWidths(0).W)
-  val operand  = UInt(DecodeConfig.subWidths(1).W)
-  val write_rf = UInt(DecodeConfig.subWidths(2).W)
-  val exEngine = UInt(DecodeConfig.subWidths(3).W)
-  val exOp     = UInt(DecodeConfig.subWidths(4).W)
-  val imm      = UInt(32.W) // TODO
-  val rs1      = UInt(5.W)
-  val rs2      = UInt(5.W)
-  val rd       = UInt(5.W)
-  val pc_idx   = UInt(FetchConfig.pcIndexWidth.W)
-  val rs1_tag  = UInt(ExConfig.tagWidth.W)
-  val rs2_tag  = UInt(ExConfig.tagWidth.W)
-  val rd_tag   = UInt(ExConfig.tagWidth.W)
-  val rs1_data = UInt(ExConfig.dataWidth.W)
-  val rs2_data = UInt(ExConfig.dataWidth.W)
-  val rd_data  = UInt(ExConfig.dataWidth.W)
-  val retired  = UInt(1.W)
-}
-
-object MI { // for testbench only
-  def apply(value: UInt, overrides: Map[String, UInt] = Map.empty): MI = {
-    val mi = new MI().Lit(
-      _.isFloat  -> overrides.getOrElse("isFloat", value),
-      _.operand  -> overrides.getOrElse("operand", value),
-      _.write_rf -> overrides.getOrElse("write_rf", value),
-      _.exEngine -> overrides.getOrElse("exEngine", value),
-      _.exOp     -> overrides.getOrElse("exOp", value),
-      _.imm      -> overrides.getOrElse("imm", value),
-      _.rs1      -> overrides.getOrElse("rs1", value),
-      _.rs2      -> overrides.getOrElse("rs2", value),
-      _.rd       -> overrides.getOrElse("rd", value),
-      _.pc_idx   -> overrides.getOrElse("pc_idx", value),
-      _.rs1_tag  -> overrides.getOrElse("rs1_tag", value),
-      _.rs2_tag  -> overrides.getOrElse("rs2_tag", value),
-      _.rd_tag   -> overrides.getOrElse("rd_tag", value),
-      _.rs1_data -> overrides.getOrElse("rs1_data", value),
-      _.rs2_data -> overrides.getOrElse("rs2_data", value),
-      _.rd_data  -> overrides.getOrElse("rd_data", value),
-      _.retired  -> overrides.getOrElse("retired", value)
-    )
-    mi
-  }
-}
-class Decoder() extends Module {
+class Decoder(config: WoodConfig) extends Module {
   val io = IO(new Bundle {
     val inst = Input(UInt(32.W))
-    val out  = Output(new MI)
+    val out  = Output(new MI(config))
   })
 
   val instDecoder: UInt = decoder(minimizer = EspressoMinimizer, input = io.inst, truthTable = DecodeConfig.miTable)
@@ -305,35 +258,35 @@ class Decoder() extends Module {
   ).getOrElse(inst_type, () => 0.U(32.W))()
 }
 
-class DecodeStage(numOut: Int) extends Module {
+class DecodeStage(config: WoodConfig) extends Module {
   val io = IO(new Bundle {
-    val inst  = Flipped(Vec(numOut, Decoupled(UInt(32.W))))
-    val pcIdx = Flipped(Decoupled(UInt(FetchConfig.pcIndexWidth.W)))
-    val out   = Vec(numOut, Decoupled(new MI()))
+    val in    = Flipped(Vec(config.nWide, Decoupled(UInt(32.W))))
+    val pcIdx = Flipped(Decoupled(UInt(config.pcIndexWidth.W)))
+    val out   = Vec(config.nWide, Decoupled(new MI(config)))
   })
 
-  val decoders = Seq.fill(numOut)(Module(new Decoder()))
+  val decoders = Seq.fill(config.nWide)(Module(new Decoder(config)))
 
-  val out_ready = Wire(Vec(numOut, Bool()))
-  val in_valid  = Wire(Vec(numOut + 1, Bool()))
+  val out_ready = Wire(Vec(config.nWide, Bool()))
+  val in_valid  = Wire(Vec(config.nWide + 1, Bool()))
   out_ready := io.out.map(_.ready)
-  in_valid  := io.inst.map(_.valid) ++ Seq(io.pcIdx.valid)
+  in_valid  := io.in.map(_.valid) ++ Seq(io.pcIdx.valid)
 
   // all inputs have to be valid and all outputs have to be ready to not stall
   val valid = in_valid.asUInt.andR
   val ready = out_ready.asUInt.andR
   val stall = !(valid && ready)
 
-  for (j <- 0 until numOut) {
-    decoders(j).io.inst := io.inst(j).bits
-    io.inst(j).ready    := ready
+  for (j <- 0 until config.nWide) {
+    decoders(j).io.inst := io.in(j).bits
+    io.in(j).ready      := ready
 
-    val decoded = Wire(new MI())
-    decoded        := decoders(j).io.asTypeOf(new MI())
+    val decoded = Wire(new MI(config))
+    decoded        := decoders(j).io.asTypeOf(new MI(config))
     decoded.pc_idx := io.pcIdx.bits
 
     io.out(j).bits  := RegEnable(decoded, !stall)
-    io.out(j).valid := RegEnable(io.inst(j).valid, 1.U, !stall)
+    io.out(j).valid := RegEnable(io.in(j).valid, 1.U, !stall)
   }
 
   io.pcIdx.ready := ready

@@ -2,6 +2,7 @@ package wood.exu
 
 import chisel3._
 import chisel3.util._
+import wood.WoodConfig
 import wood.fru.MI
 
 object ALUOp extends ChiselEnum {
@@ -15,13 +16,13 @@ object ALUOp extends ChiselEnum {
     toBitpat(op).rawString
 }
 
-class ALU() extends Module {
+class ALU(config: WoodConfig) extends Module {
   val io = IO(new Bundle {
-    val mi  = Flipped(Decoupled(new MI()))
-    val out = Decoupled(new MI())
+    val mi  = Flipped(Decoupled(new MI(config)))
+    val out = Decoupled(new MI(config))
   })
 
-  val shamt = if (ExConfig.dataWidth > 1) log2Ceil(ExConfig.dataWidth) - 1 else 0 // Shift amount.
+  val shamt = if (config.dataWidth > 1) log2Ceil(config.dataWidth) - 1 else 0 // Shift amount.
 
   val (control, valid) = ALUOp.safe(io.mi.bits.exOp)
   // assert(valid, "Enum state must be valid, got %d!", io.mi.bits.exOp) // https://github.com/llvm/circt/issues/6970
@@ -33,10 +34,10 @@ class ALU() extends Module {
   val arithmeticData2 = Mux(control === ALUOp.sub, Cat(~data2, 1.U(1.W)), Cat(data2, 0.U(1.W)))
   val resultAdd       = arithmeticData1 + arithmeticData2
 
-  val result = Wire(UInt(ExConfig.dataWidth.W))
+  val result = Wire(UInt(config.dataWidth.W))
   result := 0.U
   switch(control) {
-    is(ALUOp.sub, ALUOp.add) { result := resultAdd(ExConfig.dataWidth, 1) }
+    is(ALUOp.sub, ALUOp.add) { result := resultAdd(config.dataWidth, 1) }
     is(ALUOp.xor) { result := data1 ^ data2 }
     is(ALUOp.or) { result := data1 | data2 }
     is(ALUOp.and) { result := data1 & data2 }
