@@ -13,8 +13,21 @@ class ROBStage(config: WoodConfig) extends Module {
   })
 
   val q = Module(new DCRRQueue(new MI(config))(config.nWide, config.prfDepth))
-  q.io.in  <> io.in
-  q.io.out <> io.out
+
+  val out_ready = Wire(Vec(config.nWide, Bool()))
+  val out_valid = Wire(Vec(config.nWide, Bool()))
+  out_ready := io.out.map(_.ready)
+  out_valid := io.in.map(_.valid)
+  val valid = out_valid.asUInt.andR
+  val ready = out_ready.asUInt.andR
+  val stall = !(valid && ready)
+
+  (0 until config.nWide).foreach(j => {
+    io.out(j).bits    := RegEnable(q.io.out(j).bits, 0.U.asTypeOf(new MI(config)), !stall)
+    io.out(j).valid   := RegEnable(q.io.out(j).valid, 0.B, !stall)
+    q.io.out(j).ready := io.out(j).ready
+  })
+  q.io.in <> io.in
 }
 
 class RetiredStatusStage(config: WoodConfig) extends Module {
@@ -48,9 +61,6 @@ class RetiredStatusStage(config: WoodConfig) extends Module {
   })
 
   (0 until config.nWide).foreach(j => {
-    io.out(j).bits         := io.in(j).bits
-    io.out(j).valid        := io.in(j).valid
-    io.out(j).bits.retired := arbiters(j).io.out(0).bits
 
     retiredStatusRegisterFile.io.rip(j).bits.addr := io.in(j).bits.rd_tag
     retiredStatusRegisterFile.io.rip(j).valid     := io.in(j).valid
@@ -77,6 +87,25 @@ class RetiredStatusStage(config: WoodConfig) extends Module {
     retiredStatusRegisterFile.io.wp(j + config.nWide).bits.data   := 0.U
 
     io.tagBuses(j).ready := retiredStatusRegisterFile.io.wp(j).ready
+  })
+
+  val out_ready = Wire(Vec(config.nWide, Bool()))
+  val out_valid = Wire(Vec(config.nWide, Bool()))
+  out_ready := io.out.map(_.ready)
+  out_valid := io.in.map(_.valid)
+  val valid = out_valid.asUInt.andR
+  val ready = out_ready.asUInt.andR
+  val stall = !(valid && ready)
+
+  val outNext = Wire(Vec(config.nWide, new MI(config)))
+
+  (0 until config.nWide).foreach(j => {
+    outNext(j)         := io.in(j).bits
+    outNext(j).retired := arbiters(j).io.out(0).bits
+
+    io.out(j).bits  := RegEnable(outNext(j), 0.U.asTypeOf(new MI(config)), !stall)
+    io.out(j).valid := RegEnable(io.in(j).valid, 0.B, !stall)
+    io.in(j).ready  := io.out(j).ready
   })
 }
 
@@ -107,9 +136,23 @@ class ArchRegisterFileStage(config: WoodConfig) extends Module {
     archRegisterFile.io.rip(j).bits.addr := io.in(j).bits.rd
     archRegisterFile.io.rip(j).valid     := io.in(j).valid
     io.in(j).ready                       := archRegisterFile.io.rip(j).ready
+  })
 
-    io.retiredBus(j).bits.tag        := archRegisterFile.io.rop(j).bits.data.tag
-    io.retiredBus(j).valid           := archRegisterFile.io.rop(j).valid
+  val out_ready = Wire(Vec(config.nWide, Bool()))
+  val out_valid = Wire(Vec(config.nWide, Bool()))
+  out_valid := io.retiredBus.map(_.valid)
+  out_ready := io.retiredBus.map(_.ready)
+  val valid = out_valid.asUInt.andR
+  val ready = out_ready.asUInt.andR
+  val stall = !(valid && ready)
+
+  val retiredBusNext = Wire(Vec(config.nWide, new Tag(config)))
+  (0 until config.nWide).foreach(j => {
+    retiredBusNext(j).tag := archRegisterFile.io.rop(j).bits.data.tag
+
+    io.retiredBus(j).bits            := RegEnable(retiredBusNext(j), 0.U.asTypeOf(new Tag(config)), !stall)
+    io.retiredBus(j).valid           := RegEnable(archRegisterFile.io.rop(j).valid, 0.B, !stall)
     archRegisterFile.io.rop(j).ready := io.retiredBus(j).ready
   })
+
 }

@@ -6,6 +6,7 @@ import chiseltest._
 import org.scalatest.flatspec.AnyFlatSpec
 import wood.util.{GenerateVerilog, GetBackendAnnotation}
 import wood.WoodConfig
+import wood.TestConfig
 
 class MIStageSpec extends AnyFlatSpec with ChiselScalatestTester {
   val numData = 100
@@ -102,20 +103,19 @@ class MIStageSpec extends AnyFlatSpec with ChiselScalatestTester {
     }
   }
 
-  "MIStage" should "emit Verilog 1 wide" in {
-    val config = new WoodConfig(nWide = 1)
-    GenerateVerilog(new MIStage(config))
-  }
-  "MIStage" should "emit Verilog 2 wide" in {
-    val config = new WoodConfig(nWide = 2)
-    GenerateVerilog(new MIStage(config))
-  }
-  "MIStage" should "emit Verilog 3 wide" in {
-    val config = new WoodConfig(nWide = 3)
-    GenerateVerilog(new MIStage(config))
-  }
-  "MIStage" should "emit Verilog 4 wide" in {
-    val config = new WoodConfig(nWide = 4)
-    GenerateVerilog(new MIStage(config))
-  }
+  val tconfig = new TestConfig()
+  (1 to tconfig.maxWidth).foreach(j => {
+    "MIStage" should s"emit Verilog ${j} wide" in {
+      val config          = new WoodConfig(nWide = j)
+      val currentTestName = testNames.toList.map(_.replaceAll(" ", "_"))(j - 1)
+      val testRunDir      = s"test_run_dir/$currentTestName"
+      val dir             = new java.io.File(testRunDir)
+
+      if (!dir.exists()) {
+        dir.mkdirs()
+      }
+
+      GenerateVerilog(new MIStage(config), path = testRunDir)
+    }
+  })
 }

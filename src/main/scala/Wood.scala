@@ -2,7 +2,7 @@ package wood
 
 import chisel3._
 import chisel3.util._
-import wood.exu.ExUnit
+import wood.exu.{ExUnit, ForwardBus}
 import wood.fru.FrUnit
 
 case class TestConfig(val maxWidth: Int = 1) {}
@@ -24,13 +24,14 @@ case class WoodConfig(
   val numALUs:       Int = nWide
   val numPortsFloat: Int = nWide
   val numPortsInt:   Int = nWide
-  // Nested classes with access to config values
 }
 
 class Wood(config: WoodConfig) extends Module {
   val io = IO(new Bundle {
-    val in    = Flipped(Vec(config.nWide, Decoupled(UInt(32.W))))
-    val pcIdx = Flipped(Decoupled(UInt(config.pcIndexWidth.W)))
+    val in           = Flipped(Vec(config.nWide, Decoupled(UInt(32.W))))
+    val pcIdx        = Flipped(Decoupled(UInt(config.pcIndexWidth.W)))
+    val forwardBuses = Vec(config.nWide, Decoupled(new ForwardBus(config)))
+
   })
 
   val frunit = Module(new FrUnit(config))
@@ -40,4 +41,5 @@ class Wood(config: WoodConfig) extends Module {
   frunit.io.pcIdx        <> io.pcIdx
   exunit.io.in           <> frunit.io.out
   frunit.io.forwardBuses <> exunit.io.forwardBuses
+  io.forwardBuses        <> exunit.io.forwardBuses
 }

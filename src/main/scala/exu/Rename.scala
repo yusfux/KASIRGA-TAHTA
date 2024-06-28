@@ -47,15 +47,33 @@ class RenameStage(config: WoodConfig) extends Module {
     frontEndRegisterFile.io.wp(j).bits.enable := flist.io.out(j).valid
   })
 
-  (0 until config.nWide).foreach(j => {
-    io.out(j).bits                                      := io.in(j).bits
-    io.out(j).valid                                     := frontEndRegisterFile.io.rop(j).valid & frontEndRegisterFile.io.rop(j + config.nWide).valid
-    frontEndRegisterFile.io.rop(j).ready                := io.out(j).ready
-    frontEndRegisterFile.io.rop(j + config.nWide).ready := io.out(j).ready
-  })
+  // io.toInt(j).bits                         := RegEnable(crossbar.io.out(TYPE_INT.toInt)(j).bits, 0.U.asTypeOf(new MI(config)), !stall)
+  val in_ready = Wire(Vec(config.nWide, Bool()))
+  val in_valid = Wire(Vec(config.nWide, Bool()))
+
+  in_ready := io.in.map(_.ready)
+  in_valid := io.in.map(_.valid)
+
+  // all inputs have to be valid and all outputs have to be ready to not stall
+  val valid = in_valid.asUInt.andR
+  val ready = in_ready.asUInt.andR
+  val stall = !(valid && ready)
+
+  val outBitsNext  = Wire(Vec(config.nWide, new MI(config)))
+  val outValidNext = Wire(Vec(config.nWide, Bool()))
 
   (0 until config.nWide).foreach(j => {
-    io.out(j).bits.rs1_tag := frontEndRegisterFile.io.rop(j).bits.data.tag
-    io.out(j).bits.rs2_tag := frontEndRegisterFile.io.rop(j + config.nWide).bits.data.tag
+    outValidNext(j) := frontEndRegisterFile.io.rop(j).valid & frontEndRegisterFile.io.rop(j + config.nWide).valid
+
+    outBitsNext(j)         := io.in(j).bits
+    outBitsNext(j).rs1_tag := frontEndRegisterFile.io.rop(j).bits.data.tag
+    outBitsNext(j).rs2_tag := frontEndRegisterFile.io.rop(j + config.nWide).bits.data.tag
+
+    io.out(j).bits  := RegEnable(outBitsNext(j), 0.U.asTypeOf(new MI(config)), !stall)
+    io.out(j).valid := RegEnable(outValidNext(j), 1.U, !stall)
+
+    frontEndRegisterFile.io.rop(j).ready                := io.out(j).ready
+    frontEndRegisterFile.io.rop(j + config.nWide).ready := io.out(j).ready
+
   })
 }

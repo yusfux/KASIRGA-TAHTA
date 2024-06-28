@@ -10,7 +10,6 @@ import wood.fru.FrUnit
 class FrUnitSpec extends AnyFlatSpec with ChiselScalatestTester {
 
   val tconfig = new TestConfig()
-
   (1 to tconfig.maxWidth).foreach(j => {
     "FrUnit" should s"emit Verilog ${j} wide" in {
       val config          = new WoodConfig(nWide = j)
@@ -25,5 +24,4 @@ class FrUnitSpec extends AnyFlatSpec with ChiselScalatestTester {
       GenerateVerilog(new FrUnit(config), path = testRunDir)
     }
   })
-
 }

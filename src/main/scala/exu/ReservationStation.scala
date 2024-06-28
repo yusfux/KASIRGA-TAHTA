@@ -12,9 +12,6 @@ class ReservationStationRow(config: WoodConfig) extends Module {
     val tagBuses = Flipped(Vec(config.nWide, Decoupled(new Tag(config))))
     val out      = Decoupled(new MI(config))
 
-    val r1Valid = Input(UInt(1.W))
-    val r2Valid = Input(UInt(1.W))
-
     val stall = Input(UInt(1.W))
     val clear = Input(UInt(1.W))
     val we    = Input(UInt(1.W))
@@ -26,10 +23,10 @@ class ReservationStationRow(config: WoodConfig) extends Module {
   val r2ValidNext  = Wire(UInt(1.W))
   val rowEmptyNext = Wire(UInt(1.W))
 
-  val r1Valid  = RegEnable(r1ValidNext, 0.U, !io.stall)
-  val r2Valid  = RegEnable(r2ValidNext, 0.U, !io.stall)
+  val rowNext = Wire(new MI(config))
+
   val rowEmpty = RegEnable(rowEmptyNext, 0.U, !io.stall)
-  val row      = RegEnable(io.in.bits, !io.stall)
+  val row      = RegEnable(rowNext, 0.U.asTypeOf(new MI(config)), !io.stall)
 
   val busR1Matches = Wire(Vec(config.nWide, Bool()))
   for (j <- 0 until config.nWide) {
@@ -47,20 +44,20 @@ class ReservationStationRow(config: WoodConfig) extends Module {
   }
 
   r1ValidNext := MuxCase(
-    r1Valid,
+    row.rs1_tag_valid,
     Seq(
       io.clear.asBool         -> 0.U,
       busR1Matches.asUInt.orR -> 1.U,
-      updateRow               -> io.r1Valid
+      updateRow               -> io.in.bits.rs1_tag_valid
     )
   )
 
   r2ValidNext := MuxCase(
-    r2Valid,
+    row.rs2_tag_valid,
     Seq(
       io.clear.asBool         -> 0.U,
       busR2Matches.asUInt.orR -> 1.U,
-      updateRow               -> io.r2Valid
+      updateRow               -> io.in.bits.rs2_tag_valid
     )
   )
 
@@ -72,9 +69,13 @@ class ReservationStationRow(config: WoodConfig) extends Module {
     )
   )
 
+  rowNext               := row
+  rowNext.rs1_tag_valid := r1ValidNext
+  rowNext.rs2_tag_valid := r2ValidNext
+
   io.empty     := rowEmpty
   io.out.bits  := row
-  io.out.valid := r1Valid & r2Valid
+  io.out.valid := row.rs1_tag_valid & row.rs2_tag_valid
 
   // TODO
   io.in.ready := 1.U
@@ -121,8 +122,6 @@ class ReservationStation(config: WoodConfig) extends Module {
 
   (0 until config.rsDepth).foreach(j => {
     rows(j).io.in       <> io.in
-    rows(j).io.r1Valid  <> io.r1Valid
-    rows(j).io.r2Valid  <> io.r2Valid
     rows(j).io.tagBuses <> io.tagBuses
   })
 

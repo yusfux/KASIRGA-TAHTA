@@ -207,7 +207,7 @@ class Decoder(config: WoodConfig) extends Module {
 
   val instDecoder: UInt = decoder(minimizer = EspressoMinimizer, input = io.inst, truthTable = DecodeConfig.miTable)
 
-  Seq(
+  Seq( // indexing is from right to left in the TruthTable
     io.out.isFloat  -> DecodeConfig.bitRanges(0),
     io.out.operand  -> DecodeConfig.bitRanges(1),
     io.out.write_rf -> DecodeConfig.bitRanges(2),
@@ -218,20 +218,33 @@ class Decoder(config: WoodConfig) extends Module {
       outField := instDecoder(msbIndex, lsbIndex)
   }
 
+  Seq( // Override if rd is 0
+    io.out.write_rf -> DecodeConfig.bitRanges(2)
+  ).foreach {
+    case (outField, (msbIndex, lsbIndex)) =>
+      outField := Mux(
+        io.out.rd === 0.U,
+        0.U,
+        instDecoder(msbIndex, lsbIndex)
+      )
+  }
+
   // format: off
   io.out.rs1      := io.inst(19, 15)
   io.out.rs2      := io.inst(24, 20)
   io.out.rd       := io.inst(11,  7)
   // format: on
 
-  io.out.pc_idx   := DontCare
-  io.out.rs1_tag  := DontCare
-  io.out.rs2_tag  := DontCare
-  io.out.rd_tag   := DontCare
-  io.out.retired  := DontCare
-  io.out.rs1_data := DontCare
-  io.out.rs2_data := DontCare
-  io.out.rd_data  := DontCare
+  io.out.pc_idx        := DontCare
+  io.out.rs1_tag       := DontCare
+  io.out.rs1_tag_valid := DontCare
+  io.out.rs2_tag       := DontCare
+  io.out.rs2_tag_valid := DontCare
+  io.out.rd_tag        := DontCare
+  io.out.retired       := DontCare
+  io.out.rs1_data      := DontCare
+  io.out.rs2_data      := DontCare
+  io.out.rd_data       := DontCare
 
   val inst_type = WireDefault(DecodeConfig.I_Type)
   switch(io.inst(6, 2)) {

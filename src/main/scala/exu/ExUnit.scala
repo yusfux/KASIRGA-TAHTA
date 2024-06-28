@@ -54,7 +54,7 @@ class ExUnit(config: WoodConfig) extends Module {
 
   exstage.io.out <> wbstage.io.in
 
-  exstage.io.out <> rbstage.io.in
+  io.in          <> rbstage.io.in
   rbstage.io.out <> rsstage.io.in
   rsstage.io.out <> arstage.io.in
 

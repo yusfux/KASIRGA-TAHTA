@@ -51,8 +51,12 @@ class ScheduleStage(val config: WoodConfig) extends Module {
     io.retiredBus(j).ready                        := validList.io.wp(j + config.nWide).ready
 
     reservationStations(j).io.stall := io.stall
-    reservationStations(j).io.out   <> io.out(j)
 
     reservationStations(j).io.tagBuses <> io.tagBuses
+
+    io.out(j).bits  := RegEnable(reservationStations(j).io.out.bits, 0.U.asTypeOf(new MI(config)), io.stall.asBool)
+    io.out(j).valid := RegEnable(reservationStations(j).io.out.valid, 1.B, io.stall.asBool)
+
+    reservationStations(j).io.out.ready := io.out(j).ready
   })
 }

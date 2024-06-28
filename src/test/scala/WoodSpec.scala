@@ -1,12 +1,13 @@
 package wood
 
-import scala.sys.process._
+import chisel3._
 import chiseltest._
 import org.scalatest.flatspec.AnyFlatSpec
 import wood.util.{GenerateVerilog, GetBackendAnnotation}
-import scala.io.Source
 import wood.WoodConfig
 import wood.TestConfig
+import scala.sys.process._
+import scala.io.Source
 import scala.language.postfixOps
 
 class WoodSpec extends AnyFlatSpec with ChiselScalatestTester {
@@ -24,50 +25,54 @@ class WoodSpec extends AnyFlatSpec with ChiselScalatestTester {
     groupedLines.map(_.padTo(expectedSize, "0")) // Pad shorter lists with empty strings
   }
 
-  // def hexStringToUInt(hexString: String): UInt = {
-  def hexStringToUInt(hexString: String): BigInt = {
+  def hexStringToBigInt(hexString: String): BigInt = {
     val bigIntValue = BigInt(hexString, 16)
-    // val uintValue   = bigIntValue.U(32.W)
-    // uintValue
     bigIntValue
   }
+
+  def hexStringToUInt(hexString: String): UInt = {
+    val bigIntValue = BigInt(hexString, 16)
+    val uintValue   = bigIntValue.U(32.W)
+    uintValue
+  }
+
   "Wood" should "work with li instructions" in {
     val process = Process("which python") !
 
-    val nWide  = 4
-    val config = new WoodConfig(nWide = nWide)
+    val nWide    = 1
+    val prfDepth = 32
+    val config   = new WoodConfig(nWide = nWide, prfDepth = prfDepth)
 
     val cwd = System.getProperty("user.dir")
     println(s"CWD: $cwd")
 
-    val filePath       = "src/test/hex/li_test/li_test.hex" // PWD is where you run sbt, assume repo root
-    val hexLines       = readHexFileToList(filePath)
-    val groupedBitPats = groupHexLines(hexLines, nWide).map(_.map(hexStringToUInt))
+    val filePath     = "src/test/hex/li_test/li_test.hex" // relative to build.sbt
+    val hexLines     = readHexFileToList(filePath)
+    val groupedUInts = groupHexLines(hexLines, nWide).map(_.map(hexStringToUInt))
     test(new Wood(config)).withAnnotations(GetBackendAnnotation()) { dut =>
       val in = dut.io.in.map(_.initSource())
 
       dut.io.pcIdx.bits.poke(0)
       dut.io.pcIdx.valid.poke(1)
 
-      dut.io.in(0).bits.poke(groupedBitPats(0)(0))
-      dut.io.in(1).bits.poke(groupedBitPats(0)(1))
-      dut.io.in(2).bits.poke(groupedBitPats(0)(2))
-      dut.io.in(3).bits.poke(groupedBitPats(0)(3))
-      dut.io.in(0).valid.poke(1)
-      dut.io.in(1).valid.poke(1)
-      dut.io.in(2).valid.poke(1)
-      dut.io.in(3).valid.poke(1)
+      // (0 until config.nWide).foreach(j => {
+      //   dut.io.in(j).bits.poke(groupedBitPats(0)(j))
+      //   dut.io.in(j).valid.poke(1)
+      // })
 
-      // groupedBitPats.zipWithIndex.foreach {
-      //   case (in, i) =>
-      //     (0 until numPorts).foreach(j => {
-      //       dut.io.in(j).bits.poke(in(0))
-      //       dut.io.in(j).valid.poke(1)
-      //       fork {
-      //         // in(i).enqueueSeq(bitPats)
-      //       }
-      //     })
-      // }
+      (0 until config.nWide).foreach(j => {
+        // dut.io.in(j).bits.poke(in(0))
+        // dut.io.in(j).valid.poke(1)
+        fork {
+          dut.io.in(j).enqueueSeq(groupedUInts(j))
+        }
+      })
+
+      val pcs = Seq.range(0, groupedUInts(0).length, 1)
+      val pcSeq: Seq[UInt] = pcs.map(i => i.asUInt)
+      fork {
+        dut.io.pcIdx.enqueueSeq(pcSeq)
+      }
 
       fork {
         step(100)
