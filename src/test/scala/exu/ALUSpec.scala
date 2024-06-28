@@ -48,7 +48,13 @@ trait ALUBehavior {
               MI(
                 config,
                 0.U,
-                Map("rs1_data" -> a.U, "rs2_data" -> b.U, "exOp" -> fn.litValue.U, "rd_data" -> result.U(dataWidth.W))
+                Map(
+                  "rs1_data" -> a.U,
+                  "rs2_data" -> b.U,
+                  "exOp"     -> fn.litValue.U,
+                  "rd_data"  -> result.U(dataWidth.W),
+                  "operand"  -> DecodeConfig.OPERAND_REG.toInt.U
+                )
               )
             results.enqueue(mi)
           }
@@ -56,7 +62,16 @@ trait ALUBehavior {
           val mis = data.map {
             case (a, b) =>
               val mi =
-                MI(config, 0.U, Map("rs1_data" -> a.U, "rs2_data" -> b.U, "exOp" -> fn.litValue.U))
+                MI(
+                  config,
+                  0.U,
+                  Map(
+                    "rs1_data" -> a.U,
+                    "rs2_data" -> b.U,
+                    "exOp"     -> fn.litValue.U,
+                    "operand"  -> DecodeConfig.OPERAND_REG.toInt.U
+                  )
+                )
               mi
           }
           dut.io.mi.enqueueSeq(mis)

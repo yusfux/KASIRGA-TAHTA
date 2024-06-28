@@ -19,13 +19,14 @@ class ExpandBits(bitVectors: List[String]) {
 
 // format: off
 object DecodeConfig {
-  val I_Type   = 0.U(3.W)
-  val S_Type   = 1.U(3.W)
-  val R_Type   = 2.U(3.W)
-  val B_Type   = 3.U(3.W)
-  val J_Type   = 4.U(3.W)
-  val U_Type   = 5.U(3.W)
-  val SYS_Type = 6.U(3.W)
+  val typeWidth = 3
+  val I_Type   = 0.U(typeWidth.W)
+  val S_Type   = 1.U(typeWidth.W)
+  val R_Type   = 2.U(typeWidth.W)
+  val B_Type   = 3.U(typeWidth.W)
+  val J_Type   = 4.U(typeWidth.W)
+  val U_Type   = 5.U(typeWidth.W)
+  val SYS_Type = 6.U(typeWidth.W)
 
   // Use the maximum size of enums as storage size. Store all operations in the same wire.
   val op = new ExpandBits(List(ALUOp.toString(ALUOp.add)))
@@ -44,7 +45,6 @@ object DecodeConfig {
 
   val WRITE_RF_1 = "1"
   val WRITE_RF_0 = "0"
-
 
   val defaultDecSeq: Seq[String] = Seq(
                            op.e(ALUOp.toString(ALUOp.add)) ,ExEngine.toString(ExEngine.alu),WRITE_RF_1,OPERAND_REG  ,TYPE_INT
@@ -246,31 +246,38 @@ class Decoder(config: WoodConfig) extends Module {
   io.out.rs2_data      := DontCare
   io.out.rd_data       := DontCare
 
-  val inst_type = WireDefault(DecodeConfig.I_Type)
-  switch(io.inst(6, 2)) {
-    is("b00000".U) { inst_type := DecodeConfig.I_Type } // lw
-    is("b01000".U) { inst_type := DecodeConfig.S_Type } // sw
-    is("b01100".U) { inst_type := DecodeConfig.R_Type } // R type
-    is("b11000".U) { inst_type := DecodeConfig.B_Type } // B type
-    is("b00100".U) { inst_type := DecodeConfig.I_Type } // I type ALU
-    is("b11011".U) { inst_type := DecodeConfig.J_Type } // jal
-    is("b00101".U) { inst_type := DecodeConfig.U_Type } // auipc
-    is("b01101".U) { inst_type := DecodeConfig.U_Type } // lui
-    is("b11001".U) { inst_type := DecodeConfig.I_Type } // jalr
-    is("b11100".U) { inst_type := DecodeConfig.SYS_Type } // SYSTEM instructions
-    // default case is already handled by WireDefault(Config.I_Type)
-  }
+  val inst_type = Wire(UInt(DecodeConfig.typeWidth.W))
+  inst_type := MuxCase(
+    DecodeConfig.I_Type,
+    Array(
+      (io.inst(6, 2) === "b00000".U) -> DecodeConfig.I_Type, // lw
+      (io.inst(6, 2) === "b01000".U) -> DecodeConfig.S_Type, // sw
+      (io.inst(6, 2) === "b01100".U) -> DecodeConfig.R_Type, // R type
+      (io.inst(6, 2) === "b11000".U) -> DecodeConfig.B_Type, // B type
+      (io.inst(6, 2) === "b00100".U) -> DecodeConfig.I_Type, // I type ALU
+      (io.inst(6, 2) === "b11011".U) -> DecodeConfig.J_Type, // jal
+      (io.inst(6, 2) === "b00101".U) -> DecodeConfig.U_Type, // auipc
+      (io.inst(6, 2) === "b01101".U) -> DecodeConfig.U_Type, // lui
+      (io.inst(6, 2) === "b11001".U) -> DecodeConfig.I_Type, // jalr
+      (io.inst(6, 2) === "b11100".U) -> DecodeConfig.SYS_Type // SYSTEM instructions
+    ).toIndexedSeq
+  )
 
-  io.out.imm := Map(
-    DecodeConfig.SYS_Type -> (() => Cat(Fill(15, io.inst(31)), io.inst(19, 15), io.inst(31, 20))),
-    DecodeConfig.I_Type   -> (() => Cat(Fill(20, io.inst(31)), io.inst(31, 20))),
-    DecodeConfig.S_Type   -> (() => Cat(Fill(20, io.inst(31)), io.inst(31, 25), io.inst(11, 7))),
-    DecodeConfig.B_Type   -> (() => Cat(Fill(20, io.inst(31)), io.inst(7), io.inst(30, 25), io.inst(11, 8), 0.U(1.W))),
-    DecodeConfig.J_Type   -> (() => Cat(Fill(12, io.inst(31)), io.inst(19, 12), io.inst(20), io.inst(30, 21), 0.U(1.W))),
-    DecodeConfig.U_Type   -> (() => Cat(io.inst(31, 12), 0.U(12.W)))
-  ).getOrElse(inst_type, () => 0.U(32.W))()
+  // format: off
+  io.out.imm := MuxCase(
+   0.U(32.W),
+    Array(
+      (inst_type === DecodeConfig.SYS_Type) -> Cat(Fill(15, io.inst(31)), io.inst(19, 15), io.inst(31, 20)),
+      (inst_type === DecodeConfig.I_Type)   -> Cat(Fill(20, io.inst(31)), io.inst(31, 20)),
+      (inst_type === DecodeConfig.S_Type)   -> Cat(Fill(20, io.inst(31)), io.inst(31, 25), io.inst(11, 7)),
+      (inst_type === DecodeConfig.B_Type)   -> Cat(Fill(20, io.inst(31)), io.inst(7), io.inst(30, 25), io.inst(11, 8), 0.U(1.W)),
+      (inst_type === DecodeConfig.J_Type)   -> Cat(Fill(12, io.inst(31)), io.inst(19, 12), io.inst(20), io.inst(30, 21), 0.U(1.W)),
+      (inst_type === DecodeConfig.U_Type)   -> Cat(io.inst(31, 12), 0.U(12.W))
+    ).toIndexedSeq
+  )
+  // format: on
+
 }
-
 class DecodeStage(config: WoodConfig) extends Module {
   val io = IO(new Bundle {
     val in    = Flipped(Vec(config.nWide, Decoupled(UInt(32.W))))

@@ -23,7 +23,9 @@ class FreeListInitializer(config: WoodConfig) extends Module {
     counter := counter + config.nWide.U
   }
 
-  val stopCount = ((1.U << config.prfDepth.asUInt) - 1.U)
+  val stopCount = Wire(UInt(log2Ceil(config.prfDepth).W))
+  stopCount := ((1.U << config.prfDepth.asUInt) - 1.U)
+
   when((counter === stopCount) && !initialized) {
     initialized := 1.U
   }

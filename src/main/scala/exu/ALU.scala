@@ -3,6 +3,7 @@ package wood.exu
 import chisel3._
 import chisel3.util._
 import wood.WoodConfig
+import wood.fru.DecodeConfig.OPERAND_REG
 import wood.fru.MI
 
 object ALUOp extends ChiselEnum {
@@ -27,8 +28,8 @@ class ALU(config: WoodConfig) extends Module {
   val (control, valid) = ALUOp.safe(io.mi.bits.exOp)
   // assert(valid, "Enum state must be valid, got %d!", io.mi.bits.exOp) // https://github.com/llvm/circt/issues/6970
 
-  val data1 = io.mi.bits.rs1_data
-  val data2 = io.mi.bits.rs2_data
+  val data1 = Mux(io.mi.bits.operand === OPERAND_REG.toInt.U, io.mi.bits.rs1_data, io.mi.bits.imm)
+  val data2 = Mux(io.mi.bits.operand === OPERAND_REG.toInt.U, io.mi.bits.rs2_data, io.mi.bits.imm)
 
   val arithmeticData1 = Mux(control === ALUOp.sub, Cat(data1, 1.U(1.W)), Cat(data1, 0.U(1.W)))
   val arithmeticData2 = Mux(control === ALUOp.sub, Cat(~data2, 1.U(1.W)), Cat(data2, 0.U(1.W)))

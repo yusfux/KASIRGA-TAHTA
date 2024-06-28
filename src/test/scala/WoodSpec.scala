@@ -12,6 +12,14 @@ import scala.language.postfixOps
 
 class WoodSpec extends AnyFlatSpec with ChiselScalatestTester {
 
+  def generateTestCode(): Unit = {
+    Process("sh -c \"python src/test/python/gen_li.py > src/test/c/src/main.S\"").!
+  }
+
+  def buildTestCode(): Unit = {
+    val process = Process("make -C src/test/c") !
+  }
+
   def readHexFileToList(filePath: String): List[String] = {
     val source = Source.fromFile(filePath)
     val lines  = source.getLines().toList
@@ -39,6 +47,9 @@ class WoodSpec extends AnyFlatSpec with ChiselScalatestTester {
   "Wood" should "work with li instructions" in {
     val process = Process("which python") !
 
+    generateTestCode()
+    buildTestCode()
+
     val nWide    = 1
     val prfDepth = 32
     val config   = new WoodConfig(nWide = nWide, prfDepth = prfDepth)
@@ -46,7 +57,7 @@ class WoodSpec extends AnyFlatSpec with ChiselScalatestTester {
     val cwd = System.getProperty("user.dir")
     println(s"CWD: $cwd")
 
-    val filePath     = "src/test/hex/li_test/li_test.hex" // relative to build.sbt
+    val filePath     = "src/test/c/build/main.hex" // relative to build.sbt
     val hexLines     = readHexFileToList(filePath)
     val groupedUInts = groupHexLines(hexLines, nWide).map(_.map(hexStringToUInt))
     test(new Wood(config)).withAnnotations(GetBackendAnnotation()) { dut =>
