@@ -64,6 +64,6 @@ class DecoupledBlockRAM[T <: Data](gen: T)(params: BlockRAMParams) extends Modul
     io.rop(i).bits.data := mem.read(io.rip(i).bits.addr)
     io.rop(i).bits.addr := io.rip(i).bits.addr
     io.rop(i).valid     := io.rip(i).valid
-    io.rip(i).ready     := true.B
+    io.rip(i).ready     := io.rop(i).ready
   }
 }

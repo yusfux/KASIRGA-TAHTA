@@ -27,6 +27,7 @@ case class MI(config: WoodConfig) extends Bundle {
   val rs2_data      = UInt(config.dataWidth.W)
   val rd_data       = UInt(config.dataWidth.W)
   val retired       = UInt(1.W)
+  val inst          = UInt(32.W) // for testbench only
 }
 
 object MI { // for testbench only, set all values with specific overrides
@@ -50,7 +51,8 @@ object MI { // for testbench only, set all values with specific overrides
       _.rs1_data      -> overrides.getOrElse("rs1_data", value),
       _.rs2_data      -> overrides.getOrElse("rs2_data", value),
       _.rd_data       -> overrides.getOrElse("rd_data", value),
-      _.retired       -> overrides.getOrElse("retired", value)
+      _.retired       -> overrides.getOrElse("retired", value),
+      _.inst          -> overrides.getOrElse("inst", value)
     )
     mi
   }

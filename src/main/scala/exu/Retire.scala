@@ -153,6 +153,8 @@ class ArchRegisterFileStage(config: WoodConfig) extends Module {
     io.retiredBus(j).bits            := RegEnable(retiredBusNext(j), 0.U.asTypeOf(new Tag(config)), !stall)
     io.retiredBus(j).valid           := RegEnable(archRegisterFile.io.rop(j).valid, 0.B, !stall)
     archRegisterFile.io.rop(j).ready := io.retiredBus(j).ready
+
+    dontTouch(io.in(j).bits.inst) // for testbench only
   })
 
 }

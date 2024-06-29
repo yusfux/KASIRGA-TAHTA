@@ -73,7 +73,7 @@ class ReservationStationRow(config: WoodConfig) extends Module {
   rowNext.rs1_tag_valid := r1ValidNext
   rowNext.rs2_tag_valid := r2ValidNext
 
-  io.empty     := rowEmpty
+  io.empty     := rowEmpty | rowEmptyNext
   io.out.bits  := row
   io.out.valid := row.rs1_tag_valid & row.rs2_tag_valid
 

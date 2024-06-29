@@ -229,22 +229,36 @@ class Decoder(config: WoodConfig) extends Module {
       )
   }
 
+  io.out.rs2_tag_valid := MuxCase(
+    0.U,
+    Array(
+      (io.out.operand === Integer.parseInt(DecodeConfig.OPERAND_IMM, 2).U)   -> 1.U,
+      (io.out.operand === Integer.parseInt(DecodeConfig.OPERAND_PCIMM, 2).U) -> 1.U
+    ).toIndexedSeq
+  )
+
+  io.out.rs1_tag_valid := MuxCase(
+    0.U,
+    Array(
+      (io.out.operand === Integer.parseInt(DecodeConfig.OPERAND_PCIMM, 2).U) -> 1.U
+    ).toIndexedSeq
+  )
+
   // format: off
   io.out.rs1      := io.inst(19, 15)
   io.out.rs2      := io.inst(24, 20)
   io.out.rd       := io.inst(11,  7)
   // format: on
 
-  io.out.pc_idx        := DontCare
-  io.out.rs1_tag       := DontCare
-  io.out.rs1_tag_valid := DontCare
-  io.out.rs2_tag       := DontCare
-  io.out.rs2_tag_valid := DontCare
-  io.out.rd_tag        := DontCare
-  io.out.retired       := DontCare
-  io.out.rs1_data      := DontCare
-  io.out.rs2_data      := DontCare
-  io.out.rd_data       := DontCare
+  io.out.pc_idx   := DontCare
+  io.out.rs1_tag  := DontCare
+  io.out.rs2_tag  := DontCare
+  io.out.rd_tag   := DontCare
+  io.out.retired  := DontCare
+  io.out.rs1_data := DontCare
+  io.out.rs2_data := DontCare
+  io.out.rd_data  := DontCare
+  io.out.inst     := io.inst
 
   val inst_type = Wire(UInt(DecodeConfig.typeWidth.W))
   inst_type := MuxCase(
