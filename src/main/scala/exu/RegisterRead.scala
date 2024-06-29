@@ -8,9 +8,9 @@ import wood.std.{BlockRAMParams, DecoupledBlockRAM}
 
 class RegisterReadStage(config: WoodConfig) extends Module {
   val io = IO(new Bundle {
-    val in       = Flipped(Vec(config.nWide, Decoupled(new MI(config))))
-    val tagBuses = Flipped(Vec(config.nWide, Decoupled(new Tag(config))))
-    val stall    = Input(UInt(1.W))
+    val in           = Flipped(Vec(config.nWide, Decoupled(new MI(config))))
+    val writeBackBus = Flipped(Vec(config.nWide, Decoupled(new Bus(config))))
+    val stall        = Input(UInt(1.W))
 
     val out = Vec(config.nWide, Decoupled(new MI(config)))
   })
@@ -34,13 +34,13 @@ class RegisterReadStage(config: WoodConfig) extends Module {
     io.out(j).bits.rs2_data := prf.io.rop(j + config.nWide).bits.data
     io.out(j).valid         := prf.io.rop(j + config.nWide).valid
 
-    prf.io.rop(j).ready                := 1.U // TODO
-    prf.io.rop(j + config.nWide).ready := 1.U // TODO
+    prf.io.rop(j).ready                := io.out(j).ready
+    prf.io.rop(j + config.nWide).ready := io.out(j).ready
 
-    prf.io.wp(j).bits.addr   := io.tagBuses(j).bits.tag
-    prf.io.wp(j).bits.enable := io.tagBuses(j).valid
+    prf.io.wp(j).bits.addr   := io.writeBackBus(j).bits.tag
+    prf.io.wp(j).bits.enable := io.writeBackBus(j).valid
     prf.io.wp(j).bits.data   := 1.U
-    prf.io.wp(j).valid       := io.tagBuses(j).valid
-    io.tagBuses(j).ready     := prf.io.wp(j).ready
+    prf.io.wp(j).valid       := io.writeBackBus(j).valid
+    io.writeBackBus(j).ready := prf.io.wp(j).ready
   })
 }

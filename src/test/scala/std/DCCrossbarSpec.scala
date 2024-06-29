@@ -8,10 +8,12 @@ import wood.util.{GenerateVerilog, GetBackendAnnotation}
 class DCCrossbarSpec extends AnyFlatSpec with ChiselScalatestTester {
 
   "DCCrossbar" should s"work 1 to (1)" in {
-    test(new DCCrossbar(UInt(8.W))(1, List(1)))
+    val numOutputs = List(1)
+    val numInputs  = 1
+    test(new DCCrossbar(UInt(8.W))(numInputs, numOutputs))
       .withAnnotations(GetBackendAnnotation()) { dut =>
         val inSources = dut.io.in.map(_.initSource())
-        val outSinks  = Array.tabulate(1)(n => dut.io.out(n).map(_.initSink()))
+        val outSinks  = Array.tabulate(numOutputs.length)(n => dut.io.out(n).map(_.initSink()))
 
         val data    = 8.U
         val numData = 100
@@ -29,10 +31,12 @@ class DCCrossbarSpec extends AnyFlatSpec with ChiselScalatestTester {
   }
 
   "DCCrossbar" should s"work 1 to (2)" in {
-    test(new DCCrossbar(UInt(8.W))(1, List(2)))
+    val numOutputs = List(2)
+    val numInputs  = 1
+    test(new DCCrossbar(UInt(8.W))(numInputs, numOutputs))
       .withAnnotations(GetBackendAnnotation()) { dut =>
         val inSources = dut.io.in.map(_.initSource())
-        val outSinks  = Array.tabulate(1)(n => dut.io.out(n).map(_.initSink()))
+        val outSinks  = Array.tabulate(numOutputs.length)(n => dut.io.out(n).map(_.initSink()))
 
         val data    = 8.U
         val numData = 100
@@ -51,10 +55,12 @@ class DCCrossbarSpec extends AnyFlatSpec with ChiselScalatestTester {
   }
 
   "DCCrossbar" should "work 1 to (1,1)" in {
-    test(new DCCrossbar(UInt(8.W))(1, List(1, 1)))
+    val numOutputs = List(1, 1)
+    val numInputs  = 1
+    test(new DCCrossbar(UInt(8.W))(numInputs, numOutputs))
       .withAnnotations(GetBackendAnnotation()) { dut =>
         val inSources = dut.io.in.map(_.initSource())
-        val outSinks  = Array.tabulate(2)(n => dut.io.out(n).map(_.initSink()))
+        val outSinks  = Array.tabulate(numOutputs.length)(n => dut.io.out(n).map(_.initSink()))
 
         val numData = 100
         val data    = Seq.fill(numData)(8.U)
@@ -81,9 +87,11 @@ class DCCrossbarSpec extends AnyFlatSpec with ChiselScalatestTester {
       }
   }
   "DCCrossbar" should "work 2 to (2,2)" in {
-    test(new DCCrossbar(UInt(8.W))(2, List(2, 2))).withAnnotations(GetBackendAnnotation()) { dut =>
+    val numOutputs = List(2, 2)
+    val numInputs  = 2
+    test(new DCCrossbar(UInt(8.W))(numInputs, numOutputs)).withAnnotations(GetBackendAnnotation()) { dut =>
       val inSources = dut.io.in.map(_.initSource())
-      val outSinks  = Array.tabulate(2)(n => dut.io.out(n).map(_.initSink()))
+      val outSinks  = Array.tabulate(numOutputs.length)(n => dut.io.out(n).map(_.initSink()))
 
       // Create a sequence of zeros and ones
       val numData = 100

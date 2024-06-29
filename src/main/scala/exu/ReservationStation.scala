@@ -4,135 +4,111 @@ import chisel3._
 import chisel3.util._
 import wood.WoodConfig
 import wood.fru.MI
-import wood.std.DCArbiter
+import wood.std.{DCArbiter, DCDemux}
 
 class ReservationStationRow(config: WoodConfig) extends Module {
   val io = IO(new Bundle {
-    val in       = Flipped(Decoupled(new MI(config)))
-    val tagBuses = Flipped(Vec(config.nWide, Decoupled(new Tag(config))))
-    val out      = Decoupled(new MI(config))
+    val in         = Flipped(Decoupled(new MI(config)))
+    val forwardBus = Flipped(Vec(config.nWide, Decoupled(new Bus(config))))
+    val out        = Decoupled(new MI(config))
 
-    val stall = Input(UInt(1.W))
-    val clear = Input(UInt(1.W))
-    val we    = Input(UInt(1.W))
-
-    val empty = Output(UInt(1.W))
+    val stall = Input(Bool())
   })
 
-  val r1ValidNext  = Wire(UInt(1.W))
-  val r2ValidNext  = Wire(UInt(1.W))
-  val rowEmptyNext = Wire(UInt(1.W))
-
-  val rowNext = Wire(new MI(config))
-
-  val rowEmpty = RegEnable(rowEmptyNext, 0.U, !io.stall)
-  val row      = RegEnable(rowNext, 0.U.asTypeOf(new MI(config)), !io.stall)
+  val r1ValidNext = Wire(UInt(1.W))
+  val r2ValidNext = Wire(UInt(1.W))
+  val rowNext     = Wire(new MI(config))
+  val row         = RegEnable(rowNext, 0.U.asTypeOf(new MI(config)), !io.stall)
 
   val busR1Matches = Wire(Vec(config.nWide, Bool()))
-  for (j <- 0 until config.nWide) {
-    busR1Matches(j) := io.tagBuses(j).valid & (row.rs1 === io.tagBuses(j).bits.tag)
-  }
-
   val busR2Matches = Wire(Vec(config.nWide, Bool()))
-  for (j <- 0 until config.nWide) {
-    busR2Matches(j) := io.tagBuses(j).valid & (row.rs2 === io.tagBuses(j).bits.tag)
-  }
 
-  val updateRow = io.in.valid && io.we.asBool
-  when(updateRow) {
-    row := io.in.bits
-  }
+  val emptyNext      = Wire(Bool())
+  val empty          = RegEnable(emptyNext, 0.B, !io.stall)
+  val outReadyToFire = Wire(UInt(1.W))
+  val outFiring      = Wire(UInt(1.W))
+
+  outReadyToFire := row.rs1_tag_valid & row.rs2_tag_valid & !empty
+  io.out.valid   := outReadyToFire
+  outFiring      := outReadyToFire & io.out.ready
+  io.in.ready    := outFiring | empty
+
+  emptyNext := MuxCase(
+    empty,
+    Seq(
+      io.in.valid                       -> 0.U,
+      (outFiring.asBool & !io.in.valid) -> 1.U
+    )
+  )
 
   r1ValidNext := MuxCase(
     row.rs1_tag_valid,
     Seq(
-      io.clear.asBool         -> 0.U,
-      busR1Matches.asUInt.orR -> 1.U,
-      updateRow               -> io.in.bits.rs1_tag_valid
+      io.in.valid                               -> io.in.bits.rs1_tag_valid,
+      (empty.asBool & !io.in.valid)             -> 0.U,
+      (!empty.asBool & busR1Matches.asUInt.orR) -> 1.U
     )
   )
 
   r2ValidNext := MuxCase(
     row.rs2_tag_valid,
     Seq(
-      io.clear.asBool         -> 0.U,
-      busR2Matches.asUInt.orR -> 1.U,
-      updateRow               -> io.in.bits.rs2_tag_valid
+      io.in.valid                               -> io.in.bits.rs2_tag_valid,
+      (empty.asBool & !io.in.valid)             -> 0.U,
+      (!empty.asBool & busR2Matches.asUInt.orR) -> 1.U
     )
   )
 
-  rowEmptyNext := MuxCase(
-    rowEmpty,
-    Seq(
-      io.clear.asBool -> 1.U,
-      io.we.asBool    -> 0.U
-    )
-  )
+  when(io.in.valid) {
+    rowNext := io.in.bits
+  }.otherwise {
+    rowNext               := row
+    rowNext.rs1_tag_valid := r1ValidNext
+    rowNext.rs2_tag_valid := r2ValidNext
+  }
 
-  rowNext               := row
-  rowNext.rs1_tag_valid := r1ValidNext
-  rowNext.rs2_tag_valid := r2ValidNext
+  io.out.bits := row
 
-  io.empty     := rowEmpty | rowEmptyNext
-  io.out.bits  := row
-  io.out.valid := row.rs1_tag_valid & row.rs2_tag_valid
-
-  // TODO
-  io.in.ready := 1.U
   for (j <- 0 until config.nWide) {
-    io.tagBuses(j).ready := 1.U
+    busR1Matches(j)        := io.forwardBus(j).valid & (row.rs1 === io.forwardBus(j).bits.tag)
+    busR2Matches(j)        := io.forwardBus(j).valid & (row.rs2 === io.forwardBus(j).bits.tag)
+    io.forwardBus(j).ready := 1.U // TODO
   }
 }
 
 class ReservationStation(config: WoodConfig) extends Module {
   val io = IO(new Bundle {
-    val in       = Flipped(Decoupled(new MI(config)))
-    val tagBuses = Flipped(Vec(config.nWide, Decoupled(new Tag(config))))
-    val out      = Decoupled(new MI(config))
-
-    val r1Valid = Input(UInt(1.W))
-    val r2Valid = Input(UInt(1.W))
+    val in         = Flipped(Decoupled(new MI(config)))
+    val forwardBus = Flipped(Vec(config.nWide, Decoupled(new Bus(config))))
+    val out        = Decoupled(new MI(config))
 
     val stall = Input(UInt(1.W))
   })
 
-  val rows = Seq.fill(config.rsDepth)(Module(new ReservationStationRow(config)))
-
-  val rowTagReady  = Wire(Vec(config.rsDepth, UInt(1.W)))
-  val rowFull      = Wire(Vec(config.rsDepth, UInt(1.W)))
-  val rowEmpty     = Wire(Vec(config.rsDepth, UInt(1.W)))
-  val rowValid     = Wire(Vec(config.rsDepth, UInt(1.W)))
-  val rowScheduled = Wire(Vec(config.rsDepth, UInt(1.W)))
-  (0 until config.rsDepth).foreach(j => {
-    rowValid(j)     := rows(j).io.out.valid
-    rowEmpty(j)     := rows(j).io.empty
-    rowFull(j)      := !rows(j).io.empty
-    rowScheduled(j) := rows(j).io.out.ready & rows(j).io.out.valid
-    rowTagReady(j)  := rows(j).io.tagBuses.asUInt.andR
-  })
-
-  val rowEmptyIndex     = PriorityEncoder(rowEmpty.asUInt)
-  val rowScheduledIndex = PriorityEncoder(rowScheduled.asUInt)
-  val rowWe             = UIntToOH(rowEmptyIndex)
-  (0 until config.rsDepth).foreach(j => {
-    rows(j).io.we    := rowWe(j)
-    rows(j).io.clear := rowScheduled(j)
-    rows(j).io.stall := io.stall
-  })
-
-  (0 until config.rsDepth).foreach(j => {
-    rows(j).io.in       <> io.in
-    rows(j).io.tagBuses <> io.tagBuses
-  })
-
+  val rows    = Seq.fill(config.rsDepth)(Module(new ReservationStationRow(config)))
   val arbiter = Module(new DCArbiter(new MI(config))(config.rsDepth, 1))
+  val demux   = Module(new DCDemux(new MI(config))(1, config.rsDepth))
+
+  val rowReady       = Wire(Vec(config.rsDepth, Bool()))
+  val rowTagBusReady = Wire(Vec(config.rsDepth, Bool()))
+
+  demux.io.in(0)  <> io.in
+  demux.io.sel(0) := PriorityEncoder(rowReady)
 
   (0 until config.rsDepth).foreach(j => {
-    arbiter.io.in(j) <> rows(j).io.out
+    rowReady(j)       := rows(j).io.in.ready
+    rowTagBusReady(j) := rows(j).io.forwardBus.asUInt.andR
+
+    rows(j).io.stall      := io.stall
+    rows(j).io.forwardBus <> io.forwardBus
+
+    arbiter.io.in(j)   <> rows(j).io.out
+    demux.io.out(j)(0) <> rows(j).io.in
+
     (0 until config.nWide).foreach(k => {
-      rows(j).io.tagBuses(k).bits  := io.tagBuses(k).bits
-      rows(j).io.tagBuses(k).valid := io.tagBuses(k).valid
-      io.tagBuses(k).ready         := rowTagReady.asUInt.andR
+      rows(j).io.forwardBus(k).bits  := io.forwardBus(k).bits
+      rows(j).io.forwardBus(k).valid := io.forwardBus(k).valid
+      io.forwardBus(k).ready         := rowTagBusReady.asUInt.andR
     })
   })
 

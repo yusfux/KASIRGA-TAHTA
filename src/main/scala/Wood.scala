@@ -2,7 +2,7 @@ package wood
 
 import chisel3._
 import chisel3.util._
-import wood.exu.{ExUnit, ForwardBus}
+import wood.exu.{Bus, ExUnit}
 import wood.fru.FrUnit
 
 case class TestConfig(val maxWidth: Int = 1) {}
@@ -28,18 +28,18 @@ case class WoodConfig(
 
 class Wood(config: WoodConfig) extends Module {
   val io = IO(new Bundle {
-    val in           = Flipped(Vec(config.nWide, Decoupled(UInt(32.W))))
-    val pcIdx        = Flipped(Decoupled(UInt(config.pcIndexWidth.W)))
-    val forwardBuses = Vec(config.nWide, Decoupled(new ForwardBus(config)))
+    val in         = Flipped(Vec(config.nWide, Decoupled(UInt(32.W))))
+    val pcIdx      = Flipped(Decoupled(UInt(config.pcIndexWidth.W)))
+    val forwardBus = Vec(config.nWide, Decoupled(new Bus(config)))
 
   })
 
   val frunit = Module(new FrUnit(config))
   val exunit = Module(new ExUnit(config))
 
-  frunit.io.in           <> io.in
-  frunit.io.pcIdx        <> io.pcIdx
-  exunit.io.in           <> frunit.io.out
-  frunit.io.forwardBuses <> exunit.io.forwardBuses
-  io.forwardBuses        <> exunit.io.forwardBuses
+  frunit.io.in         <> io.in
+  frunit.io.pcIdx      <> io.pcIdx
+  exunit.io.in         <> frunit.io.out
+  frunit.io.forwardBus <> exunit.io.forwardBus
+  io.forwardBus        <> exunit.io.forwardBus
 }

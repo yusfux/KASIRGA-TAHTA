@@ -8,8 +8,8 @@ import wood.std.DCCrossbar
 
 class ExecuteStage(config: WoodConfig) extends Module {
   val io = IO(new Bundle {
-    val in           = Flipped(Vec(config.nWide, Decoupled(new MI(config))))
-    val forwardBuses = Vec(config.nWide, Decoupled(new ForwardBus(config)))
+    val in         = Flipped(Vec(config.nWide, Decoupled(new MI(config))))
+    val forwardBus = Vec(config.nWide, Decoupled(new Bus(config)))
 
     val out = Vec(config.nWide, Decoupled(new MI(config)))
   })
@@ -30,10 +30,10 @@ class ExecuteStage(config: WoodConfig) extends Module {
     io.out(j).bits  := alus(j).io.out.bits
     io.out(j).valid := alus(j).io.out.valid
 
-    io.forwardBuses(j).bits.data := alus(j).io.out.bits.rd_data
-    io.forwardBuses(j).bits.tag  := alus(j).io.out.bits.rd_tag
-    io.forwardBuses(j).valid     := alus(j).io.out.valid
+    io.forwardBus(j).bits.data := alus(j).io.out.bits.rd_data
+    io.forwardBus(j).bits.tag  := alus(j).io.out.bits.rd_tag
+    io.forwardBus(j).valid     := alus(j).io.out.valid
 
-    alus(j).io.out.ready := io.out(j).ready & io.forwardBuses(j).ready
+    alus(j).io.out.ready := io.out(j).ready & io.forwardBus(j).ready
   })
 }

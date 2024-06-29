@@ -8,16 +8,16 @@ import wood.std.{BlockRAMParams, DecoupledBlockRAM}
 
 class RenameStage(config: WoodConfig) extends Module {
   val io = IO(new Bundle {
-    val in         = Flipped(Vec(config.nWide, Decoupled(new MI(config))))
-    val retiredBus = Flipped(Vec(config.nWide, Decoupled(new Tag(config))))
-    val out        = Vec(config.nWide, Decoupled(new MI(config)))
+    val in          = Flipped(Vec(config.nWide, Decoupled(new MI(config))))
+    val commitedBus = Flipped(Vec(config.nWide, Decoupled(new Bus(config))))
+    val out         = Vec(config.nWide, Decoupled(new MI(config)))
   })
 
   val flist = Module(new FreeList(config))
-  flist.io.in <> io.retiredBus
+  flist.io.in <> io.commitedBus
 
   val frontEndRegisterFile = Module(
-    new DecoupledBlockRAM(new Tag(config))(
+    new DecoupledBlockRAM(new Bus(config))(
       BlockRAMParams(32, config.nWide * 2, config.nWide)
     )
   )

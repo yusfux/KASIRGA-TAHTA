@@ -7,13 +7,14 @@ import wood.fru.MI
 
 class WriteBackStage(config: WoodConfig) extends Module {
   val io = IO(new Bundle {
-    val in       = Flipped(Vec(config.nWide, Decoupled(new MI(config))))
-    val tagBuses = Vec(config.nWide, Decoupled(new Tag(config)))
+    val in           = Flipped(Vec(config.nWide, Decoupled(new MI(config))))
+    val writeBackBus = Vec(config.nWide, Decoupled(new Bus(config)))
   })
 
   (0 until config.nWide).foreach(j => {
-    io.tagBuses(j).bits.tag := io.in(j).bits.rd_tag
-    io.tagBuses(j).valid    := io.in(j).valid
-    io.in(j).ready          := io.tagBuses(j).ready
+    io.writeBackBus(j).bits.tag  := io.in(j).bits.rd_tag
+    io.writeBackBus(j).bits.data := io.in(j).bits.rd_data
+    io.writeBackBus(j).valid     := io.in(j).valid
+    io.in(j).ready               := io.writeBackBus(j).ready
   })
 }

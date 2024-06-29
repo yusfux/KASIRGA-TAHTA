@@ -7,7 +7,7 @@ import wood.std.{DCArbiter, DCRRQueue}
 
 class FreeListInitializer(config: WoodConfig) extends Module {
   val io = IO(new Bundle {
-    val out = Vec(config.nWide, Decoupled(new Tag(config)))
+    val out = Vec(config.nWide, Decoupled(new Bus(config)))
   })
 
   val counter     = RegInit(0.U(config.tagWidth.W))
@@ -33,19 +33,21 @@ class FreeListInitializer(config: WoodConfig) extends Module {
   (0 until config.nWide).foreach(j => {
     io.out(j).bits.tag := counter + j.asUInt
     io.out(j).valid    := !initialized
+
+    io.out(j).bits.data := DontCare
   })
 }
 
 class FreeList(config: WoodConfig) extends Module {
   val io = IO(new Bundle {
-    val in  = Flipped(Vec(config.nWide, Decoupled(new Tag(config))))
-    val out = Vec(config.nWide, Decoupled(new Tag(config)))
+    val in  = Flipped(Vec(config.nWide, Decoupled(new Bus(config))))
+    val out = Vec(config.nWide, Decoupled(new Bus(config)))
   })
   val numWritePorts = config.nWide
 
   val initializer = Module(new FreeListInitializer(config))
-  val arbiter     = Module(new DCArbiter(new Tag(config))(config.nWide * 2, config.nWide))
-  val q           = Module(new DCRRQueue(new Tag(config))(config.nWide, config.prfDepth))
+  val arbiter     = Module(new DCArbiter(new Bus(config))(config.nWide * 2, config.nWide))
+  val q           = Module(new DCRRQueue(new Bus(config))(config.nWide, config.prfDepth))
 
   (0 until config.nWide).foreach(j => {
     arbiter.io.in(j)                <> initializer.io.out(j)

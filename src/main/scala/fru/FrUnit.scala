@@ -4,7 +4,7 @@ import chisel3._
 import chisel3.experimental.BundleLiterals._
 import chisel3.util._
 import wood.WoodConfig
-import wood.exu.ForwardBus
+import wood.exu.Bus
 import wood.fru.{DecodeConfig, DecodeStage, DistributeStage, MIStage}
 
 case class MI(config: WoodConfig) extends Bundle {
@@ -60,9 +60,9 @@ object MI { // for testbench only, set all values with specific overrides
 
 class FrUnit(config: WoodConfig) extends Module {
   val io = IO(new Bundle {
-    val in           = Flipped(Vec(config.nWide, Decoupled(UInt(32.W))))
-    val pcIdx        = Flipped(Decoupled(UInt(config.pcIndexWidth.W)))
-    val forwardBuses = Flipped(Vec(config.nWide, Decoupled(new ForwardBus(config))))
+    val in         = Flipped(Vec(config.nWide, Decoupled(UInt(32.W))))
+    val pcIdx      = Flipped(Decoupled(UInt(config.pcIndexWidth.W)))
+    val forwardBus = Flipped(Vec(config.nWide, Decoupled(new Bus(config))))
 
     val out = Vec(config.nWide, Decoupled(new MI(config)))
   })
@@ -79,6 +79,6 @@ class FrUnit(config: WoodConfig) extends Module {
 
   (0 until config.nWide).foreach(j => {
     distage.io.toFloat(j).ready := 1.U // TODO
-    io.forwardBuses(j).ready    := 1.U // TODO
+    io.forwardBus(j).ready      := 1.U // TODO
   })
 }

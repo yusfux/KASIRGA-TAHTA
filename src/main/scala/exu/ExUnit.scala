@@ -4,6 +4,7 @@ import chisel3._
 import chisel3.util._
 import wood.WoodConfig
 import wood.fru.MI
+import wood.std.DCBus
 
 object ExEngine extends ChiselEnum {
   val alu, lsu, float, none = Value
@@ -16,15 +17,7 @@ object ExEngine extends ChiselEnum {
     toBitpat(op).rawString
 }
 
-class Tag(config: WoodConfig) extends Bundle {
-  val tag = UInt(config.tagWidth.W)
-}
-
-class ForwardBus(config: WoodConfig) extends Tag(config) {
-  val data = UInt(config.dataWidth.W)
-}
-
-class WriteBack(config: WoodConfig) extends Bundle {
+class Bus(config: WoodConfig) extends Bundle {
   val tag  = UInt(config.tagWidth.W)
   val data = UInt(config.dataWidth.W)
 }
@@ -33,8 +26,13 @@ class ExUnit(config: WoodConfig) extends Module {
   val io = IO(new Bundle {
     val in = Flipped(Vec(config.nWide, Decoupled(new MI(config))))
 
-    val forwardBuses = Vec(config.nWide, Decoupled(new ForwardBus(config)))
+    val forwardBus = Vec(config.nWide, Decoupled(new Bus(config)))
   })
+
+  val frontEndBus  = Module(new DCBus(new MI(config))(config.nWide, 2))
+  val writeBackBus = Module(new DCBus(new Bus(config))(config.nWide, 2))
+  val commitedBus  = Module(new DCBus(new Bus(config))(config.nWide, 2))
+  val forwardBus   = Module(new DCBus(new Bus(config))(config.nWide, 2))
 
   val restage = Module(new RenameStage(config))
   val scstage = Module(new ScheduleStage(config))
@@ -47,35 +45,31 @@ class ExUnit(config: WoodConfig) extends Module {
   val rsstage = Module(new RetiredStatusStage(config))
   val arstage = Module(new ArchRegisterFileStage(config))
 
-  io.in          <> restage.io.in
-  restage.io.out <> scstage.io.in
-  scstage.io.out <> rrstage.io.in
-  rrstage.io.out <> exstage.io.in
+  frontEndBus.io.in     <> io.in
+  frontEndBus.io.out(0) <> restage.io.in
+  frontEndBus.io.out(1) <> rbstage.io.in
 
-  exstage.io.out <> wbstage.io.in
+  restage.io.out          <> scstage.io.in
+  scstage.io.out          <> rrstage.io.in
+  rrstage.io.out          <> exstage.io.in
+  exstage.io.out          <> wbstage.io.in
+  wbstage.io.writeBackBus <> writeBackBus.io.in
+  writeBackBus.io.out(0)  <> rsstage.io.writeBackBus
+  writeBackBus.io.out(1)  <> rrstage.io.writeBackBus
 
-  io.in          <> rbstage.io.in
-  rbstage.io.out <> rsstage.io.in
-  rsstage.io.out <> arstage.io.in
+  rbstage.io.out         <> rsstage.io.in
+  rsstage.io.out         <> arstage.io.in
+  arstage.io.commitedBus <> commitedBus.io.in
+  commitedBus.io.out(0)  <> restage.io.commitedBus
+  commitedBus.io.out(1)  <> scstage.io.commitedBus
 
-  exstage.io.forwardBuses          <> io.forwardBuses
   arstage.io.previousRetiredStatus <> rsstage.io.previousRetiredStatus
 
-  restage.io.retiredBus <> arstage.io.retiredBus
-  scstage.io.retiredBus <> arstage.io.retiredBus
-  rsstage.io.tagBuses   <> wbstage.io.tagBuses
-  scstage.io.tagBuses   <> wbstage.io.tagBuses
-  rrstage.io.tagBuses   <> wbstage.io.tagBuses
+  exstage.io.forwardBus <> forwardBus.io.in
+  forwardBus.io.out(0)  <> scstage.io.forwardBus
+  forwardBus.io.out(1)  <> io.forwardBus
 
   rrstage.io.stall := 0.U // TODO
   scstage.io.stall := 0.U // TODO
 
-  val tagsReady = Wire(Vec(config.nWide, Bool()))
-
-  (0 until config.nWide).foreach(j => {
-    tagsReady(j)                 := exstage.io.forwardBuses(j).ready
-    wbstage.io.tagBuses(j).ready := tagsReady.asUInt.andR
-  })
-
-  // exstage.io.out   <>
 }
