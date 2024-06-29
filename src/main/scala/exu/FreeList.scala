@@ -3,40 +3,7 @@ package wood.exu
 import chisel3._
 import chisel3.util._
 import wood.WoodConfig
-import wood.std.{DCArbiter, DCRRQueue}
-
-class FreeListInitializer(config: WoodConfig) extends Module {
-  val io = IO(new Bundle {
-    val out = Vec(config.nWide, Decoupled(new Bus(config)))
-  })
-
-  val counter     = RegInit(0.U(config.tagWidth.W))
-  val initialized = RegInit(false.B)
-
-  val out_ready = Wire(Vec(config.nWide, Bool()))
-  out_ready := io.out.map(_.ready)
-
-  val ready     = out_ready.asUInt.andR
-  val was_ready = RegNext(ready)
-
-  when(!initialized && ready) {
-    counter := counter + config.nWide.U
-  }
-
-  val stopCount = Wire(UInt(log2Ceil(config.prfDepth).W))
-  stopCount := ((1.U << config.prfDepth.asUInt) - 1.U)
-
-  when((counter === stopCount) && !initialized) {
-    initialized := 1.U
-  }
-
-  (0 until config.nWide).foreach(j => {
-    io.out(j).bits.tag := counter + j.asUInt
-    io.out(j).valid    := !initialized
-
-    io.out(j).bits.data := DontCare
-  })
-}
+import wood.std.{DCArbiter, DCInitializer, DCRRQueue}
 
 class FreeList(config: WoodConfig) extends Module {
   val io = IO(new Bundle {
@@ -45,12 +12,16 @@ class FreeList(config: WoodConfig) extends Module {
   })
   val numWritePorts = config.nWide
 
-  val initializer = Module(new FreeListInitializer(config))
+  val initializer = Module(new DCInitializer(config.nWide, config.prfDepth, config.dataWidth, "addr"))
   val arbiter     = Module(new DCArbiter(new Bus(config))(config.nWide * 2, config.nWide))
   val q           = Module(new DCRRQueue(new Bus(config))(config.nWide, config.prfDepth))
 
   (0 until config.nWide).foreach(j => {
-    arbiter.io.in(j)                <> initializer.io.out(j)
+    arbiter.io.in(j).bits.data  := initializer.io.out(j).bits.data
+    arbiter.io.in(j).bits.tag   := initializer.io.out(j).bits.addr
+    arbiter.io.in(j).valid      := initializer.io.out(j).bits.enable & initializer.io.out(j).valid
+    initializer.io.out(j).ready := arbiter.io.in(j).valid
+
     arbiter.io.in(j + config.nWide) <> io.in(j)
   })
 

@@ -24,13 +24,13 @@ class ReservationStationRow(config: WoodConfig) extends Module {
   val busR2Matches = Wire(Vec(config.nWide, Bool()))
 
   val emptyNext      = Wire(Bool())
-  val empty          = RegEnable(emptyNext, 0.B, !io.stall)
+  val empty          = RegEnable(emptyNext, 1.B, !io.stall)
   val outReadyToFire = Wire(UInt(1.W))
   val outFiring      = Wire(UInt(1.W))
 
-  outReadyToFire := row.rs1_tag_valid & row.rs2_tag_valid & !empty
+  outReadyToFire := row.rs1_tag_valid.asBool && row.rs2_tag_valid.asBool && !empty
   io.out.valid   := outReadyToFire
-  outFiring      := outReadyToFire & io.out.ready
+  outFiring      := outReadyToFire.asBool && io.out.ready
   io.in.ready    := outFiring | empty
 
   emptyNext := MuxCase(

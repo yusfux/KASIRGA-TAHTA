@@ -12,7 +12,7 @@ case class WoodConfig(
   dataWidth: Int = 32,
   //--------------
   // FrUnitConfig
-  pcIndexWidth: Int = 6,
+  pcListDepth:  Int = 16,
   miQueueDepth: Int = 16,
   //--------------
   // ExUnitConfig
@@ -20,6 +20,8 @@ case class WoodConfig(
   rsDepth:  Int = 4 // Reservation station depth
   //--------------
 ) {
+  val pcIndexWidth: Int = log2Ceil(pcListDepth)
+
   val tagWidth:      Int = log2Ceil(prfDepth)
   val numALUs:       Int = nWide
   val numPortsFloat: Int = nWide
