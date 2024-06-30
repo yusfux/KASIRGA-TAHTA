@@ -10,8 +10,11 @@ case class TestConfig(val maxWidth: Int = 1) {}
 case class WoodConfig(
   nWide:     Int = 4,
   dataWidth: Int = 32,
+  addrWidth: Int = 32,
+  xlen:      Int = 32,
   //--------------
   // FrUnitConfig
+  iCacheDepth:  Int = 1024,
   pcListDepth:  Int = 16,
   miQueueDepth: Int = 16,
   //--------------

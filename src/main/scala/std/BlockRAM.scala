@@ -67,3 +67,25 @@ class DecoupledBlockRAM[T <: Data](gen: T)(params: BlockRAMParams) extends Modul
     io.rip(i).ready     := io.rop(i).ready
   }
 }
+
+class DecoupledSyncReadBlockRAM[T <: Data](gen: T)(params: BlockRAMParams) extends Module {
+  val io = IO(
+    new DecoupledBlockRAMIO(gen.cloneType)(log2Ceil(params.depth), params.numReadPorts, params.numWritePorts)
+  )
+  val mem = SyncReadMem(params.depth, gen.cloneType)
+
+  for (i <- 0 until params.numWritePorts) {
+    when(io.wp(i).bits.enable & io.wp(i).valid) {
+      mem.write(io.wp(i).bits.addr, io.wp(i).bits.data)
+    }
+    io.wp(i).ready := true.B
+  }
+
+  for (i <- 0 until params.numReadPorts) {
+    io.rop(i).bits.data := mem.read(io.rip(i).bits.addr)
+    io.rop(i).bits.addr := RegEnable(io.rip(i).bits.addr, io.rip(i).valid)
+    io.rop(i).valid     := RegNext(io.rip(i).valid)
+    io.rip(i).ready     := true.B
+  }
+}
+
