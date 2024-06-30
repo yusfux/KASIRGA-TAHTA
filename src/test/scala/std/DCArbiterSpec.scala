@@ -3,23 +3,21 @@ package wood.std
 import chisel3._
 import chiseltest._
 import org.scalatest.flatspec.AnyFlatSpec
-import wood.util.{GenerateVerilog, GetBackendAnnotation}
+import wood.util.{GenerateVerilog, GetBackendAnnotation, GetGroupedSequences}
 
 class DCArbiterSpec extends AnyFlatSpec with ChiselScalatestTester {
+  val numDataPerGroup = 30
 
   "DCArbiter" should s"work 1 to 1" in {
     test(new DCArbiter(UInt(8.W))(1, 1)).withAnnotations(GetBackendAnnotation()) { dut =>
       val inSources = dut.io.in.map(_.initSource())
       val outSinks  = dut.io.out.map(_.initSink())
 
-      val data    = 8.U
-      val numData = 100
-      val inputs  = Seq.fill(numData)(data)
-
+      val groupedSeqs = GetGroupedSequences(1, numDataPerGroup)
       fork {
-        inSources(0).enqueueSeq(inputs)
+        inSources(0).enqueueSeq(groupedSeqs(0))
       }.fork {
-        outSinks(0).expectDequeueSeq(inputs)
+        outSinks(0).expectDequeueSeq(groupedSeqs(0))
       }.joinAndStep()
     }
   }
@@ -28,14 +26,11 @@ class DCArbiterSpec extends AnyFlatSpec with ChiselScalatestTester {
       val inSources = dut.io.in.map(_.initSource())
       val outSinks  = dut.io.out.map(_.initSink())
 
-      val data    = 8.U
-      val numData = 100
-      val inputs  = Seq.fill(numData)(data)
-
+      val groupedSeqs = GetGroupedSequences(1, numDataPerGroup)
       fork {
-        inSources(0).enqueueSeq(inputs)
+        inSources(0).enqueueSeq(groupedSeqs(0))
       }.fork {
-        outSinks(0).expectDequeueSeq(inputs)
+        outSinks(0).expectDequeueSeq(groupedSeqs(0))
       }.fork {
         // port 2 is never used
         outSinks(1).expectInvalid()
@@ -48,19 +43,15 @@ class DCArbiterSpec extends AnyFlatSpec with ChiselScalatestTester {
       val inSources = dut.io.in.map(_.initSource())
       val outSinks  = dut.io.out.map(_.initSink())
 
-      val numData = 100
-      val zeros   = Seq.fill(numData)(0.U)
-      val ones    = Seq.fill(numData)(1.U)
-
-      // all input ports are valid
+      val groupedSeqs = GetGroupedSequences(2, numDataPerGroup)
       fork {
-        inSources(0).enqueueSeq(zeros)
+        inSources(0).enqueueSeq(groupedSeqs(0))
       }.fork {
-        inSources(1).enqueueSeq(ones)
+        inSources(1).enqueueSeq(groupedSeqs(1))
       }
 
       // input port 0 has priority
-      outSinks.head.expectDequeueSeq(zeros ++ ones)
+      outSinks.head.expectDequeueSeq(groupedSeqs(0) ++ groupedSeqs(1))
 
       dut.clock.step(1)
     }
@@ -92,18 +83,15 @@ class DCArbiterSpec extends AnyFlatSpec with ChiselScalatestTester {
       val inSources = dut.io.in.map(_.initSource())
       val outSinks  = dut.io.out.map(_.initSink())
 
-      val numData = 100
-      val zeros   = Seq.fill(numData)(0.U)
-      val ones    = Seq.fill(numData)(1.U)
-
+      val groupedSeqs = GetGroupedSequences(2, numDataPerGroup)
       fork {
-        inSources(0).enqueueSeq(zeros)
+        inSources(0).enqueueSeq(groupedSeqs(0))
       }.fork {
-        inSources(1).enqueueSeq(ones)
+        inSources(1).enqueueSeq(groupedSeqs(1))
       }.fork {
-        outSinks(0).expectDequeueSeq(zeros)
+        outSinks(0).expectDequeueSeq(groupedSeqs(0))
       }.fork {
-        outSinks(1).expectDequeueSeq(ones)
+        outSinks(1).expectDequeueSeq(groupedSeqs(1))
       }.joinAndStep()
     }
   }
@@ -112,22 +100,18 @@ class DCArbiterSpec extends AnyFlatSpec with ChiselScalatestTester {
       val inSources = dut.io.in.map(_.initSource())
       val outSinks  = dut.io.out.map(_.initSink())
 
-      val numData = 100
-      val zeros   = Seq.fill(numData)(0.U)
-      val ones    = Seq.fill(numData)(1.U)
-      val twos    = Seq.fill(numData)(2.U)
-
+      val groupedSeqs = GetGroupedSequences(3, numDataPerGroup)
       fork {
-        inSources(0).enqueueSeq(zeros)
+        inSources(0).enqueueSeq(groupedSeqs(0))
       }.fork {
-        inSources(1).enqueueSeq(ones)
+        inSources(1).enqueueSeq(groupedSeqs(1))
       }.fork {
-        inSources(2).enqueueSeq(twos)
+        inSources(2).enqueueSeq(groupedSeqs(2))
       }.fork {
         // Input port 0 and 1 will connect to output port 0 and 1 respectively. After they are done, input port 2 will connect to output port 0.
-        outSinks(0).expectDequeueSeq(zeros ++ twos)
+        outSinks(0).expectDequeueSeq(groupedSeqs(0) ++ groupedSeqs(2))
       }.fork {
-        outSinks(1).expectDequeueSeq(ones)
+        outSinks(1).expectDequeueSeq(groupedSeqs(1))
       }.joinAndStep()
     }
   }

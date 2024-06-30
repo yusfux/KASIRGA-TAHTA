@@ -4,13 +4,16 @@ import chisel3._
 import chisel3.std.BarrelShifter
 import chisel3.util._
 
-/*
-@note DCShifter is a shifter from a single numPorts number of ports input interface to a single numPorts number of ports output interface.
-@param numPorts: number of input/output ports
-@examples
- * Shifter from a single 2 port input interface to 2 port output interface, with 8 bit data size.
-  new DCShifter(UInt(8.W))(2)
- */
+/**
+  * DCShifter is a shifter from a single numPorts number of ports input interface to a single numPorts number of ports output interface.
+  *
+  * @param numPorts: number of input/output ports
+  *
+  * @example{{{
+  * Shifter from a single 2 port input interface to 2 port output interface, with 8 bit data size.
+  *  new DCShifter(UInt(8.W))(2)
+  * }}}
+  */
 class DCShifter[T <: Data](gen: T)(numPorts: Int) extends Module {
   val io = IO(new Bundle {
     val in    = Flipped(Vec(numPorts, Decoupled(gen.cloneType)))

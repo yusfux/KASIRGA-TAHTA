@@ -28,9 +28,14 @@ class WoodSpec extends AnyFlatSpec with ChiselScalatestTester {
   }
 
   def groupHexLines(hexLines: List[String], numGroups: Int): List[List[String]] = {
-    val expectedSize = hexLines.size / numGroups
-    val groupedLines = hexLines.grouped(expectedSize).toList
-    groupedLines.map(_.padTo(expectedSize, "0")) // Pad shorter lists with empty strings
+    val groupedLines = Array.fill(numGroups)(List[String]())
+
+    for ((line, index) <- hexLines.zipWithIndex) {
+      groupedLines(index % numGroups) = groupedLines(index % numGroups) :+ line
+    }
+
+    val maxSize = hexLines.size / numGroups
+    groupedLines.map(_.padTo(maxSize, "0")).toList
   }
 
   def hexStringToBigInt(hexString: String): BigInt = {

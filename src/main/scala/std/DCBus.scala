@@ -3,14 +3,17 @@ package wood.std
 import chisel3._
 import chisel3.util._
 
-/*
-@note DCBus connects an interface to multiple interfaces. All recipients of a port has to be ready.
-@param numPorts: number of ports
-@param numInterfaces: number of interfaces
-@examples
- * Bus connecting 8 port single interface to two output interfaces each having 8 ports.
-  new DCBus(UInt(8.W))(8,2)
- */
+/**
+  * DCBus connects an interface to multiple interfaces. All recipients of a port has to be ready.
+  *
+  * @param numPorts: number of ports
+  * @param numInterfaces: number of interfaces
+  *
+  * @example{{{
+  * Bus connecting 8 port single interface to two output interfaces each having 8 ports.
+  *  new DCBus(UInt(8.W))(8,2)
+  * }}}
+  */
 class DCBus[T <: Data](gen: T)(numPorts: Int, numInterfaces: Int) extends Module {
   val io = IO(new Bundle {
     val in  = Flipped(Vec(numPorts, Decoupled(gen.cloneType)))

@@ -3,16 +3,19 @@ package wood.std
 import chisel3._
 import chisel3.util._
 
-/*
-@note DCWriter is a memory writer which fills the memory with selected pattern.
-@param numPorts: number of memory write ports
-@param depth: memory depth
-@param dataWidth: data width
-@param dataPattern: "zero", "one" or "addr"
-@examples
- * Writer for 2 write port memory with 32 depth and 8 bit data width. Writes addr to every addr.
-  new DCWriter(UInt(8.W))(2,32,8,"addr")
- */
+/**
+  * DCWriter is a memory writer which fills the memory with selected pattern.
+  *
+  * @param numPorts: number of memory write ports
+  * @param depth: memory depth
+  * @param dataWidth: data width
+  * @param dataPattern: "zero", "one" or "addr"
+  *
+  * @example{{{
+  * Writer for 2 write port memory with 32 depth and 8 bit data width. Writes addr to every addr.
+  *  new DCWriter(UInt(8.W))(2,32,8,"addr")
+  * }}}
+  */
 class DCWriter(numPorts: Int, depth: Int, dataWidth: Int, dataPattern: String = "zero") extends Module {
   val io = IO(new Bundle {
     val out = Vec(numPorts, Decoupled(new WritePortI(UInt(dataWidth.W))(log2Ceil(depth))))

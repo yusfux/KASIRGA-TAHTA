@@ -6,6 +6,21 @@ import chiseltest.simulator.VerilatorFlags
 import chiseltest.{IcarusBackendAnnotation, TreadleBackendAnnotation, VerilatorBackendAnnotation, WriteVcdAnnotation}
 import treadle2.MemoryToVCD
 
+object GetGroupedSequences {
+  def apply(numGroups: Int, numDataPerGroup: Int): List[List[UInt]] = {
+    // In round robin fashion
+    val numData      = numDataPerGroup * numGroups
+    val datas        = (0 until numData).toList.map(_.U)
+    val groupedLines = Array.fill(numGroups)(List[UInt]())
+
+    for ((data, index) <- datas.zipWithIndex) {
+      groupedLines(index % numGroups) = groupedLines(index % numGroups) :+ data
+    }
+
+    groupedLines.map(_.padTo(numDataPerGroup, 0.U)).toList
+  }
+}
+
 object GenerateVerilog {
   def apply(gen: => RawModule, path: String = ""): Unit = {
     val projectDir = System.getProperty("user.dir")
