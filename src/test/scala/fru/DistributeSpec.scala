@@ -2,14 +2,13 @@ package wood.fru
 
 import chisel3._
 import chiseltest._
-
 import org.scalatest.flatspec.AnyFlatSpec
-import wood.util.{GenerateVerilog, GetBackendAnnotation}
-import wood.fru.MI
-import wood.fru.DecodeConfig.{TYPE_FLOAT, TYPE_INT}
-import wood.util.GetGroupedSequences
-import wood.{TestConfig, WoodConfig}
 import org.scalatest.ParallelTestExecution
+
+import wood.util.{GetBackendAnnotation, GetGroupedSequences, TestGenerateVerilog}
+import wood.{TestConfig, WoodConfig}
+import wood.fru.DecodeConfig.{TYPE_FLOAT, TYPE_INT}
+import wood.fru.MI
 
 class DistributeStageSpec extends AnyFlatSpec with ChiselScalatestTester with ParallelTestExecution {
   val config = new WoodConfig(nWide = 2)
@@ -131,18 +130,9 @@ class DistributeStageSpec extends AnyFlatSpec with ChiselScalatestTester with Pa
 
   val tconfig = new TestConfig()
   (1 to tconfig.maxWidth).foreach(j => {
+    val config = new WoodConfig(nWide = j)
     "DistributeStage" should s"emit Verilog ${j} wide" in {
-      val config          = new WoodConfig(nWide = j)
-      val currentTestName = testNames.toList.map(_.replaceAll(" ", "_"))(j - 1)
-      val testRunDir      = s"test_run_dir/$currentTestName"
-      val dir             = new java.io.File(testRunDir)
-
-      if (!dir.exists()) {
-        dir.mkdirs()
-      }
-
-      GenerateVerilog(new DistributeStage(config), path = testRunDir)
+      TestGenerateVerilog(new DistributeStage(config), testNames.filter(_.contains("emit Verilog")), j)
     }
   })
-
 }

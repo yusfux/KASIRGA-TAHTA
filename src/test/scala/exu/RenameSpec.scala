@@ -2,14 +2,13 @@ package wood.exu
 
 import chisel3._
 import chiseltest._
-import wood.fru.MI
-import wood.WoodConfig
 
 import org.scalatest.flatspec.AnyFlatSpec
-import wood.util.GetBackendAnnotation
-import wood.util.GenerateVerilog
-import wood.TestConfig
 import org.scalatest.ParallelTestExecution
+
+import wood.fru.MI
+import wood.{TestConfig, WoodConfig}
+import wood.util.{GetBackendAnnotation, TestGenerateVerilog}
 
 class RenameStageSpec extends AnyFlatSpec with ChiselScalatestTester with ParallelTestExecution {
   val config = new WoodConfig(nWide = 2)
@@ -36,17 +35,9 @@ class RenameStageSpec extends AnyFlatSpec with ChiselScalatestTester with Parall
 
   val tconfig = new TestConfig()
   (1 to tconfig.maxWidth).foreach(j => {
+    val config = new WoodConfig(nWide = j)
     "RenameStage" should s"emit Verilog ${j} wide" in {
-      val config          = new WoodConfig(nWide = j)
-      val currentTestName = testNames.toList.map(_.replaceAll(" ", "_"))(j - 1)
-      val testRunDir      = s"test_run_dir/$currentTestName"
-      val dir             = new java.io.File(testRunDir)
-
-      if (!dir.exists()) {
-        dir.mkdirs()
-      }
-
-      GenerateVerilog(new RenameStage(config), path = testRunDir)
+      TestGenerateVerilog(new RenameStage(config), testNames.filter(_.contains("emit Verilog")), j)
     }
   })
 }

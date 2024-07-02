@@ -21,6 +21,18 @@ object GetGroupedSequences { // It is easier to follow sequences in a waveform
   }
 }
 
+object TestGenerateVerilog {
+  def apply(gen: => RawModule, testNames: Set[String], testIndex: Int): Unit = {
+    val currentTestName = testNames.toList.map(_.replaceAll(" ", "_"))(testIndex - 1)
+    val testRunDir      = s"test_run_dir/$currentTestName"
+    val dir             = new java.io.File(testRunDir)
+    if (!dir.exists()) {
+      dir.mkdirs()
+    }
+    GenerateVerilog(gen, path = testRunDir)
+  }
+}
+
 object GenerateVerilog {
   def apply(gen: => RawModule, path: String = ""): Unit = {
     val projectDir = System.getProperty("user.dir")

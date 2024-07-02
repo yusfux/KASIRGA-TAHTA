@@ -10,14 +10,12 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import scala.util.Random
 import scala.math.log10
-
 import scala.collection.mutable.Queue
+
 import wood.exu.ALUOp
-import wood.util.{GetBackendAnnotation}
+import wood.util.{GetBackendAnnotation, TestGenerateVerilog}
 import wood.fru.{DecodeConfig, MI}
-import wood.WoodConfig
-import wood.TestConfig
-import wood.util.GenerateVerilog
+import wood.{TestConfig, WoodConfig}
 
 trait ALUBehavior {
   this: AnyFlatSpec with ChiselScalatestTester =>
@@ -165,17 +163,9 @@ class ALUSpec extends AnyFlatSpec with ALUBehavior with ChiselScalatestTester wi
 
   val tconfig = new TestConfig()
   (1 to tconfig.maxWidth).foreach(j => {
+    val config = new WoodConfig(nWide = j)
     "ALU" should s"emit Verilog ${j} wide" in {
-      val config          = new WoodConfig(nWide = j)
-      val currentTestName = testNames.toList.map(_.replaceAll(" ", "_"))(j - 1)
-      val testRunDir      = s"test_run_dir/$currentTestName"
-      val dir             = new java.io.File(testRunDir)
-
-      if (!dir.exists()) {
-        dir.mkdirs()
-      }
-
-      GenerateVerilog(new ALU(config), path = testRunDir)
+      TestGenerateVerilog(new ALU(config), testNames.filter(_.contains("emit Verilog")), j)
     }
   })
 

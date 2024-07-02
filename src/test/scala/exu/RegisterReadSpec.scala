@@ -2,26 +2,17 @@ package wood.exu
 
 import chiseltest._
 import org.scalatest.flatspec.AnyFlatSpec
-import wood.WoodConfig
-import wood.util.GenerateVerilog
-import wood.TestConfig
 import org.scalatest.ParallelTestExecution
+
+import wood.util.TestGenerateVerilog
+import wood.{TestConfig, WoodConfig}
 
 class RegisterReadSpec extends AnyFlatSpec with ChiselScalatestTester with ParallelTestExecution {
   val tconfig = new TestConfig()
   (1 to tconfig.maxWidth).foreach(j => {
+    val config = new WoodConfig(nWide = j)
     "RegisterReadStage" should s"emit Verilog ${j} wide" in {
-      val config          = new WoodConfig(nWide = j)
-      val currentTestName = testNames.toList.map(_.replaceAll(" ", "_"))(j - 1)
-      val testRunDir      = s"test_run_dir/$currentTestName"
-      val dir             = new java.io.File(testRunDir)
-
-      if (!dir.exists()) {
-        dir.mkdirs()
-      }
-
-      GenerateVerilog(new RegisterReadStage(config), path = testRunDir)
+      TestGenerateVerilog(new RegisterReadStage(config), testNames.filter(_.contains("emit Verilog")), j)
     }
   })
-
 }

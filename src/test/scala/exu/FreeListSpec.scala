@@ -2,16 +2,23 @@ package wood.exu
 
 import chiseltest._
 import org.scalatest.flatspec.AnyFlatSpec
-import wood.util.GetBackendAnnotation
-import wood.WoodConfig
-import wood.TestConfig
-import wood.util.GenerateVerilog
 import org.scalatest.ParallelTestExecution
 
+import wood.util.{GetBackendAnnotation, TestGenerateVerilog}
+import wood.{TestConfig, WoodConfig}
+
 class FreeListSpec extends AnyFlatSpec with ChiselScalatestTester with ParallelTestExecution {
-  val config = new WoodConfig(nWide = 2)
+
+  val tconfig = new TestConfig()
+  (1 to tconfig.maxWidth).foreach(j => {
+    val config = new WoodConfig(nWide = j)
+    "FreeList" should s"emit Verilog ${j} wide" in {
+      TestGenerateVerilog(new FreeList(config), testNames.filter(_.contains("emit Verilog")), j)
+    }
+  })
 
   "FreeList" should "work with 2 inputs" in {
+    val config   = new WoodConfig(nWide = 2)
     val numPorts = 2
     test(new FreeList(config)).withAnnotations(GetBackendAnnotation()) { dut =>
       (0 until numPorts).foreach(j => { dut.io.out(j).ready.poke(0) })
@@ -20,20 +27,4 @@ class FreeListSpec extends AnyFlatSpec with ChiselScalatestTester with ParallelT
       step(100)
     }
   }
-
-  val tconfig = new TestConfig()
-  (1 to tconfig.maxWidth).foreach(j => {
-    "FreeList" should s"emit Verilog ${j} wide" in {
-      val config          = new WoodConfig(nWide = j)
-      val currentTestName = testNames.toList.map(_.replaceAll(" ", "_"))(j - 1)
-      val testRunDir      = s"test_run_dir/$currentTestName"
-      val dir             = new java.io.File(testRunDir)
-
-      if (!dir.exists()) {
-        dir.mkdirs()
-      }
-
-      GenerateVerilog(new FreeList(config), path = testRunDir)
-    }
-  })
 }

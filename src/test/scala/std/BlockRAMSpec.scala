@@ -4,10 +4,10 @@ import chisel3._
 import chisel3.util._
 import chisel3.experimental.BundleLiterals._
 import chiseltest._
-
 import org.scalatest.flatspec.AnyFlatSpec
-import wood.util.{GenerateVerilog, GetBackendAnnotation}
 import org.scalatest.ParallelTestExecution
+
+import wood.util.{GenerateVerilog, GetBackendAnnotation}
 
 class BlockRAMSpec extends AnyFlatSpec with ChiselScalatestTester with ParallelTestExecution {
 

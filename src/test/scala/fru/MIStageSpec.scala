@@ -2,14 +2,11 @@ package wood.fru
 
 import chisel3._
 import chiseltest._
-
 import org.scalatest.flatspec.AnyFlatSpec
-import wood.util.{GenerateVerilog, GetBackendAnnotation}
-// import wood.util.{GenerateVerilog}
-import wood.WoodConfig
-import wood.TestConfig
-import wood.util.GetGroupedSequences
 import org.scalatest.ParallelTestExecution
+
+import wood.{TestConfig, WoodConfig}
+import wood.util.{GetBackendAnnotation, GetGroupedSequences, TestGenerateVerilog}
 
 class MIStageSpec extends AnyFlatSpec with ChiselScalatestTester with ParallelTestExecution {
   val numDataPerGroup = 30
@@ -114,17 +111,9 @@ class MIStageSpec extends AnyFlatSpec with ChiselScalatestTester with ParallelTe
 
   val tconfig = new TestConfig()
   (1 to tconfig.maxWidth).foreach(j => {
+    val config = new WoodConfig(nWide = j)
     "MIStage" should s"emit Verilog ${j} wide" in {
-      val config          = new WoodConfig(nWide = j)
-      val currentTestName = testNames.toList.map(_.replaceAll(" ", "_"))(j - 1)
-      val testRunDir      = s"test_run_dir/$currentTestName"
-      val dir             = new java.io.File(testRunDir)
-
-      if (!dir.exists()) {
-        dir.mkdirs()
-      }
-
-      GenerateVerilog(new MIStage(config), path = testRunDir)
+      TestGenerateVerilog(new MIStage(config), testNames.filter(_.contains("emit Verilog")), j)
     }
   })
 }

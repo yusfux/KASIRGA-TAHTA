@@ -3,12 +3,11 @@ package wood.fru
 import chiseltest._
 
 import org.scalatest.flatspec.AnyFlatSpec
-
-import wood.util.GenerateVerilog
-import wood.fru.{DecodeConfig, Decoder}
-import wood.WoodConfig
-import wood.TestConfig
 import org.scalatest.ParallelTestExecution
+
+import wood.{TestConfig, WoodConfig}
+import wood.util.TestGenerateVerilog
+import wood.fru.{DecodeConfig, Decoder}
 
 class DecodeSpec extends AnyFlatSpec with ChiselScalatestTester with ParallelTestExecution {
 
@@ -24,31 +23,15 @@ class DecodeSpec extends AnyFlatSpec with ChiselScalatestTester with ParallelTes
 
   val tconfig = new TestConfig()
   (1 to tconfig.maxWidth).foreach(j => {
+    val config = new WoodConfig(nWide = j)
     "Decoder" should s"emit Verilog ${j} wide" in {
-      val config          = new WoodConfig(nWide = j)
-      val currentTestName = testNames.toList.map(_.replaceAll(" ", "_"))(j - 1)
-      val testRunDir      = s"test_run_dir/$currentTestName"
-      val dir             = new java.io.File(testRunDir)
-
-      if (!dir.exists()) {
-        dir.mkdirs()
-      }
-
-      GenerateVerilog(new Decoder(config), path = testRunDir)
+      TestGenerateVerilog(new Decoder(config), testNames.filter(_.contains("emit Verilog")), j)
     }
   })
   (1 to tconfig.maxWidth).foreach(j => {
+    val config = new WoodConfig(nWide = j)
     "DecodeStage" should s"emit Verilog ${j} wide" in {
-      val config          = new WoodConfig(nWide = j)
-      val currentTestName = testNames.toList.map(_.replaceAll(" ", "_"))(j - 1)
-      val testRunDir      = s"test_run_dir/$currentTestName"
-      val dir             = new java.io.File(testRunDir)
-
-      if (!dir.exists()) {
-        dir.mkdirs()
-      }
-
-      GenerateVerilog(new DecodeStage(config), path = testRunDir)
+      TestGenerateVerilog(new DecodeStage(config), testNames.filter(_.contains("emit Verilog")), j)
     }
   })
 }

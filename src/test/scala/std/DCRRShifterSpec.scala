@@ -3,8 +3,9 @@ package wood.std
 import chisel3._
 import chiseltest._
 import org.scalatest.flatspec.AnyFlatSpec
-import wood.util.{GenerateVerilog, GetBackendAnnotation, GetGroupedSequences}
 import org.scalatest.ParallelTestExecution
+
+import wood.util.{GenerateVerilog, GetBackendAnnotation, GetGroupedSequences}
 
 class DCRRShifterSpec extends AnyFlatSpec with ChiselScalatestTester with ParallelTestExecution {
   val numDataPerGroup = 30
