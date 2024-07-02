@@ -6,68 +6,6 @@ import wood.WoodConfig
 import wood.fru.{MI, PipelineRegister}
 import wood.std.{BlockRAMParams, DCBus, DecoupledBlockRAM}
 
-/**
-  * overrides rs1TagValid and rs2TagValid if tags from forwardBus match
-  */
-class OverrideTagValid(val config: WoodConfig) extends Module {
-  val io = IO(new Bundle {
-    val in         = Flipped(Decoupled(new MI(config)))
-    val forwardBus = Flipped(Vec(config.nWide, Decoupled(new Bus(config))))
-    val out        = Decoupled(new MI(config))
-  })
-
-  val rs1TagMatches = Wire(Vec(config.nWide, UInt(1.W)))
-  val rs2TagMatches = Wire(Vec(config.nWide, UInt(1.W)))
-  val overriden     = Wire(Decoupled(new MI(config)))
-
-  (0 until config.nWide).foreach(j => {
-    rs1TagMatches(j) := MuxCase(
-      io.in.bits.rs1TagValid,
-      Array(
-        ((io.in.bits.rs1Tag === io.forwardBus(j).bits.tag) & io.forwardBus(j).valid) -> 1.U
-      ).toIndexedSeq
-    )
-
-    rs2TagMatches(j) := MuxCase(
-      io.in.bits.rs2TagValid,
-      Array(
-        ((io.in.bits.rs2Tag === io.forwardBus(j).bits.tag) & io.forwardBus(j).valid) -> 1.U
-      ).toIndexedSeq
-    )
-    io.forwardBus(j).ready := io.out.ready
-  })
-
-  overriden                  <> io.in
-  overriden.bits.rs1TagValid := rs1TagMatches.asUInt.orR
-  overriden.bits.rs2TagValid := rs2TagMatches.asUInt.orR
-
-  io.out <> overriden
-}
-
-/**
-  * overrides rs1TagValid and rs2TagValid if tags from forwardBus match
-  */
-class OverrideTagValids(val config: WoodConfig) extends Module {
-  val io = IO(new Bundle {
-    val in    = Flipped(Vec(config.nWide, Decoupled(new MI(config))))
-    val inBus = Flipped(Vec(config.nWide, Decoupled(new Bus(config))))
-    val out   = Vec(config.nWide, Decoupled(new MI(config)))
-  })
-
-  val forwardBus = Module(new DCBus(new Bus(config))(config.nWide, config.nWide))
-  val overriders = Seq.tabulate(config.nWide) { j =>
-    Module(new OverrideTagValid(config))
-  }
-
-  forwardBus.io.in <> io.inBus
-
-  (0 until config.nWide).foreach(j => {
-    overriders(j).io.in         <> io.in(j)
-    overriders(j).io.forwardBus <> forwardBus.io.out(j)
-    io.out(j)                   <> overriders(j).io.out
-  })
-}
-
 class ValidList(val config: WoodConfig) extends Module {
   val io = IO(new Bundle {
     val in          = Flipped(Vec(config.nWide, Decoupled(new MI(config))))
@@ -84,9 +22,9 @@ class ValidList(val config: WoodConfig) extends Module {
   )
   // No need to forward the commitedBus, there is a 2 cycle delay between tag being added to the free list and valid list is being read.
   val forwardBus        = Module(new DCBus(new Bus(config))(config.nWide, 2)) // to overridenForward and valid list wp
-  val overrideForward   = Module(new OverrideTagValids(config)) // override from the forwardBus
-  val overrideWakeup    = Module(new OverrideTagValids(config)) // override from the wakeupBus
-  val overrideValidList = Module(new OverrideTagValids(config)) // override from the validList
+  val overrideForward   = Module(new OverrideFromBuses(config)) // override from the forwardBus
+  val overrideWakeup    = Module(new OverrideFromBuses(config)) // override from the wakeupBus
+  val overrideValidList = Module(new OverrideFromBuses(config)) // override from the validList
 
   overrideWakeup.io.inBus    <> io.wakeupBus
   forwardBus.io.in           <> io.forwardBus

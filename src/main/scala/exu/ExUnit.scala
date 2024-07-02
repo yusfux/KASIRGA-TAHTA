@@ -32,7 +32,7 @@ class ExUnit(config: WoodConfig) extends Module {
   val frontEndBus  = Module(new DCBus(new MI(config))(config.nWide, 2))
   val writeBackBus = Module(new DCBus(new Bus(config))(config.nWide, 2))
   val commitedBus  = Module(new DCBus(new Bus(config))(config.nWide, 2))
-  val forwardBus   = Module(new DCBus(new Bus(config))(config.nWide, 2))
+  val forwardBus   = Module(new DCBus(new Bus(config))(config.nWide, 3))
 
   val restage = Module(new RenameStage(config))
   val scstage = Module(new ScheduleStage(config))
@@ -67,7 +67,10 @@ class ExUnit(config: WoodConfig) extends Module {
 
   exstage.io.forwardBus <> forwardBus.io.in
   forwardBus.io.out(0)  <> scstage.io.forwardBus
-  forwardBus.io.out(1)  <> io.forwardBus
+  forwardBus.io.out(1)  <> rrstage.io.forwardBus
+  forwardBus.io.out(2)  <> io.forwardBus
+
+  scstage.io.wakeupBus <> rrstage.io.wakeupBus
 
   rrstage.io.stall := 0.U // TODO
   scstage.io.stall := 0.U // TODO
