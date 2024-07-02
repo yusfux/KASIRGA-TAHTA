@@ -28,8 +28,8 @@ class ALU(config: WoodConfig) extends Module {
   val (control, valid) = ALUOp.safe(io.mi.bits.exOp)
   // assert(valid, "Enum state must be valid, got %d!", io.mi.bits.exOp) // https://github.com/llvm/circt/issues/6970
 
-  val data1 = Mux(io.mi.bits.operand === OPERAND_REG.toInt.U, io.mi.bits.rs1_data, io.mi.bits.imm)
-  val data2 = Mux(io.mi.bits.operand === OPERAND_REG.toInt.U, io.mi.bits.rs2_data, io.mi.bits.imm)
+  val data1 = Mux(io.mi.bits.operand === OPERAND_REG.toInt.U, io.mi.bits.rs1Data, io.mi.bits.imm)
+  val data2 = Mux(io.mi.bits.operand === OPERAND_REG.toInt.U, io.mi.bits.rs2Data, io.mi.bits.imm)
 
   val arithmeticData1 = Mux(control === ALUOp.sub, Cat(data1, 1.U(1.W)), Cat(data1, 0.U(1.W)))
   val arithmeticData2 = Mux(control === ALUOp.sub, Cat(~data2, 1.U(1.W)), Cat(data2, 0.U(1.W)))
@@ -50,8 +50,8 @@ class ALU(config: WoodConfig) extends Module {
     is(ALUOp.pass) { result := data2 }
   }
 
-  io.out.bits         := io.mi.bits
-  io.out.bits.rd_data := result
-  io.out.valid        := io.mi.valid
-  io.mi.ready         := io.out.ready
+  io.out.bits        := io.mi.bits
+  io.out.bits.rdData := result
+  io.out.valid       := io.mi.valid
+  io.mi.ready        := io.out.ready
 }

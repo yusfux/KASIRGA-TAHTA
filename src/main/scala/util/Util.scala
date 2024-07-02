@@ -6,7 +6,7 @@ import chiseltest.simulator.VerilatorFlags
 import chiseltest.{IcarusBackendAnnotation, TreadleBackendAnnotation, VerilatorBackendAnnotation, WriteVcdAnnotation}
 import treadle2.MemoryToVCD
 
-object GetGroupedSequences {
+object GetGroupedSequences { // It is easier to follow sequences in a waveform
   def apply(numGroups: Int, numDataPerGroup: Int): List[List[UInt]] = {
     // In round robin fashion
     val numData      = numDataPerGroup * numGroups

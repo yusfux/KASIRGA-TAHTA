@@ -5,8 +5,9 @@ import chiseltest._
 
 import org.scalatest.flatspec.AnyFlatSpec
 import wood.util.{GenerateVerilog, GetBackendAnnotation, GetGroupedSequences}
+import org.scalatest.ParallelTestExecution
 
-class DCRRQueueSpec extends AnyFlatSpec with ChiselScalatestTester {
+class DCRRQueueSpec extends AnyFlatSpec with ChiselScalatestTester with ParallelTestExecution {
   val defaultDepth    = 13
   val numDataPerGroup = 30
 

@@ -5,8 +5,9 @@ import org.scalatest.flatspec.AnyFlatSpec
 import wood.WoodConfig
 import wood.util.GenerateVerilog
 import wood.TestConfig
+import org.scalatest.ParallelTestExecution
 
-class ReservationStationSpec extends AnyFlatSpec with ChiselScalatestTester {
+class ReservationStationSpec extends AnyFlatSpec with ChiselScalatestTester with ParallelTestExecution {
   val tconfig = new TestConfig()
   (1 to tconfig.maxWidth).foreach(j => {
     "ReservationStation" should s"emit Verilog ${j} wide" in {

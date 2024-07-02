@@ -12,8 +12,8 @@ class WriteBackStage(config: WoodConfig) extends Module {
   })
 
   (0 until config.nWide).foreach(j => {
-    io.writeBackBus(j).bits.tag  := io.in(j).bits.rd_tag
-    io.writeBackBus(j).bits.data := io.in(j).bits.rd_data
+    io.writeBackBus(j).bits.tag  := io.in(j).bits.rdTag
+    io.writeBackBus(j).bits.data := io.in(j).bits.rdData
     io.writeBackBus(j).valid     := io.in(j).valid
     io.in(j).ready               := io.writeBackBus(j).ready
   })

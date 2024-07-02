@@ -6,8 +6,9 @@ import wood.util.GetBackendAnnotation
 import wood.WoodConfig
 import wood.TestConfig
 import wood.util.GenerateVerilog
+import org.scalatest.ParallelTestExecution
 
-class FreeListSpec extends AnyFlatSpec with ChiselScalatestTester {
+class FreeListSpec extends AnyFlatSpec with ChiselScalatestTester with ParallelTestExecution {
   val config = new WoodConfig(nWide = 2)
 
   "FreeList" should "work with 2 inputs" in {

@@ -4,8 +4,9 @@ import chisel3._
 import chiseltest._
 import org.scalatest.flatspec.AnyFlatSpec
 import wood.util.{GenerateVerilog, GetBackendAnnotation, GetGroupedSequences}
+import org.scalatest.ParallelTestExecution
 
-class DCBusSpec extends AnyFlatSpec with ChiselScalatestTester {
+class DCBusSpec extends AnyFlatSpec with ChiselScalatestTester with ParallelTestExecution {
   val numDataPerGroup = 30
 
   "DCBus" should s"work 1f(1p) to 1f" in {

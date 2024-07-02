@@ -9,8 +9,9 @@ import org.scalatest.flatspec.AnyFlatSpec
 import wood.util.GetBackendAnnotation
 import wood.util.GenerateVerilog
 import wood.TestConfig
+import org.scalatest.ParallelTestExecution
 
-class RenameStageSpec extends AnyFlatSpec with ChiselScalatestTester {
+class RenameStageSpec extends AnyFlatSpec with ChiselScalatestTester with ParallelTestExecution {
   val config = new WoodConfig(nWide = 2)
 
   "RenameStage" should "work with 2 inputs" in {

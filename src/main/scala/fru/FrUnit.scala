@@ -8,54 +8,71 @@ import wood.exu.Bus
 import wood.fru.{DecodeConfig, DecodeStage, DistributeStage, MIStage}
 
 case class MI(config: WoodConfig) extends Bundle {
-  val isFloat       = UInt(DecodeConfig.subWidths(0).W)
-  val operand       = UInt(DecodeConfig.subWidths(1).W)
-  val write_rf      = UInt(DecodeConfig.subWidths(2).W)
-  val exEngine      = UInt(DecodeConfig.subWidths(3).W)
-  val exOp          = UInt(DecodeConfig.subWidths(4).W)
-  val imm           = UInt(32.W) // TODO
-  val rs1           = UInt(5.W)
-  val rs2           = UInt(5.W)
-  val rd            = UInt(5.W)
-  val pc_idx        = UInt(config.pcIndexWidth.W)
-  val rs1_tag       = UInt(config.tagWidth.W)
-  val rs1_tag_valid = UInt(1.W)
-  val rs2_tag       = UInt(config.tagWidth.W)
-  val rs2_tag_valid = UInt(1.W)
-  val rd_tag        = UInt(config.tagWidth.W)
-  val rs1_data      = UInt(config.dataWidth.W)
-  val rs2_data      = UInt(config.dataWidth.W)
-  val rd_data       = UInt(config.dataWidth.W)
-  val retired       = UInt(1.W)
-  val inst          = UInt(32.W) // for testbench only
+  val isFloat     = UInt(DecodeConfig.subWidths(0).W)
+  val operand     = UInt(DecodeConfig.subWidths(1).W)
+  val writeRf     = UInt(DecodeConfig.subWidths(2).W)
+  val exEngine    = UInt(DecodeConfig.subWidths(3).W)
+  val exOp        = UInt(DecodeConfig.subWidths(4).W)
+  val imm         = UInt(32.W) // TODO
+  val rs1         = UInt(5.W)
+  val rs2         = UInt(5.W)
+  val rd          = UInt(5.W)
+  val pcIdx       = UInt(config.pcIndexWidth.W)
+  val rs1Tag      = UInt(config.tagWidth.W)
+  val rs1TagValid = UInt(1.W)
+  val rs2Tag      = UInt(config.tagWidth.W)
+  val rs2TagValid = UInt(1.W)
+  val rdTag       = UInt(config.tagWidth.W)
+  val rs1Data     = UInt(config.dataWidth.W)
+  val rs2Data     = UInt(config.dataWidth.W)
+  val rdData      = UInt(config.dataWidth.W)
+  val retired     = UInt(1.W)
+  val inst        = UInt(32.W) // for testbench only
 }
 
-object MI { // for testbench only, set all values with specific overrides
+object MI { // for testbench only, set all to value except overrides
   def apply(config: WoodConfig, value: UInt, overrides: Map[String, UInt] = Map.empty): MI = {
     val mi = new MI(config).Lit(
-      _.isFloat       -> overrides.getOrElse("isFloat", value),
-      _.operand       -> overrides.getOrElse("operand", value),
-      _.write_rf      -> overrides.getOrElse("write_rf", value),
-      _.exEngine      -> overrides.getOrElse("exEngine", value),
-      _.exOp          -> overrides.getOrElse("exOp", value),
-      _.imm           -> overrides.getOrElse("imm", value),
-      _.rs1           -> overrides.getOrElse("rs1", value),
-      _.rs2           -> overrides.getOrElse("rs2", value),
-      _.rd            -> overrides.getOrElse("rd", value),
-      _.pc_idx        -> overrides.getOrElse("pc_idx", value),
-      _.rs1_tag       -> overrides.getOrElse("rs1_tag", value),
-      _.rs1_tag_valid -> overrides.getOrElse("rs1_tag_valid", value),
-      _.rs2_tag       -> overrides.getOrElse("rs2_tag", value),
-      _.rs2_tag_valid -> overrides.getOrElse("rs2_tag_valid", value),
-      _.rd_tag        -> overrides.getOrElse("rd_tag", value),
-      _.rs1_data      -> overrides.getOrElse("rs1_data", value),
-      _.rs2_data      -> overrides.getOrElse("rs2_data", value),
-      _.rd_data       -> overrides.getOrElse("rd_data", value),
-      _.retired       -> overrides.getOrElse("retired", value),
-      _.inst          -> overrides.getOrElse("inst", value)
+      _.isFloat     -> overrides.getOrElse("isFloat", value),
+      _.operand     -> overrides.getOrElse("operand", value),
+      _.writeRf     -> overrides.getOrElse("writeRf", value),
+      _.exEngine    -> overrides.getOrElse("exEngine", value),
+      _.exOp        -> overrides.getOrElse("exOp", value),
+      _.imm         -> overrides.getOrElse("imm", value),
+      _.rs1         -> overrides.getOrElse("rs1", value),
+      _.rs2         -> overrides.getOrElse("rs2", value),
+      _.rd          -> overrides.getOrElse("rd", value),
+      _.pcIdx       -> overrides.getOrElse("pcIdx", value),
+      _.rs1Tag      -> overrides.getOrElse("rs1Tag", value),
+      _.rs1TagValid -> overrides.getOrElse("rs1TagValid", value),
+      _.rs2Tag      -> overrides.getOrElse("rs2Tag", value),
+      _.rs2TagValid -> overrides.getOrElse("rs2TagValid", value),
+      _.rdTag       -> overrides.getOrElse("rdTag", value),
+      _.rs1Data     -> overrides.getOrElse("rs1Data", value),
+      _.rs2Data     -> overrides.getOrElse("rs2Data", value),
+      _.rdData      -> overrides.getOrElse("rdData", value),
+      _.retired     -> overrides.getOrElse("retired", value),
+      _.inst        -> overrides.getOrElse("inst", value)
     )
     mi
   }
+}
+
+class PipelineRegister(val config: WoodConfig) extends Module {
+  val io = IO(new Bundle {
+    val in  = Flipped(Vec(config.nWide, Decoupled(new MI(config))))
+    val out = Vec(config.nWide, Decoupled(new MI(config)))
+  })
+
+  val stall = Wire(Vec(config.nWide, Bool()))
+  stall := io.out.map(!_.ready)
+
+  (0 until config.nWide).foreach(j => {
+
+    io.out(j).bits  := RegEnable(io.in(j).bits, 0.U.asTypeOf(new MI(config)), !stall(j).asBool)
+    io.out(j).valid := RegEnable(io.in(j).valid, 1.B, !stall(j).asBool)
+    io.in(j).ready  := io.out(j).ready
+  })
 }
 
 class FrUnit(config: WoodConfig) extends Module {

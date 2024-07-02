@@ -4,12 +4,13 @@ import chisel3._
 import chisel3.util._
 import wood.WoodConfig
 import wood.fru.MI
-import wood.std.{DCArbiter, DCDemux}
+import wood.std.{DCArbiter, DCBus, DCDemux}
 
 class ReservationStationRow(config: WoodConfig) extends Module {
   val io = IO(new Bundle {
     val in         = Flipped(Decoupled(new MI(config)))
     val forwardBus = Flipped(Vec(config.nWide, Decoupled(new Bus(config))))
+    val wakeupBus  = Flipped(Vec(config.nWide, Decoupled(new Bus(config))))
     val out        = Decoupled(new MI(config))
 
     val stall = Input(Bool())
@@ -20,15 +21,17 @@ class ReservationStationRow(config: WoodConfig) extends Module {
   val rowNext     = Wire(new MI(config))
   val row         = RegEnable(rowNext, 0.U.asTypeOf(new MI(config)), !io.stall)
 
-  val busR1Matches = Wire(Vec(config.nWide, Bool()))
-  val busR2Matches = Wire(Vec(config.nWide, Bool()))
+  val busR1MatchesForward = Wire(Vec(config.nWide, Bool()))
+  val busR2MatchesForward = Wire(Vec(config.nWide, Bool()))
+  val busR1MatchesWakeup  = Wire(Vec(config.nWide, Bool()))
+  val busR2MatchesWakeup  = Wire(Vec(config.nWide, Bool()))
 
   val emptyNext      = Wire(Bool())
   val empty          = RegEnable(emptyNext, 1.B, !io.stall)
   val outReadyToFire = Wire(UInt(1.W))
   val outFiring      = Wire(UInt(1.W))
 
-  outReadyToFire := row.rs1_tag_valid.asBool && row.rs2_tag_valid.asBool && !empty
+  outReadyToFire := row.rs1TagValid.asBool && row.rs2TagValid.asBool && !empty
   io.out.valid   := outReadyToFire
   outFiring      := outReadyToFire.asBool && io.out.ready
   io.in.ready    := outFiring | empty
@@ -42,37 +45,42 @@ class ReservationStationRow(config: WoodConfig) extends Module {
   )
 
   r1ValidNext := MuxCase(
-    row.rs1_tag_valid,
+    row.rs1TagValid,
     Seq(
-      io.in.valid                               -> io.in.bits.rs1_tag_valid,
-      (empty.asBool & !io.in.valid)             -> 0.U,
-      (!empty.asBool & busR1Matches.asUInt.orR) -> 1.U
+      io.in.valid                                      -> io.in.bits.rs1TagValid,
+      (empty.asBool & !io.in.valid)                    -> 0.U,
+      (!empty.asBool & busR1MatchesForward.asUInt.orR) -> 1.U,
+      (!empty.asBool & busR1MatchesWakeup.asUInt.orR)  -> 1.U
     )
   )
 
   r2ValidNext := MuxCase(
-    row.rs2_tag_valid,
+    row.rs2TagValid,
     Seq(
-      io.in.valid                               -> io.in.bits.rs2_tag_valid,
-      (empty.asBool & !io.in.valid)             -> 0.U,
-      (!empty.asBool & busR2Matches.asUInt.orR) -> 1.U
+      io.in.valid                                      -> io.in.bits.rs2TagValid,
+      (empty.asBool & !io.in.valid)                    -> 0.U,
+      (!empty.asBool & busR2MatchesForward.asUInt.orR) -> 1.U,
+      (!empty.asBool & busR2MatchesWakeup.asUInt.orR)  -> 1.U
     )
   )
 
   when(io.in.valid) {
     rowNext := io.in.bits
   }.otherwise {
-    rowNext               := row
-    rowNext.rs1_tag_valid := r1ValidNext
-    rowNext.rs2_tag_valid := r2ValidNext
+    rowNext             := row
+    rowNext.rs1TagValid := r1ValidNext
+    rowNext.rs2TagValid := r2ValidNext
   }
 
   io.out.bits := row
 
   for (j <- 0 until config.nWide) {
-    busR1Matches(j)        := io.forwardBus(j).valid & (row.rs1 === io.forwardBus(j).bits.tag)
-    busR2Matches(j)        := io.forwardBus(j).valid & (row.rs2 === io.forwardBus(j).bits.tag)
+    busR1MatchesForward(j) := io.forwardBus(j).valid & (row.rs1 === io.forwardBus(j).bits.tag)
+    busR2MatchesForward(j) := io.forwardBus(j).valid & (row.rs2 === io.forwardBus(j).bits.tag)
+    busR1MatchesWakeup(j)  := io.wakeupBus(j).valid & (row.rs1 === io.wakeupBus(j).bits.tag)
+    busR2MatchesWakeup(j)  := io.wakeupBus(j).valid & (row.rs2 === io.wakeupBus(j).bits.tag)
     io.forwardBus(j).ready := 1.U // TODO
+    io.wakeupBus(j).ready  := 1.U // TODO
   }
 }
 
@@ -80,36 +88,36 @@ class ReservationStation(config: WoodConfig) extends Module {
   val io = IO(new Bundle {
     val in         = Flipped(Decoupled(new MI(config)))
     val forwardBus = Flipped(Vec(config.nWide, Decoupled(new Bus(config))))
+    val wakeupBus  = Flipped(Vec(config.nWide, Decoupled(new Bus(config))))
     val out        = Decoupled(new MI(config))
 
     val stall = Input(UInt(1.W))
   })
 
+  val forwardBus = Module(new DCBus(new Bus(config))(config.nWide, config.rsDepth)) // to rs rows
+  val wakeupBus  = Module(new DCBus(new Bus(config))(config.nWide, config.rsDepth)) // to rs rows
+
   val rows    = Seq.fill(config.rsDepth)(Module(new ReservationStationRow(config)))
   val arbiter = Module(new DCArbiter(new MI(config))(config.rsDepth, 1))
   val demux   = Module(new DCDemux(new MI(config))(1, config.rsDepth))
 
-  val rowReady       = Wire(Vec(config.rsDepth, Bool()))
-  val rowTagBusReady = Wire(Vec(config.rsDepth, Bool()))
+  val rowReady = Wire(Vec(config.rsDepth, Bool()))
 
   demux.io.in(0)  <> io.in
   demux.io.sel(0) := PriorityEncoder(rowReady)
 
+  io.forwardBus <> forwardBus.io.in
+  io.wakeupBus  <> wakeupBus.io.in
+
   (0 until config.rsDepth).foreach(j => {
-    rowReady(j)       := rows(j).io.in.ready
-    rowTagBusReady(j) := rows(j).io.forwardBus.asUInt.andR
+    rowReady(j) := rows(j).io.in.ready
 
     rows(j).io.stall      := io.stall
-    rows(j).io.forwardBus <> io.forwardBus
+    rows(j).io.forwardBus <> forwardBus.io.out(j)
+    rows(j).io.wakeupBus  <> wakeupBus.io.out(j)
 
-    arbiter.io.in(j)   <> rows(j).io.out
-    demux.io.out(j)(0) <> rows(j).io.in
-
-    (0 until config.nWide).foreach(k => {
-      rows(j).io.forwardBus(k).bits  := io.forwardBus(k).bits
-      rows(j).io.forwardBus(k).valid := io.forwardBus(k).valid
-      io.forwardBus(k).ready         := rowTagBusReady.asUInt.andR
-    })
+    rows(j).io.in    <> demux.io.out(j)(0)
+    arbiter.io.in(j) <> rows(j).io.out
   })
 
   arbiter.io.out(0) <> io.out

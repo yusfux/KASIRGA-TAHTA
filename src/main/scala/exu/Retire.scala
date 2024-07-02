@@ -62,7 +62,7 @@ class RetiredStatusStage(config: WoodConfig) extends Module {
 
   (0 until config.nWide).foreach(j => {
 
-    retiredStatusRegisterFile.io.rip(j).bits.addr := io.in(j).bits.rd_tag
+    retiredStatusRegisterFile.io.rip(j).bits.addr := io.in(j).bits.rdTag
     retiredStatusRegisterFile.io.rip(j).valid     := io.in(j).valid
     io.in(j).ready                                := retiredStatusRegisterFile.io.rip(j).ready
     arbiters(j).io.in(0).bits                     := retiredStatusRegisterFile.io.rop(j).bits.data
@@ -70,7 +70,7 @@ class RetiredStatusStage(config: WoodConfig) extends Module {
     retiredStatusRegisterFile.io.rop(j).ready     := arbiters(j).io.in(0).ready
 
     arbiters(j).io.in(1).bits  := 1.U
-    arbiters(j).io.in(1).valid := io.writeBackBus(j).bits.tag === io.in(j).bits.rd_tag
+    arbiters(j).io.in(1).valid := io.writeBackBus(j).bits.tag === io.in(j).bits.rdTag
 
     arbiters(j).io.out(0).ready := io.out(j).valid
   })
@@ -81,7 +81,7 @@ class RetiredStatusStage(config: WoodConfig) extends Module {
     retiredStatusRegisterFile.io.wp(j).bits.enable := io.writeBackBus(j).valid
     retiredStatusRegisterFile.io.wp(j).bits.data   := 1.U
 
-    retiredStatusRegisterFile.io.wp(j + config.nWide).bits.addr   := io.previousRetiredStatus(j).bits.rd_tag
+    retiredStatusRegisterFile.io.wp(j + config.nWide).bits.addr   := io.previousRetiredStatus(j).bits.rdTag
     retiredStatusRegisterFile.io.wp(j + config.nWide).valid       := io.previousRetiredStatus(j).valid
     retiredStatusRegisterFile.io.wp(j + config.nWide).bits.enable := io.previousRetiredStatus(j).valid
     retiredStatusRegisterFile.io.wp(j + config.nWide).bits.data   := 0.U
@@ -131,8 +131,8 @@ class ArchRegisterFileStage(config: WoodConfig) extends Module {
     archRegisterFile.io.wp(j).bits.addr      := io.in(j).bits.rd
     archRegisterFile.io.wp(j).valid          := io.in(j).valid
     archRegisterFile.io.wp(j).bits.enable    := io.in(j).valid
-    archRegisterFile.io.wp(j).bits.data.tag  := io.in(j).bits.rd_tag
-    archRegisterFile.io.wp(j).bits.data.data := io.in(j).bits.rd_data
+    archRegisterFile.io.wp(j).bits.data.tag  := io.in(j).bits.rdTag
+    archRegisterFile.io.wp(j).bits.data.data := io.in(j).bits.rdData
 
     archRegisterFile.io.rip(j).bits.addr := io.in(j).bits.rd
     archRegisterFile.io.rip(j).valid     := io.in(j).valid

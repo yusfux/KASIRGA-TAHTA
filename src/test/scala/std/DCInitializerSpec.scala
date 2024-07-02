@@ -6,8 +6,9 @@ import chiseltest._
 import org.scalatest.flatspec.AnyFlatSpec
 import wood.util.{GenerateVerilog, GetBackendAnnotation}
 import chisel3.experimental.BundleLiterals._
+import org.scalatest.ParallelTestExecution
 
-class DCInitializerSpec extends AnyFlatSpec with ChiselScalatestTester {
+class DCInitializerSpec extends AnyFlatSpec with ChiselScalatestTester with ParallelTestExecution {
 
   "DCInitializer" should s"work 1 port 32 depth and zero pattern" in {
     val numPorts  = 1

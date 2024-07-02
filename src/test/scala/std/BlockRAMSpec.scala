@@ -7,8 +7,9 @@ import chiseltest._
 
 import org.scalatest.flatspec.AnyFlatSpec
 import wood.util.{GenerateVerilog, GetBackendAnnotation}
+import org.scalatest.ParallelTestExecution
 
-class BlockRAMSpec extends AnyFlatSpec with ChiselScalatestTester {
+class BlockRAMSpec extends AnyFlatSpec with ChiselScalatestTester with ParallelTestExecution {
 
   val numWritePorts = 2
   val numReadPorts  = 2

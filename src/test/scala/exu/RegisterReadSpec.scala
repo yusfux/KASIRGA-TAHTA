@@ -5,8 +5,9 @@ import org.scalatest.flatspec.AnyFlatSpec
 import wood.WoodConfig
 import wood.util.GenerateVerilog
 import wood.TestConfig
+import org.scalatest.ParallelTestExecution
 
-class RegisterReadSpec extends AnyFlatSpec with ChiselScalatestTester {
+class RegisterReadSpec extends AnyFlatSpec with ChiselScalatestTester with ParallelTestExecution {
   val tconfig = new TestConfig()
   (1 to tconfig.maxWidth).foreach(j => {
     "RegisterReadStage" should s"emit Verilog ${j} wide" in {

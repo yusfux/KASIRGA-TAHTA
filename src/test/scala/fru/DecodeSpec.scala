@@ -8,8 +8,9 @@ import wood.util.GenerateVerilog
 import wood.fru.{DecodeConfig, Decoder}
 import wood.WoodConfig
 import wood.TestConfig
+import org.scalatest.ParallelTestExecution
 
-class DecodeSpec extends AnyFlatSpec with ChiselScalatestTester {
+class DecodeSpec extends AnyFlatSpec with ChiselScalatestTester with ParallelTestExecution {
 
   "Decoder" should "display its config" in {
     println(s"defaultDecSeq: ${DecodeConfig.defaultDecSeq}")

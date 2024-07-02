@@ -4,8 +4,9 @@ import chiseltest._
 import org.scalatest.flatspec.AnyFlatSpec
 import wood.util.GenerateVerilog
 import wood.{TestConfig, WoodConfig}
+import org.scalatest.ParallelTestExecution
 
-class WriteBackSpec extends AnyFlatSpec with ChiselScalatestTester {
+class WriteBackSpec extends AnyFlatSpec with ChiselScalatestTester with ParallelTestExecution {
   val tconfig = new TestConfig()
 
   (1 to tconfig.maxWidth).foreach(j => {

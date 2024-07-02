@@ -30,8 +30,8 @@ class ExecuteStage(config: WoodConfig) extends Module {
     io.out(j).bits  := alus(j).io.out.bits
     io.out(j).valid := alus(j).io.out.valid
 
-    io.forwardBus(j).bits.data := alus(j).io.out.bits.rd_data
-    io.forwardBus(j).bits.tag  := alus(j).io.out.bits.rd_tag
+    io.forwardBus(j).bits.data := alus(j).io.out.bits.rdData
+    io.forwardBus(j).bits.tag  := alus(j).io.out.bits.rdTag
     io.forwardBus(j).valid     := alus(j).io.out.valid
 
     alus(j).io.out.ready := io.out(j).ready & io.forwardBus(j).ready

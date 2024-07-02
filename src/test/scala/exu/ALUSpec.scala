@@ -2,6 +2,7 @@ package wood.exu
 
 import chisel3._
 // import chisel3.util._
+import org.scalatest.ParallelTestExecution
 
 import chiseltest._
 import chiseltest.ChiselScalatestTester
@@ -49,11 +50,11 @@ trait ALUBehavior {
                 config,
                 0.U,
                 Map(
-                  "rs1_data" -> a.U,
-                  "rs2_data" -> b.U,
-                  "exOp"     -> fn.litValue.U,
-                  "rd_data"  -> result.U(dataWidth.W),
-                  "operand"  -> DecodeConfig.OPERAND_REG.toInt.U
+                  "rs1Data" -> a.U,
+                  "rs2Data" -> b.U,
+                  "exOp"    -> fn.litValue.U,
+                  "rdData"  -> result.U(dataWidth.W),
+                  "operand" -> DecodeConfig.OPERAND_REG.toInt.U
                 )
               )
             results.enqueue(mi)
@@ -66,10 +67,10 @@ trait ALUBehavior {
                   config,
                   0.U,
                   Map(
-                    "rs1_data" -> a.U,
-                    "rs2_data" -> b.U,
-                    "exOp"     -> fn.litValue.U,
-                    "operand"  -> DecodeConfig.OPERAND_REG.toInt.U
+                    "rs1Data" -> a.U,
+                    "rs2Data" -> b.U,
+                    "exOp"    -> fn.litValue.U,
+                    "operand" -> DecodeConfig.OPERAND_REG.toInt.U
                   )
                 )
               mi
@@ -92,7 +93,7 @@ trait ALUBehavior {
   }
 }
 
-class ALUSpec extends AnyFlatSpec with ALUBehavior with ChiselScalatestTester with Matchers {
+class ALUSpec extends AnyFlatSpec with ALUBehavior with ChiselScalatestTester with Matchers with ParallelTestExecution {
   behavior.of("ALU")
   val tagWidth = config.tagWidth
   val opWidth  = DecodeConfig.op.maxWidth

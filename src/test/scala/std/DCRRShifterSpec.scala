@@ -4,8 +4,9 @@ import chisel3._
 import chiseltest._
 import org.scalatest.flatspec.AnyFlatSpec
 import wood.util.{GenerateVerilog, GetBackendAnnotation, GetGroupedSequences}
+import org.scalatest.ParallelTestExecution
 
-class DCRRShifterSpec extends AnyFlatSpec with ChiselScalatestTester {
+class DCRRShifterSpec extends AnyFlatSpec with ChiselScalatestTester with ParallelTestExecution {
   val numDataPerGroup = 30
 
   "DCRRShifter" should s"work with 1 ports" in {

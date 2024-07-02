@@ -201,16 +201,16 @@ object DecodeConfig {
 
 class Decoder(config: WoodConfig) extends Module {
   val io = IO(new Bundle {
-    val inst = Input(UInt(32.W))
-    val out  = Output(new MI(config))
+    val in  = Input(UInt(32.W))
+    val out = Output(new MI(config))
   })
 
-  val instDecoder: UInt = decoder(minimizer = EspressoMinimizer, input = io.inst, truthTable = DecodeConfig.miTable)
+  val instDecoder: UInt = decoder(minimizer = EspressoMinimizer, input = io.in, truthTable = DecodeConfig.miTable)
 
   Seq( // indexing is from right to left in the TruthTable
     io.out.isFloat  -> DecodeConfig.bitRanges(0),
     io.out.operand  -> DecodeConfig.bitRanges(1),
-    io.out.write_rf -> DecodeConfig.bitRanges(2),
+    io.out.writeRf  -> DecodeConfig.bitRanges(2),
     io.out.exEngine -> DecodeConfig.bitRanges(3),
     io.out.exOp     -> DecodeConfig.bitRanges(4)
   ).foreach {
@@ -219,7 +219,7 @@ class Decoder(config: WoodConfig) extends Module {
   }
 
   Seq( // Override if rd is 0
-    io.out.write_rf -> DecodeConfig.bitRanges(2)
+    io.out.writeRf -> DecodeConfig.bitRanges(2)
   ).foreach {
     case (outField, (msbIndex, lsbIndex)) =>
       outField := Mux(
@@ -229,7 +229,7 @@ class Decoder(config: WoodConfig) extends Module {
       )
   }
 
-  io.out.rs2_tag_valid := MuxCase(
+  io.out.rs2TagValid := MuxCase(
     0.U,
     Array(
       (io.out.operand === Integer.parseInt(DecodeConfig.OPERAND_IMM, 2).U)   -> 1.U,
@@ -237,7 +237,7 @@ class Decoder(config: WoodConfig) extends Module {
     ).toIndexedSeq
   )
 
-  io.out.rs1_tag_valid := MuxCase(
+  io.out.rs1TagValid := MuxCase(
     0.U,
     Array(
       (io.out.operand === Integer.parseInt(DecodeConfig.OPERAND_PCIMM, 2).U) -> 1.U
@@ -245,35 +245,35 @@ class Decoder(config: WoodConfig) extends Module {
   )
 
   // format: off
-  io.out.rs1      := io.inst(19, 15)
-  io.out.rs2      := io.inst(24, 20)
-  io.out.rd       := io.inst(11,  7)
+  io.out.rs1      := io.in(19, 15)
+  io.out.rs2      := io.in(24, 20)
+  io.out.rd       := io.in(11,  7)
   // format: on
 
-  io.out.pc_idx   := DontCare
-  io.out.rs1_tag  := DontCare
-  io.out.rs2_tag  := DontCare
-  io.out.rd_tag   := DontCare
-  io.out.retired  := DontCare
-  io.out.rs1_data := DontCare
-  io.out.rs2_data := DontCare
-  io.out.rd_data  := DontCare
-  io.out.inst     := io.inst
+  io.out.pcIdx   := DontCare
+  io.out.rs1Tag  := DontCare
+  io.out.rs2Tag  := DontCare
+  io.out.rdTag   := DontCare
+  io.out.retired := DontCare
+  io.out.rs1Data := DontCare
+  io.out.rs2Data := DontCare
+  io.out.rdData  := DontCare
+  io.out.inst    := io.in
 
   val inst_type = Wire(UInt(DecodeConfig.typeWidth.W))
   inst_type := MuxCase(
     DecodeConfig.I_Type,
     Array(
-      (io.inst(6, 2) === "b00000".U) -> DecodeConfig.I_Type, // lw
-      (io.inst(6, 2) === "b01000".U) -> DecodeConfig.S_Type, // sw
-      (io.inst(6, 2) === "b01100".U) -> DecodeConfig.R_Type, // R type
-      (io.inst(6, 2) === "b11000".U) -> DecodeConfig.B_Type, // B type
-      (io.inst(6, 2) === "b00100".U) -> DecodeConfig.I_Type, // I type ALU
-      (io.inst(6, 2) === "b11011".U) -> DecodeConfig.J_Type, // jal
-      (io.inst(6, 2) === "b00101".U) -> DecodeConfig.U_Type, // auipc
-      (io.inst(6, 2) === "b01101".U) -> DecodeConfig.U_Type, // lui
-      (io.inst(6, 2) === "b11001".U) -> DecodeConfig.I_Type, // jalr
-      (io.inst(6, 2) === "b11100".U) -> DecodeConfig.SYS_Type // SYSTEM instructions
+      (io.in(6, 2) === "b00000".U) -> DecodeConfig.I_Type, // lw
+      (io.in(6, 2) === "b01000".U) -> DecodeConfig.S_Type, // sw
+      (io.in(6, 2) === "b01100".U) -> DecodeConfig.R_Type, // R type
+      (io.in(6, 2) === "b11000".U) -> DecodeConfig.B_Type, // B type
+      (io.in(6, 2) === "b00100".U) -> DecodeConfig.I_Type, // I type ALU
+      (io.in(6, 2) === "b11011".U) -> DecodeConfig.J_Type, // jal
+      (io.in(6, 2) === "b00101".U) -> DecodeConfig.U_Type, // auipc
+      (io.in(6, 2) === "b01101".U) -> DecodeConfig.U_Type, // lui
+      (io.in(6, 2) === "b11001".U) -> DecodeConfig.I_Type, // jalr
+      (io.in(6, 2) === "b11100".U) -> DecodeConfig.SYS_Type // SYSTEM instructions
     ).toIndexedSeq
   )
 
@@ -281,17 +281,17 @@ class Decoder(config: WoodConfig) extends Module {
   io.out.imm := MuxCase(
    0.U(32.W),
     Array(
-      (inst_type === DecodeConfig.SYS_Type) -> Cat(Fill(15, io.inst(31)), io.inst(19, 15), io.inst(31, 20)),
-      (inst_type === DecodeConfig.I_Type)   -> Cat(Fill(20, io.inst(31)), io.inst(31, 20)),
-      (inst_type === DecodeConfig.S_Type)   -> Cat(Fill(20, io.inst(31)), io.inst(31, 25), io.inst(11, 7)),
-      (inst_type === DecodeConfig.B_Type)   -> Cat(Fill(20, io.inst(31)), io.inst(7), io.inst(30, 25), io.inst(11, 8), 0.U(1.W)),
-      (inst_type === DecodeConfig.J_Type)   -> Cat(Fill(12, io.inst(31)), io.inst(19, 12), io.inst(20), io.inst(30, 21), 0.U(1.W)),
-      (inst_type === DecodeConfig.U_Type)   -> Cat(io.inst(31, 12), 0.U(12.W))
+      (inst_type === DecodeConfig.SYS_Type) -> Cat(Fill(15, io.in(31)), io.in(19, 15), io.in(31, 20)),
+      (inst_type === DecodeConfig.I_Type)   -> Cat(Fill(20, io.in(31)), io.in(31, 20)),
+      (inst_type === DecodeConfig.S_Type)   -> Cat(Fill(20, io.in(31)), io.in(31, 25), io.in(11, 7)),
+      (inst_type === DecodeConfig.B_Type)   -> Cat(Fill(20, io.in(31)), io.in(7), io.in(30, 25), io.in(11, 8), 0.U(1.W)),
+      (inst_type === DecodeConfig.J_Type)   -> Cat(Fill(12, io.in(31)), io.in(19, 12), io.in(20), io.in(30, 21), 0.U(1.W)),
+      (inst_type === DecodeConfig.U_Type)   -> Cat(io.in(31, 12), 0.U(12.W))
     ).toIndexedSeq
   )
   // format: on
-
 }
+
 class DecodeStage(config: WoodConfig) extends Module {
   val io = IO(new Bundle {
     val in    = Flipped(Vec(config.nWide, Decoupled(UInt(32.W))))
@@ -300,28 +300,23 @@ class DecodeStage(config: WoodConfig) extends Module {
   })
 
   val decoders = Seq.fill(config.nWide)(Module(new Decoder(config)))
+  val pReg     = Module(new PipelineRegister(config))
 
-  val out_ready = Wire(Vec(config.nWide, Bool()))
-  val in_valid  = Wire(Vec(config.nWide + 1, Bool()))
-  out_ready := io.out.map(_.ready)
-  in_valid  := io.in.map(_.valid) ++ Seq(io.pcIdx.valid)
+  val overriden = Wire(Vec(config.nWide, Decoupled(new MI(config))))
 
-  // all inputs have to be valid and all outputs have to be ready to not stall
-  val valid = in_valid.asUInt.andR
-  val ready = out_ready.asUInt.andR
-  val stall = !(valid && ready)
+  pReg.io.in <> overriden
+  io.out     <> pReg.io.out
 
   for (j <- 0 until config.nWide) {
-    decoders(j).io.inst := io.in(j).bits
-    io.in(j).ready      := ready
+    decoders(j).io.in := io.in(j).bits
 
-    val decoded = Wire(new MI(config))
-    decoded        := decoders(j).io.asTypeOf(new MI(config))
-    decoded.pc_idx := io.pcIdx.bits
-
-    io.out(j).bits  := RegEnable(decoded, !stall)
-    io.out(j).valid := RegEnable(io.in(j).valid, 1.U, !stall)
+    overriden(j).valid      := io.in(j).valid & io.pcIdx.valid
+    io.in(j).ready          := overriden(j).ready
+    overriden(j).bits       := decoders(j).io.out
+    overriden(j).bits.pcIdx := io.pcIdx.bits
   }
 
-  io.pcIdx.ready := ready
+  val allOutReady = Wire(Vec(config.nWide, Bool()))
+  allOutReady    := pReg.io.in.map(_.ready)
+  io.pcIdx.ready := allOutReady.asUInt.andR
 }

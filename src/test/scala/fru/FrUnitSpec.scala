@@ -6,8 +6,9 @@ import org.scalatest.flatspec.AnyFlatSpec
 import wood.util.GenerateVerilog
 import wood.{TestConfig, WoodConfig}
 import wood.fru.FrUnit
+import org.scalatest.ParallelTestExecution
 
-class FrUnitSpec extends AnyFlatSpec with ChiselScalatestTester {
+class FrUnitSpec extends AnyFlatSpec with ChiselScalatestTester with ParallelTestExecution {
 
   val tconfig = new TestConfig()
   (1 to tconfig.maxWidth).foreach(j => {

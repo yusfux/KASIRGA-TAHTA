@@ -4,8 +4,9 @@ import chisel3._
 import chiseltest._
 import org.scalatest.flatspec.AnyFlatSpec
 import wood.util.{GenerateVerilog, GetBackendAnnotation, GetGroupedSequences}
+import org.scalatest.ParallelTestExecution
 
-class DCArbiterSpec extends AnyFlatSpec with ChiselScalatestTester {
+class DCArbiterSpec extends AnyFlatSpec with ChiselScalatestTester with ParallelTestExecution {
   val numDataPerGroup = 30
 
   "DCArbiter" should s"work 1 to 1" in {

@@ -7,24 +7,23 @@ import org.scalatest.flatspec.AnyFlatSpec
 import wood.util.{GenerateVerilog, GetBackendAnnotation}
 import wood.fru.MI
 import wood.fru.DecodeConfig.{TYPE_FLOAT, TYPE_INT}
+import wood.util.GetGroupedSequences
 import wood.{TestConfig, WoodConfig}
+import org.scalatest.ParallelTestExecution
 
-class DistributeStageSpec extends AnyFlatSpec with ChiselScalatestTester {
+class DistributeStageSpec extends AnyFlatSpec with ChiselScalatestTester with ParallelTestExecution {
   val config = new WoodConfig(nWide = 2)
 
-  val numData = 100
-  val TOINT   = TYPE_INT.toInt.U
-  val TOFLOAT = TYPE_FLOAT.toInt.U
+  val numDataPerGroup = 30
+  val TOINT           = TYPE_INT.toInt.U
+  val TOFLOAT         = TYPE_FLOAT.toInt.U
+  val defaultMI       = MI(config, 0.U)
+  val sequences       = GetGroupedSequences(config.nWide, numDataPerGroup)
 
-  val zero_to_int   = MI(config, 0.U, Map("isFloat" -> 0.U))
-  val zero_to_float = MI(config, 0.U, Map("isFloat" -> 1.U))
-  val one_to_int    = MI(config, 1.U, Map("isFloat" -> 0.U))
-  val one_to_float  = MI(config, 1.U, Map("isFloat" -> 1.U))
-
-  val zero_to_ints   = Seq.fill(numData)(zero_to_int)
-  val zero_to_floats = Seq.fill(numData)(zero_to_float)
-  val one_to_ints    = Seq.fill(numData)(one_to_int)
-  val one_to_floats  = Seq.fill(numData)(one_to_float)
+  val miIntSequences: List[List[MI]] =
+    sequences.map(_.map(data => MI(config, 0.U, Map("inst" -> data, "isFloat" -> TOINT))))
+  val miFloatSequences: List[List[MI]] =
+    sequences.map(_.map(data => MI(config, 0.U, Map("inst" -> data, "isFloat" -> TOFLOAT))))
 
   "DistributeStage" should "work 2 to (2,2) (int,int)" in {
     test(new DistributeStage(config)).withAnnotations(GetBackendAnnotation()) { dut =>
@@ -33,17 +32,21 @@ class DistributeStageSpec extends AnyFlatSpec with ChiselScalatestTester {
       val outIntSinks   = dut.io.toInt.map(_.initSink())
 
       fork {
-        inSources(0).enqueueSeq(zero_to_ints)
+        inSources(0).enqueueSeq(miIntSequences(0))
       }.fork {
-        inSources(1).enqueueSeq(one_to_ints)
+        inSources(1).enqueueSeq(miIntSequences(1))
       }.fork {
+        outFloatSinks(0).expectDequeue(defaultMI)
         outFloatSinks(0).expectInvalid()
       }.fork {
+        outFloatSinks(1).expectDequeue(defaultMI)
         outFloatSinks(1).expectInvalid()
       }.fork {
-        outIntSinks(0).expectDequeueSeq(zero_to_ints)
+        outIntSinks(0).expectDequeue(defaultMI)
+        outIntSinks(0).expectDequeueSeq(miIntSequences(0))
       }.fork {
-        outIntSinks(1).expectDequeueSeq(one_to_ints)
+        outIntSinks(1).expectDequeue(defaultMI)
+        outIntSinks(1).expectDequeueSeq(miIntSequences(1))
       }.joinAndStep()
     }
   }
@@ -55,16 +58,20 @@ class DistributeStageSpec extends AnyFlatSpec with ChiselScalatestTester {
       val outIntSinks   = dut.io.toInt.map(_.initSink())
 
       fork {
-        inSources(0).enqueueSeq(zero_to_floats)
+        inSources(0).enqueueSeq(miFloatSequences(1))
       }.fork {
-        inSources(1).enqueueSeq(one_to_ints)
+        inSources(1).enqueueSeq(miIntSequences(0))
       }.fork {
-        outFloatSinks(0).expectDequeueSeq(zero_to_floats)
+        outFloatSinks(0).expectDequeue(defaultMI)
+        outFloatSinks(0).expectDequeueSeq(miFloatSequences(1))
       }.fork {
+        outFloatSinks(1).expectDequeue(defaultMI)
         outFloatSinks(1).expectInvalid()
       }.fork {
-        outIntSinks(0).expectDequeueSeq(one_to_ints)
+        outIntSinks(0).expectDequeue(defaultMI)
+        outIntSinks(0).expectDequeueSeq(miIntSequences(0))
       }.fork {
+        outIntSinks(1).expectDequeue(defaultMI)
         outIntSinks(1).expectInvalid()
       }.joinAndStep()
     }
@@ -77,16 +84,20 @@ class DistributeStageSpec extends AnyFlatSpec with ChiselScalatestTester {
       val outIntSinks   = dut.io.toInt.map(_.initSink())
 
       fork {
-        inSources(0).enqueueSeq(zero_to_floats)
+        inSources(0).enqueueSeq(miFloatSequences(0))
       }.fork {
-        inSources(1).enqueueSeq(one_to_floats)
+        inSources(1).enqueueSeq(miFloatSequences(1))
       }.fork {
-        outFloatSinks(0).expectDequeueSeq(zero_to_floats)
+        outFloatSinks(0).expectDequeue(defaultMI)
+        outFloatSinks(0).expectDequeueSeq(miFloatSequences(0))
       }.fork {
-        outFloatSinks(1).expectDequeueSeq(one_to_floats)
+        outFloatSinks(1).expectDequeue(defaultMI)
+        outFloatSinks(1).expectDequeueSeq(miFloatSequences(1))
       }.fork {
+        outIntSinks(0).expectDequeue(defaultMI)
         outIntSinks(0).expectInvalid()
       }.fork {
+        outIntSinks(1).expectDequeue(defaultMI)
         outIntSinks(1).expectInvalid()
       }.joinAndStep()
     }
@@ -99,16 +110,20 @@ class DistributeStageSpec extends AnyFlatSpec with ChiselScalatestTester {
       val outIntSinks   = dut.io.toInt.map(_.initSink())
 
       fork {
-        inSources(0).enqueueSeq(zero_to_ints)
+        inSources(0).enqueueSeq(miIntSequences(0))
       }.fork {
-        inSources(1).enqueueSeq(one_to_floats)
+        inSources(1).enqueueSeq(miFloatSequences(1))
       }.fork {
-        outFloatSinks(0).expectDequeueSeq(one_to_floats)
+        outFloatSinks(0).expectDequeue(defaultMI)
+        outFloatSinks(0).expectDequeueSeq(miFloatSequences(1))
       }.fork {
+        outFloatSinks(1).expectDequeue(defaultMI)
         outFloatSinks(1).expectInvalid()
       }.fork {
-        outIntSinks(0).expectDequeueSeq(zero_to_ints)
+        outIntSinks(0).expectDequeue(defaultMI)
+        outIntSinks(0).expectDequeueSeq(miIntSequences(0))
       }.fork {
+        outIntSinks(1).expectDequeue(defaultMI)
         outIntSinks(1).expectInvalid()
       }.joinAndStep()
     }

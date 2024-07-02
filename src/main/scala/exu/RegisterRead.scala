@@ -22,17 +22,17 @@ class RegisterReadStage(config: WoodConfig) extends Module {
   )
 
   (0 until config.nWide).foreach(j => {
-    prf.io.rip(j).bits.addr                := io.in(j).bits.rs1_tag
+    prf.io.rip(j).bits.addr                := io.in(j).bits.rs1Tag
     prf.io.rip(j).valid                    := io.in(j).valid
     io.in(j).ready                         := prf.io.rip(j).ready
-    prf.io.rip(j + config.nWide).bits.addr := io.in(j).bits.rs2_tag
+    prf.io.rip(j + config.nWide).bits.addr := io.in(j).bits.rs2Tag
     prf.io.rip(j + config.nWide).valid     := io.in(j).valid
     io.in(j).ready                         := prf.io.rip(j).ready & prf.io.rip(j + config.nWide).ready
 
-    io.out(j).bits          := io.in(j).bits
-    io.out(j).bits.rs1_data := prf.io.rop(j).bits.data
-    io.out(j).bits.rs2_data := prf.io.rop(j + config.nWide).bits.data
-    io.out(j).valid         := prf.io.rop(j + config.nWide).valid
+    io.out(j).bits         := io.in(j).bits
+    io.out(j).bits.rs1Data := prf.io.rop(j).bits.data
+    io.out(j).bits.rs2Data := prf.io.rop(j + config.nWide).bits.data
+    io.out(j).valid        := prf.io.rop(j + config.nWide).valid
 
     prf.io.rop(j).ready                := io.out(j).ready
     prf.io.rop(j + config.nWide).ready := io.out(j).ready

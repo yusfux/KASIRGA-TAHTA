@@ -9,8 +9,9 @@ import wood.TestConfig
 import scala.sys.process._
 import scala.io.Source
 import scala.language.postfixOps
+import org.scalatest.ParallelTestExecution
 
-class WoodSpec extends AnyFlatSpec with ChiselScalatestTester {
+class WoodSpec extends AnyFlatSpec with ChiselScalatestTester with ParallelTestExecution {
 
   def generateTestCode(): Unit = {
     Process("sh -c \"python src/test/python/gen_li.py > src/test/c/src/main.S\"").!

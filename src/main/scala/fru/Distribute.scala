@@ -19,33 +19,15 @@ class DistributeStage(config: WoodConfig) extends Module {
   val crossbar = Module(
     new DCCrossbar(new MI(config))(config.nWide, List(config.numPortsFloat, config.numPortsInt))
   )
+  val pRegInt   = Module(new PipelineRegister(config))
+  val pRegFloat = Module(new PipelineRegister(config))
 
-  crossbar.io.sel := io.in.map(_.bits.isFloat)
+  crossbar.io.sel <> io.in.map(_.bits.isFloat)
+  crossbar.io.in  <> io.in
 
-  (0 until config.nWide).foreach(j => crossbar.io.in(j) <> io.in(j))
+  pRegInt.io.in <> crossbar.io.out(TYPE_INT.toInt)
+  io.toInt      <> pRegInt.io.out
 
-  val in_ready = Wire(Vec(config.nWide, Bool()))
-  val in_valid = Wire(Vec(config.nWide, Bool()))
-
-  in_ready := io.in.map(_.ready)
-  in_valid := io.in.map(_.valid)
-
-  // all inputs have to be valid and all outputs have to be ready to not stall
-  val valid = in_valid.asUInt.andR
-  val ready = in_ready.asUInt.andR
-  val stall = !(valid && ready)
-
-  for (j <- 0 until config.numPortsInt) {
-    io.toInt(j).bits                         := RegEnable(crossbar.io.out(TYPE_INT.toInt)(j).bits, 0.U.asTypeOf(new MI(config)), !stall)
-    io.toInt(j).valid                        := RegEnable(crossbar.io.out(TYPE_INT.toInt)(j).valid, 0.B, !stall)
-    crossbar.io.out(TYPE_INT.toInt)(j).ready := io.toInt(j).ready
-  }
-
-  for (j <- 0 until config.numPortsFloat) {
-    io.toFloat(j).bits                         := RegEnable(crossbar.io.out(TYPE_FLOAT.toInt)(j).bits, 0.U.asTypeOf(new MI(config)), !stall)
-    io.toFloat(j).valid                        := RegEnable(crossbar.io.out(TYPE_FLOAT.toInt)(j).valid, 1.B, !stall)
-    crossbar.io.out(TYPE_FLOAT.toInt)(j).ready := io.toFloat(j).ready
-
-  }
-
+  pRegFloat.io.in <> crossbar.io.out(TYPE_FLOAT.toInt)
+  io.toFloat      <> pRegFloat.io.out
 }

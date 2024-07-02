@@ -4,8 +4,9 @@ import chisel3._
 import chiseltest._
 import org.scalatest.flatspec.AnyFlatSpec
 import wood.util.{GenerateVerilog, GetBackendAnnotation, GetGroupedSequences}
+import org.scalatest.ParallelTestExecution
 
-class DCCrossbarSpec extends AnyFlatSpec with ChiselScalatestTester {
+class DCCrossbarSpec extends AnyFlatSpec with ChiselScalatestTester with ParallelTestExecution {
   val numDataPerGroup = 30
 
   "DCCrossbar" should s"work 1 to (1)" in {
@@ -22,9 +23,6 @@ class DCCrossbarSpec extends AnyFlatSpec with ChiselScalatestTester {
         }.fork {
           outSinks(0)(0).expectDequeueSeq(groupedSeqs(0))
         }.joinAndStep()
-        dut.clock.step(1)
-
-        dut.clock.step(1)
       }
   }
 
@@ -44,8 +42,6 @@ class DCCrossbarSpec extends AnyFlatSpec with ChiselScalatestTester {
         }.fork {
           outSinks(0)(1).expectInvalid()
         }.joinAndStep()
-
-        dut.clock.step(1)
       }
   }
 

@@ -4,8 +4,9 @@ import chisel3._
 import chiseltest._
 import org.scalatest.flatspec.AnyFlatSpec
 import wood.util.{GenerateVerilog, GetBackendAnnotation, GetGroupedSequences}
+import org.scalatest.ParallelTestExecution
 
-class DCDemuxSpec extends AnyFlatSpec with ChiselScalatestTester {
+class DCDemuxSpec extends AnyFlatSpec with ChiselScalatestTester with ParallelTestExecution {
   val numDataPerGroup = 30
 
   "DCDemux" should s"work 1 x 1" in {

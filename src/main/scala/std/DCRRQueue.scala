@@ -22,7 +22,7 @@ class DCRRQueue[T <: Data](gen: T)(numPorts: Int, queueDepth: Int) extends Modul
   })
 
   val queues = Seq.tabulate(numPorts) { j =>
-    Module(new Queue(gen.cloneType, queueDepth))
+    Module(new Queue(gen.cloneType, queueDepth, flow = true, pipe = true))
   }
 
   val rrshifter = Module(new DCRRShifter(gen.cloneType)(numPorts))
