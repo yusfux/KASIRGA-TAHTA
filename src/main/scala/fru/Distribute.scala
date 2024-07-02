@@ -19,8 +19,8 @@ class DistributeStage(config: WoodConfig) extends Module {
   val crossbar = Module(
     new DCCrossbar(new MI(config))(config.nWide, List(config.numPortsFloat, config.numPortsInt))
   )
-  val pRegInt   = Module(new PipelineRegister(config))
-  val pRegFloat = Module(new PipelineRegister(config))
+  val pRegInt   = Module(new DCPipelineRegister(new MI(config))(config.nWide))
+  val pRegFloat = Module(new DCPipelineRegister(new MI(config))(config.nWide))
 
   crossbar.io.sel <> io.in.map(_.bits.isFloat)
   crossbar.io.in  <> io.in

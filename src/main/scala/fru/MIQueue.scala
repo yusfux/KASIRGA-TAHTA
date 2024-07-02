@@ -3,8 +3,8 @@ package wood.fru
 import chisel3._
 import chisel3.util._
 import wood.WoodConfig
-import wood.fru.{MI, PipelineRegister}
-import wood.std.DCRRQueue
+import wood.fru.MI
+import wood.std.{DCPipelineRegister, DCRRQueue}
 
 class MIStage(config: WoodConfig) extends Module {
   val io = IO(new Bundle {
@@ -13,7 +13,7 @@ class MIStage(config: WoodConfig) extends Module {
   })
 
   val q    = Module(new DCRRQueue(new MI(config))(config.nWide, config.miQueueDepth))
-  val pReg = Module(new PipelineRegister(config))
+  val pReg = Module(new DCPipelineRegister(new MI(config))(config.nWide))
 
   q.io.in    <> io.in
   pReg.io.in <> q.io.out

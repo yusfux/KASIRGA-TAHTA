@@ -3,7 +3,7 @@ package wood.exu
 import chisel3._
 import chisel3.util._
 import wood.WoodConfig
-import wood.fru.{DecodeConfig, MI, PipelineRegister}
+import wood.fru.{DCPipelineRegister, DecodeConfig, MI}
 import wood.std.{BlockRAMParams, DecoupledBlockRAM}
 
 class RenameStage(config: WoodConfig) extends Module {
@@ -14,7 +14,7 @@ class RenameStage(config: WoodConfig) extends Module {
   })
 
   val flist = Module(new FreeList(config))
-  val pReg  = Module(new PipelineRegister(config))
+  val pReg  = Module(new DCPipelineRegister(new MI(config))(config.nWide))
 
   val frontEndRegisterFile = Module(
     new DecoupledBlockRAM(new Bus(config))(

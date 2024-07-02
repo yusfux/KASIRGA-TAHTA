@@ -304,7 +304,7 @@ class DecodeStage(config: WoodConfig) extends Module {
   })
 
   val decoders = Seq.fill(config.nWide)(Module(new Decoder(config)))
-  val pReg     = Module(new PipelineRegister(config))
+  val pReg     = Module(new DCPipelineRegister(new MI(config))(config.nWide))
 
   val overriden = Wire(Vec(config.nWide, Decoupled(new MI(config))))
 

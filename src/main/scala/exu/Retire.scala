@@ -3,7 +3,7 @@ package wood.exu
 import chisel3._
 import chisel3.util._
 import wood.WoodConfig
-import wood.fru.MI
+import wood.fru.{DCPipelineRegister, MI}
 import wood.std.{BlockRAMParams, DCArbiter, DCRRQueue, DecoupledBlockRAM}
 
 class ROBStage(config: WoodConfig) extends Module {
@@ -12,22 +12,12 @@ class ROBStage(config: WoodConfig) extends Module {
     val out = Vec(config.nWide, Decoupled(new MI(config)))
   })
 
-  val q = Module(new DCRRQueue(new MI(config))(config.nWide, config.prfDepth))
+  val q    = Module(new DCRRQueue(new MI(config))(config.nWide, config.prfDepth))
+  val pReg = Module(new DCPipelineRegister(new MI(config))(config.nWide))
 
-  val out_ready = Wire(Vec(config.nWide, Bool()))
-  val out_valid = Wire(Vec(config.nWide, Bool()))
-  out_ready := io.out.map(_.ready)
-  out_valid := io.in.map(_.valid)
-  val valid = out_valid.asUInt.andR
-  val ready = out_ready.asUInt.andR
-  val stall = !(valid && ready)
-
-  (0 until config.nWide).foreach(j => {
-    io.out(j).bits    := RegEnable(q.io.out(j).bits, 0.U.asTypeOf(new MI(config)), !stall)
-    io.out(j).valid   := RegEnable(q.io.out(j).valid, 0.B, !stall)
-    q.io.out(j).ready := io.out(j).ready
-  })
-  q.io.in <> io.in
+  q.io.in    <> io.in
+  pReg.io.in <> q.io.out
+  io.out     <> pReg.io.out
 }
 
 class RetiredStatusStage(config: WoodConfig) extends Module {
@@ -39,6 +29,7 @@ class RetiredStatusStage(config: WoodConfig) extends Module {
     val out = Vec(config.nWide, Decoupled(new MI(config)))
   })
 
+  val pReg = Module(new DCPipelineRegister(new MI(config))(config.nWide))
   val arbiters = Seq.tabulate(config.nWide) { j =>
     Module(new DCArbiter(UInt(1.W))(2, 1))
   }
@@ -89,24 +80,17 @@ class RetiredStatusStage(config: WoodConfig) extends Module {
     io.writeBackBus(j).ready := retiredStatusRegisterFile.io.wp(j).ready
   })
 
-  val out_ready = Wire(Vec(config.nWide, Bool()))
-  val out_valid = Wire(Vec(config.nWide, Bool()))
-  out_ready := io.out.map(_.ready)
-  out_valid := io.in.map(_.valid)
-  val valid = out_valid.asUInt.andR
-  val ready = out_ready.asUInt.andR
-  val stall = !(valid && ready)
-
-  val outNext = Wire(Vec(config.nWide, new MI(config)))
+  val outNext = Wire(Vec(config.nWide, Decoupled(new MI(config))))
 
   (0 until config.nWide).foreach(j => {
-    outNext(j)         := io.in(j).bits
-    outNext(j).retired := arbiters(j).io.out(0).bits
-
-    io.out(j).bits  := RegEnable(outNext(j), 0.U.asTypeOf(new MI(config)), !stall)
-    io.out(j).valid := RegEnable(io.in(j).valid, 0.B, !stall)
-    io.in(j).ready  := io.out(j).ready
+    outNext(j).bits         := io.in(j).bits
+    outNext(j).bits.retired := arbiters(j).io.out(0).bits
+    outNext(j).valid        := io.in(j).valid
+    io.in(j).ready          := outNext(j).ready
   })
+
+  pReg.io.in <> outNext
+  io.out     <> pReg.io.out
 }
 
 class ArchRegisterFileStage(config: WoodConfig) extends Module {
@@ -117,10 +101,10 @@ class ArchRegisterFileStage(config: WoodConfig) extends Module {
     val commitedBus           = Vec(config.nWide, Decoupled(new Bus(config)))
   })
 
-  val arfDepth = 32
+  val pReg = Module(new DCPipelineRegister(new Bus(config))(config.nWide))
   val archRegisterFile = Module(
     new DecoupledBlockRAM(new Bus(config))(
-      BlockRAMParams(arfDepth, config.nWide, config.nWide)
+      BlockRAMParams(32, config.nWide, config.nWide)
     )
   )
 
@@ -139,24 +123,16 @@ class ArchRegisterFileStage(config: WoodConfig) extends Module {
     io.in(j).ready                       := archRegisterFile.io.rip(j).ready
   })
 
-  val out_ready = Wire(Vec(config.nWide, Bool()))
-  val out_valid = Wire(Vec(config.nWide, Bool()))
-  out_valid := io.commitedBus.map(_.valid)
-  out_ready := io.commitedBus.map(_.ready)
-  val valid = out_valid.asUInt.andR
-  val ready = out_ready.asUInt.andR
-  val stall = !(valid && ready)
-
-  val commitedBusNext = Wire(Vec(config.nWide, new Bus(config)))
+  val commitedBusNext = Wire(Vec(config.nWide, Decoupled(new Bus(config))))
   (0 until config.nWide).foreach(j => {
-    commitedBusNext(j).tag  := archRegisterFile.io.rop(j).bits.data.tag
-    commitedBusNext(j).data := archRegisterFile.io.rop(j).bits.data.data
-
-    io.commitedBus(j).bits           := RegEnable(commitedBusNext(j), 0.U.asTypeOf(new Bus(config)), !stall)
-    io.commitedBus(j).valid          := RegEnable(archRegisterFile.io.rop(j).valid, 0.B, !stall)
-    archRegisterFile.io.rop(j).ready := io.commitedBus(j).ready
+    commitedBusNext(j).bits.tag      := archRegisterFile.io.rop(j).bits.data.tag
+    commitedBusNext(j).bits.data     := archRegisterFile.io.rop(j).bits.data.data
+    commitedBusNext(j).valid         := archRegisterFile.io.rop(j).valid
+    archRegisterFile.io.rop(j).ready := commitedBusNext(j).ready
 
     dontTouch(io.in(j).bits.inst) // for testbench only
   })
 
+  pReg.io.in     <> commitedBusNext
+  io.commitedBus <> pReg.io.out
 }

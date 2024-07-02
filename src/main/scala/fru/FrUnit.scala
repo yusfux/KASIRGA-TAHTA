@@ -60,18 +60,17 @@ object MI { // for testbench only, set all to value except overrides
   }
 }
 
-class PipelineRegister(val config: WoodConfig) extends Module {
+class DCPipelineRegister[T <: Data](gen: T)(numPorts: Int) extends Module {
   val io = IO(new Bundle {
-    val in  = Flipped(Vec(config.nWide, Decoupled(new MI(config))))
-    val out = Vec(config.nWide, Decoupled(new MI(config)))
+    val in  = Flipped(Vec(numPorts, Decoupled(gen.cloneType)))
+    val out = Vec(numPorts, Decoupled(gen.cloneType))
   })
 
-  val stall = Wire(Vec(config.nWide, Bool()))
+  val stall = Wire(Vec(numPorts, Bool()))
   stall := io.out.map(!_.ready)
 
-  (0 until config.nWide).foreach(j => {
-
-    io.out(j).bits  := RegEnable(io.in(j).bits, 0.U.asTypeOf(new MI(config)), !stall(j).asBool)
+  (0 until numPorts).foreach(j => {
+    io.out(j).bits  := RegEnable(io.in(j).bits, 0.U.asTypeOf(gen.cloneType), !stall(j).asBool)
     io.out(j).valid := RegEnable(io.in(j).valid, 1.B, !stall(j).asBool)
     io.in(j).ready  := io.out(j).ready
   })

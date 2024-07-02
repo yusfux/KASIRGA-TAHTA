@@ -3,7 +3,7 @@ package wood.exu
 import chisel3._
 import chisel3.util._
 import wood.WoodConfig
-import wood.fru.{MI, PipelineRegister}
+import wood.fru.{DCPipelineRegister, MI}
 import wood.std.{BlockRAMParams, DCBus, DecoupledBlockRAM}
 
 class ValidList(val config: WoodConfig) extends Module {
@@ -81,7 +81,7 @@ class ScheduleStage(val config: WoodConfig) extends Module {
   }
 
   val validList = Module(new ValidList(config))
-  val pReg      = Module(new PipelineRegister(config))
+  val pReg      = Module(new DCPipelineRegister(new MI(config))(config.nWide))
 
   val wakeupBus    = Module(new DCBus(new Bus(config))(config.nWide, 2)) // to rs and vl
   val forwardBus   = Module(new DCBus(new Bus(config))(config.nWide, 2)) // to rs and vl

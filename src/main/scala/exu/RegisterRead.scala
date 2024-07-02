@@ -3,8 +3,8 @@ package wood.exu
 import chisel3._
 import chisel3.util._
 import wood.WoodConfig
-import wood.fru.{MI, PipelineRegister}
-import wood.std.{BlockRAMParams, DecoupledBlockRAM}
+import wood.fru.MI
+import wood.std.{BlockRAMParams, DCPipelineRegister, DecoupledBlockRAM}
 
 class RegisterReadStage(config: WoodConfig) extends Module {
   val io = IO(new Bundle {
@@ -22,7 +22,7 @@ class RegisterReadStage(config: WoodConfig) extends Module {
       BlockRAMParams(config.prfDepth, config.nWide * 2, config.nWide)
     )
   )
-  val pReg = Module(new PipelineRegister(config))
+  val pReg = Module(new DCPipelineRegister(new MI(config))(config.nWide))
 
   val overrideForward = Module(new OverrideFromBuses(config)) // override from the forwardBus
   overrideForward.io.inBus <> io.forwardBus
