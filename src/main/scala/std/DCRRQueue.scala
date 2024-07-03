@@ -21,7 +21,7 @@ class DCRRQueue[T <: Data](gen: T)(numPorts: Int, queueDepth: Int) extends Modul
     val out = Vec(numPorts, Decoupled(gen.cloneType))
   })
 
-  val queues = Seq.tabulate(numPorts) { j =>
+  val queues = Seq.tabulate(numPorts) { _ =>
     Module(new Queue(gen.cloneType, queueDepth, flow = true, pipe = true))
   }
 

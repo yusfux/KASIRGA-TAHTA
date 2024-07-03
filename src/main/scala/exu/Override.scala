@@ -65,7 +65,7 @@ class OverrideFromBuses(val config: WoodConfig) extends Module {
   })
 
   val forwardBus = Module(new DCBus(new Bus(config))(config.nWide, config.nWide))
-  val overriders = Seq.tabulate(config.nWide) { j =>
+  val overriders = Seq.tabulate(config.nWide) { _ =>
     Module(new OverrideFromBus(config))
   }
 

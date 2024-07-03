@@ -76,7 +76,7 @@ class ScheduleStage(val config: WoodConfig) extends Module {
     val out = Vec(config.nWide, Decoupled(new MI(config)))
   })
 
-  val reservationStations = Seq.tabulate(config.nWide) { j =>
+  val reservationStations = Seq.tabulate(config.nWide) { _ =>
     Module(new ReservationStation(config))
   }
 

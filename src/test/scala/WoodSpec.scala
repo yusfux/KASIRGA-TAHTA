@@ -85,14 +85,16 @@ class WoodSpec extends AnyFlatSpec with ChiselScalatestTester with ParallelTestE
         }
       })
 
+      println("fuck:     \n", groupedUInts(0).length)
       val pcs = Seq.range(0, groupedUInts(0).length, 1)
       val pcSeq: Seq[UInt] = pcs.map(i => i.asUInt)
-      fork {
-        dut.io.pcIdx.enqueueSeq(pcSeq)
-      }
+      println("fuck:     \n", pcSeq)
+      // fork {
+      //   dut.io.pcIdx.enqueueSeq(pcSeq)
+      // }
 
       fork {
-        step(100)
+        step(200)
       }.joinAndStep()
     }
   }

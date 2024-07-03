@@ -44,7 +44,7 @@ object GenerateVerilog {
       verilogDir + '/' + "test.sv"
     }
 
-    val x = ChiselStage.emitSystemVerilog(
+    ChiselStage.emitSystemVerilog(
       gen = gen,
       firtoolOpts = Array(
         "--disable-all-randomization",

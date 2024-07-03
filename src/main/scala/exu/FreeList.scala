@@ -10,7 +10,6 @@ class FreeList(config: WoodConfig) extends Module {
     val in  = Flipped(Vec(config.nWide, Decoupled(new Bus(config))))
     val out = Vec(config.nWide, Decoupled(new Bus(config)))
   })
-  val numWritePorts = config.nWide
 
   val initializer = Module(new DCInitializer(config.nWide, config.prfDepth, config.dataWidth, "addr"))
   val q           = Module(new DCRRQueue(new Bus(config))(config.nWide, config.prfDepth))
@@ -26,7 +25,6 @@ class FreeList(config: WoodConfig) extends Module {
     q.io.in(j).bits.tag         := initializer.io.out(j).bits.addr
     q.io.in(j).valid            := initializer.io.out(j).valid
     initializer.io.out(j).ready := q.io.in(j).ready
-
   })
 
   q.io.out <> io.out

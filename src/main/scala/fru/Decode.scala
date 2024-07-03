@@ -303,13 +303,9 @@ class DecodeStage(config: WoodConfig) extends Module {
     val out   = Vec(config.nWide, Decoupled(new MI(config)))
   })
 
-  val decoders = Seq.fill(config.nWide)(Module(new Decoder(config)))
-  val pReg     = Module(new DCPipelineRegister(new MI(config))(config.nWide))
-
+  val pReg      = Module(new DCPipelineRegister(new MI(config))(config.nWide))
+  val decoders  = Seq.fill(config.nWide)(Module(new Decoder(config)))
   val overriden = Wire(Vec(config.nWide, Decoupled(new MI(config))))
-
-  pReg.io.in <> overriden
-  io.out     <> pReg.io.out
 
   for (j <- 0 until config.nWide) {
     decoders(j).io.in := io.in(j).bits
@@ -319,6 +315,9 @@ class DecodeStage(config: WoodConfig) extends Module {
     overriden(j).bits       := decoders(j).io.out
     overriden(j).bits.pcIdx := io.pcIdx.bits
   }
+
+  pReg.io.in <> overriden
+  io.out     <> pReg.io.out
 
   val allOutReady = Wire(Vec(config.nWide, Bool()))
   allOutReady    := pReg.io.in.map(_.ready)

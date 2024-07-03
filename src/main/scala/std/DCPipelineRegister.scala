@@ -24,7 +24,7 @@ class DCPipelineRegister[T <: Data](gen: T)(numPorts: Int) extends Module {
 
   (0 until numPorts).foreach(j => {
     io.out(j).bits  := RegEnable(io.in(j).bits, 0.U.asTypeOf(gen.cloneType), !stall(j).asBool)
-    io.out(j).valid := RegEnable(io.in(j).valid, 1.B, !stall(j).asBool)
-    io.in(j).ready  := io.out(j).ready
+    io.out(j).valid := RegEnable(io.in(j).valid, 0.B, !stall(j).asBool)
+    io.in(j).ready  := io.out(j).ready | !io.in(j).valid
   })
 }

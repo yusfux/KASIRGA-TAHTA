@@ -21,7 +21,7 @@ class DCWriter(numPorts: Int, depth: Int, dataWidth: Int, dataPattern: String = 
     val out = Vec(numPorts, Decoupled(new WritePortI(UInt(dataWidth.W))(log2Ceil(depth))))
   })
 
-  val counter     = RegInit(0.U(dataWidth.W))
+  val counter     = RegInit(0.U(log2Ceil(depth).W))
   val initialized = RegInit(false.B)
 
   val out_ready = Wire(Vec(numPorts, Bool()))

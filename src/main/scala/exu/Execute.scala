@@ -10,14 +10,13 @@ class ExecuteStage(config: WoodConfig) extends Module {
   val io = IO(new Bundle {
     val in         = Flipped(Vec(config.nWide, Decoupled(new MI(config))))
     val forwardBus = Vec(config.nWide, Decoupled(new Bus(config)))
-
-    val out = Vec(config.nWide, Decoupled(new MI(config)))
+    val out        = Vec(config.nWide, Decoupled(new MI(config)))
   })
 
   val crossbarInterfaceList = List(config.numALUs)
   val crossbar              = Module(new DCCrossbar(new MI(config))(config.nWide, crossbarInterfaceList))
 
-  val alus = Seq.tabulate(config.nWide) { j =>
+  val alus = Seq.tabulate(config.nWide) { _ =>
     Module(new ALU(config))
   }
 
