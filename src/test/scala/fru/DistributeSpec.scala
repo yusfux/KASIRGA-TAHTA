@@ -16,7 +16,6 @@ class DistributeStageSpec extends AnyFlatSpec with ChiselScalatestTester with Pa
   val numDataPerGroup = 30
   val TOINT           = TYPE_INT.toInt.U
   val TOFLOAT         = TYPE_FLOAT.toInt.U
-  val defaultMI       = MI(config, 0.U)
   val sequences       = GetGroupedSequences(config.nWide, numDataPerGroup)
 
   val miIntSequences: List[List[MI]] =
@@ -35,16 +34,12 @@ class DistributeStageSpec extends AnyFlatSpec with ChiselScalatestTester with Pa
       }.fork {
         inSources(1).enqueueSeq(miIntSequences(1))
       }.fork {
-        outFloatSinks(0).expectDequeue(defaultMI)
         outFloatSinks(0).expectInvalid()
       }.fork {
-        outFloatSinks(1).expectDequeue(defaultMI)
         outFloatSinks(1).expectInvalid()
       }.fork {
-        outIntSinks(0).expectDequeue(defaultMI)
         outIntSinks(0).expectDequeueSeq(miIntSequences(0))
       }.fork {
-        outIntSinks(1).expectDequeue(defaultMI)
         outIntSinks(1).expectDequeueSeq(miIntSequences(1))
       }.joinAndStep()
     }
@@ -61,16 +56,12 @@ class DistributeStageSpec extends AnyFlatSpec with ChiselScalatestTester with Pa
       }.fork {
         inSources(1).enqueueSeq(miIntSequences(0))
       }.fork {
-        outFloatSinks(0).expectDequeue(defaultMI)
         outFloatSinks(0).expectDequeueSeq(miFloatSequences(1))
       }.fork {
-        outFloatSinks(1).expectDequeue(defaultMI)
         outFloatSinks(1).expectInvalid()
       }.fork {
-        outIntSinks(0).expectDequeue(defaultMI)
         outIntSinks(0).expectDequeueSeq(miIntSequences(0))
       }.fork {
-        outIntSinks(1).expectDequeue(defaultMI)
         outIntSinks(1).expectInvalid()
       }.joinAndStep()
     }
@@ -87,16 +78,12 @@ class DistributeStageSpec extends AnyFlatSpec with ChiselScalatestTester with Pa
       }.fork {
         inSources(1).enqueueSeq(miFloatSequences(1))
       }.fork {
-        outFloatSinks(0).expectDequeue(defaultMI)
         outFloatSinks(0).expectDequeueSeq(miFloatSequences(0))
       }.fork {
-        outFloatSinks(1).expectDequeue(defaultMI)
         outFloatSinks(1).expectDequeueSeq(miFloatSequences(1))
       }.fork {
-        outIntSinks(0).expectDequeue(defaultMI)
         outIntSinks(0).expectInvalid()
       }.fork {
-        outIntSinks(1).expectDequeue(defaultMI)
         outIntSinks(1).expectInvalid()
       }.joinAndStep()
     }
@@ -113,16 +100,12 @@ class DistributeStageSpec extends AnyFlatSpec with ChiselScalatestTester with Pa
       }.fork {
         inSources(1).enqueueSeq(miFloatSequences(1))
       }.fork {
-        outFloatSinks(0).expectDequeue(defaultMI)
         outFloatSinks(0).expectDequeueSeq(miFloatSequences(1))
       }.fork {
-        outFloatSinks(1).expectDequeue(defaultMI)
         outFloatSinks(1).expectInvalid()
       }.fork {
-        outIntSinks(0).expectDequeue(defaultMI)
         outIntSinks(0).expectDequeueSeq(miIntSequences(0))
       }.fork {
-        outIntSinks(1).expectDequeue(defaultMI)
         outIntSinks(1).expectInvalid()
       }.joinAndStep()
     }

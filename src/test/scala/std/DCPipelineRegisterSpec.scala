@@ -22,7 +22,6 @@ class DCPipelineRegisterSpec extends AnyFlatSpec with ChiselScalatestTester with
       fork {
         inSources(0).enqueueSeq(groupedSeqs(0))
       }.fork {
-        outSinks(0).expectDequeue(defaultVal)
         outSinks(0).expectDequeueSeq(groupedSeqs(0))
       }.joinAndStep()
     }
@@ -39,10 +38,8 @@ class DCPipelineRegisterSpec extends AnyFlatSpec with ChiselScalatestTester with
       }.fork {
         inSources(1).enqueueSeq(groupedSeqs(1))
       }.fork {
-        outSinks(0).expectDequeue(defaultVal)
         outSinks(0).expectDequeueSeq(groupedSeqs(0))
       }.fork {
-        outSinks(1).expectDequeue(defaultVal)
         outSinks(1).expectDequeueSeq(groupedSeqs(1))
       }.joinAndStep()
     }

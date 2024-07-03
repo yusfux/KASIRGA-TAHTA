@@ -3,8 +3,8 @@ package wood.exu
 import chisel3._
 import chisel3.util._
 import wood.WoodConfig
-import wood.fru.{DCPipelineRegister, DecodeConfig, MI}
-import wood.std.{BlockRAMParams, DecoupledBlockRAM}
+import wood.fru.{DecodeConfig, MI}
+import wood.std.{BlockRAMParams, DCPipelineRegister, DecoupledBlockRAM}
 
 class RenameStage(config: WoodConfig) extends Module {
   val io = IO(new Bundle {

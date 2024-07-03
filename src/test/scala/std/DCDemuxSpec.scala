@@ -26,6 +26,31 @@ class DCDemuxSpec extends AnyFlatSpec with ChiselScalatestTester with ParallelTe
       }.joinAndStep()
     }
   }
+
+  "DCDemux" should s"work 1 x 1 ready only" in {
+    test(new DCDemux(UInt(8.W))(1, 1)).withAnnotations(GetBackendAnnotation()) { dut =>
+      val inSources = dut.io.in.map(_.initSource())
+      val outSinks  = Array.tabulate(1)(n => dut.io.out(n).map(_.initSink()))
+
+      dut.io.sel(0).poke(0.U)
+      dut.io.out(0)(0).ready.poke(1)
+      step(1)
+      dut.io.in(0).ready.expect(1)
+    }
+  }
+
+  "DCDemux" should s"work 1 x 2 ready only" in {
+    test(new DCDemux(UInt(8.W))(1, 2)).withAnnotations(GetBackendAnnotation()) { dut =>
+      val inSources = dut.io.in.map(_.initSource())
+      val outSinks  = Array.tabulate(2)(n => dut.io.out(n).map(_.initSink()))
+
+      dut.io.sel(0).poke(0.U)
+      dut.io.out(0)(0).ready.poke(1)
+      step(1)
+      dut.io.in(0).ready.expect(1)
+    }
+  }
+
   for (N <- 2 to 8) {
     "DCDemux" should s"work 1 x $N" in {
       test(new DCDemux(UInt(8.W))(1, N)).withAnnotations(GetBackendAnnotation()) { dut =>

@@ -23,6 +23,18 @@ class DCArbiterSpec extends AnyFlatSpec with ChiselScalatestTester with Parallel
       }.joinAndStep()
     }
   }
+  "DCArbiter" should s"work 1 to 1 ready only" in {
+    test(new DCArbiter(UInt(8.W))(1, 1)).withAnnotations(GetBackendAnnotation()) { dut =>
+      val inSources = dut.io.in.map(_.initSource())
+      val outSinks  = dut.io.out.map(_.initSink())
+
+      fork {
+        dut.io.out(0).ready.poke(1)
+        step(1)
+        dut.io.in(0).ready.expect(1)
+      }.joinAndStep()
+    }
+  }
   "DCArbiter" should s"work 1 to 2" in {
     test(new DCArbiter(UInt(8.W))(1, 2)).withAnnotations(GetBackendAnnotation()) { dut =>
       val inSources = dut.io.in.map(_.initSource())
@@ -39,7 +51,40 @@ class DCArbiterSpec extends AnyFlatSpec with ChiselScalatestTester with Parallel
       }.joinAndStep()
     }
   }
+  "DCArbiter" should s"work 1 to 2 ready only" in {
+    test(new DCArbiter(UInt(8.W))(1, 2)).withAnnotations(GetBackendAnnotation()) { dut =>
+      val inSources = dut.io.in.map(_.initSource())
+      val outSinks  = dut.io.out.map(_.initSink())
 
+      dut.io.out(0).ready.poke(0)
+      dut.io.out(1).ready.poke(0)
+      step(1)
+      dut.io.in(0).ready.expect(0)
+
+      step(5)
+
+      dut.io.out(0).ready.poke(1)
+      dut.io.out(1).ready.poke(0)
+      step(1)
+      dut.io.in(0).ready.expect(1)
+
+      step(5)
+
+      dut.io.out(0).ready.poke(0)
+      dut.io.out(1).ready.poke(1)
+      step(1)
+      dut.io.in(0).ready.expect(1)
+
+      step(5)
+
+      dut.io.out(0).ready.poke(1)
+      dut.io.out(1).ready.poke(1)
+      step(1)
+      dut.io.in(0).ready.expect(1)
+
+      step(5)
+    }
+  }
   "DCArbiter" should "work 2 to 1" in {
     test(new DCArbiter(UInt(8.W))(2, 1)).withAnnotations(GetBackendAnnotation()) { dut =>
       val inSources = dut.io.in.map(_.initSource())

@@ -7,9 +7,11 @@ import org.scalatest.ParallelTestExecution
 import scala.sys.process._
 import scala.io.Source
 import scala.language.postfixOps
+import scala.collection.mutable.ListBuffer
 
 import wood.util.{GetBackendAnnotation, TestGenerateVerilog}
 import wood.{TestConfig, WoodConfig}
+import chiseltest.internal.TesterThreadList
 
 class FrUnitSpec extends AnyFlatSpec with ChiselScalatestTester with ParallelTestExecution {
 
@@ -56,9 +58,13 @@ class FrUnitSpec extends AnyFlatSpec with ChiselScalatestTester with ParallelTes
     generateTestCode()
     buildTestCode()
 
-    val nWide    = 1
-    val prfDepth = 32
-    val config   = new WoodConfig(nWide = nWide, prfDepth = prfDepth)
+    val nWide        = 1
+    val prfDepth     = 32
+    val miQueueDepth = 16
+    val pcListDepth  = 16
+
+    val config =
+      new WoodConfig(nWide = nWide, prfDepth = prfDepth, miQueueDepth = miQueueDepth, pcListDepth = pcListDepth)
 
     val cwd = System.getProperty("user.dir")
     println(s"CWD: $cwd")
@@ -66,36 +72,33 @@ class FrUnitSpec extends AnyFlatSpec with ChiselScalatestTester with ParallelTes
     val filePath     = "src/test/c/build/main.hex" // relative to build.sbt
     val hexLines     = readHexFileToList(filePath)
     val groupedUInts = groupHexLines(hexLines, nWide).map(_.map(hexStringToUInt))
+    println("fuck:     \n", groupedUInts(0).length)
+    val pcSeq =
+      Seq.range(0, groupedUInts(0).length, 1).map(i => i % ((1 << config.pcIndexWidth) - 1)).map(i => i.asUInt)
+    println("fuck:     \n", pcSeq)
     test(new FrUnit(config)).withAnnotations(GetBackendAnnotation()) { dut =>
       val in = dut.io.in.map(_.initSource())
 
-      dut.io.pcIdx.bits.poke(0)
-      dut.io.pcIdx.valid.poke(1)
-
-      // (0 until config.nWide).foreach(j => {
-      //   dut.io.in(j).bits.poke(groupedBitPats(0)(j))
-      //   dut.io.in(j).valid.poke(1)
-      // })
-
+      val forks = ListBuffer[TesterThreadList]()
       (0 until config.nWide).foreach(j => {
-        // dut.io.in(j).bits.poke(in(0))
-        // dut.io.in(j).valid.poke(1)
-        fork {
-          dut.io.in(j).enqueueSeq(groupedUInts(j))
+        forks += fork { dut.io.in(j).enqueueSeq(groupedUInts(j)) }
+        forks += fork {
+          (0 until config.nWide).foreach(j => {
+            dut.io.out(j).ready.poke(1)
+            step(50)
+            dut.io.out(j).ready.poke(0)
+            step(5)
+            dut.io.out(j).ready.poke(1)
+            step(50)
+            dut.io.out(j).ready.poke(0)
+            step(50)
+            dut.io.out(j).ready.poke(1)
+            step(50)
+          })
         }
       })
-
-      println("fuck:     \n", groupedUInts(0).length)
-      val pcs = Seq.range(0, groupedUInts(0).length, 1)
-      val pcSeq: Seq[UInt] = pcs.map(i => i.asUInt)
-      println("fuck:     \n", pcSeq)
-      // fork {
-      //   dut.io.pcIdx.enqueueSeq(pcSeq)
-      // }
-
-      fork {
-        step(200)
-      }.joinAndStep()
+      // forks += fork { dut.io.pcIdx.enqueueSeq(pcSeq) }
+      forks.map(_.join()).foreach(_ => ())
     }
   }
 

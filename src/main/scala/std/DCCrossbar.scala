@@ -22,7 +22,6 @@ class DCCrossbar[T <: Data](gen: T)(numInputs: Int, numOutputs: List[Int]) exten
   })
 
   val demux = Module(new DCDemux(gen.cloneType)(numInputs, numOutputs.length))
-
   val arbiters = Seq.tabulate(numOutputs.length) { j =>
     Module(new DCArbiter(gen.cloneType)(numInputs, numOutputs(j)))
   }
@@ -30,24 +29,13 @@ class DCCrossbar[T <: Data](gen: T)(numInputs: Int, numOutputs: List[Int]) exten
   demux.io.sel := io.sel
 
   for ((demux_in, j) <- demux.io.in.zipWithIndex) {
-    demux_in.bits  := io.in(j).bits
-    demux_in.valid := io.in(j).valid
-    io.in(j).ready := demux_in.valid
+    demux_in <> io.in(j)
   }
-
   for ((demux_out_interface, j) <- demux.io.out.zipWithIndex) {
-    for ((demux_out_port, k) <- demux_out_interface.zipWithIndex) {
-      arbiters(j).io.in(k).bits  := demux_out_port.bits
-      arbiters(j).io.in(k).valid := demux_out_port.valid
-      demux_out_port.ready       := arbiters(j).io.in(k).ready
-    }
+    arbiters(j).io.in <> demux_out_interface
   }
 
   for ((arbiter, j) <- arbiters.zipWithIndex) {
-    for ((arbiter_port, k) <- arbiter.io.out.zipWithIndex) {
-      io.out(j)(k).bits  := arbiter_port.bits
-      io.out(j)(k).valid := arbiter_port.valid
-      arbiter_port.ready := io.out(j)(k).ready
-    }
+    io.out(j) <> arbiter.io.out
   }
 }

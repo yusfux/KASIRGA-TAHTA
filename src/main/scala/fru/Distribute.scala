@@ -5,7 +5,7 @@ import chisel3.util._
 import wood.WoodConfig
 import wood.fru.DecodeConfig.{TYPE_FLOAT, TYPE_INT}
 import wood.fru.MI
-import wood.std.DCCrossbar
+import wood.std.{DCCrossbar, DCPipelineRegister}
 
 class DistributeStage(config: WoodConfig) extends Module {
   val io = IO(new Bundle {

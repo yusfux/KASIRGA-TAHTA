@@ -35,7 +35,7 @@ class DCArbiter[T <: Data](gen: T)(numInputs: Int, numOutputs: Int) extends Modu
                    Mux(
                      arbiters(j).io.out.ready,
                      UIntToOH(arbiters(j).io.chosen),
-                     0.U
+                     arbiters(j).io.out.ready
                    )
                  } else {
                    Mux(

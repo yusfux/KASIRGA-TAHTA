@@ -3,8 +3,8 @@ package wood.exu
 import chisel3._
 import chisel3.util._
 import wood.WoodConfig
-import wood.fru.{DCPipelineRegister, MI}
-import wood.std.{BlockRAMParams, DCArbiter, DCBus, DCInitializer, DCRRQueue, DecoupledBlockRAM}
+import wood.fru.MI
+import wood.std.{BlockRAMParams, DCArbiter, DCBus, DCInitializer, DCPipelineRegister, DCRRQueue, DecoupledBlockRAM}
 
 class ROBStage(config: WoodConfig) extends Module {
   val io = IO(new Bundle {

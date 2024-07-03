@@ -303,18 +303,23 @@ class DecodeStage(config: WoodConfig) extends Module {
     val out   = Vec(config.nWide, Decoupled(new MI(config)))
   })
 
-  val pReg      = Module(new DCPipelineRegister(new MI(config))(config.nWide))
-  val decoders  = Seq.fill(config.nWide)(Module(new Decoder(config)))
-  val overriden = Wire(Vec(config.nWide, Decoupled(new MI(config))))
+  val pReg        = Module(new wood.std.DCPipelineRegisterMultiValid(new MI(config))(config.nWide, 1))
+  val decoders    = Seq.fill(config.nWide)(Module(new Decoder(config)))
+  val overriden   = Wire(Vec(config.nWide, Decoupled(new MI(config))))
+  val extraValids = Wire(Vec(config.nWide, UInt(1.W)))
 
   for (j <- 0 until config.nWide) {
+    extraValids(j)    := io.pcIdx.valid
     decoders(j).io.in := io.in(j).bits
 
-    overriden(j).valid      := io.in(j).valid & io.pcIdx.valid
-    io.in(j).ready          := overriden(j).ready
     overriden(j).bits       := decoders(j).io.out
     overriden(j).bits.pcIdx := io.pcIdx.bits
+    overriden(j).valid      := io.in(j).valid
+    io.in(j).ready          := overriden(j).ready
   }
+  pReg.io.valids(0) := extraValids
+  pReg.io.in        <> overriden
+  io.out            <> pReg.io.out
 
   pReg.io.in <> overriden
   io.out     <> pReg.io.out

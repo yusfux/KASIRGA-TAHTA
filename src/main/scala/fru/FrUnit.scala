@@ -60,22 +60,6 @@ object MI { // for testbench only, set all to value except overrides
   }
 }
 
-class DCPipelineRegister[T <: Data](gen: T)(numPorts: Int) extends Module {
-  val io = IO(new Bundle {
-    val in  = Flipped(Vec(numPorts, Decoupled(gen.cloneType)))
-    val out = Vec(numPorts, Decoupled(gen.cloneType))
-  })
-
-  val stall = Wire(Vec(numPorts, Bool()))
-  stall := io.out.map(!_.ready)
-
-  (0 until numPorts).foreach(j => {
-    io.out(j).bits  := RegEnable(io.in(j).bits, 0.U.asTypeOf(gen.cloneType), !stall(j).asBool)
-    io.out(j).valid := RegEnable(io.in(j).valid, 1.B, !stall(j).asBool)
-    io.in(j).ready  := io.out(j).ready
-  })
-}
-
 class FrUnit(config: WoodConfig) extends Module {
   val io = IO(new Bundle {
     val in         = Flipped(Vec(config.nWide, Decoupled(UInt(32.W))))
@@ -96,7 +80,7 @@ class FrUnit(config: WoodConfig) extends Module {
   mistage.io.out   <> io.out
 
   (0 until config.nWide).foreach(j => {
-    distage.io.toFloat(j).ready := 1.U // TODO
+    distage.io.toFloat(j).ready := 0.U // TODO
     io.forwardBus(j).ready      := 1.U // TODO
   })
 }
