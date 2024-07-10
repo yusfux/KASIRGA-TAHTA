@@ -53,8 +53,6 @@ class FrUnitSpec extends AnyFlatSpec with ChiselScalatestTester with ParallelTes
   }
 
   "FrUnit" should "work with li instructions" in {
-    val process = Process("which python") !
-
     generateTestCode()
     buildTestCode()
 
@@ -72,32 +70,37 @@ class FrUnitSpec extends AnyFlatSpec with ChiselScalatestTester with ParallelTes
     val filePath     = "src/test/c/build/main.hex" // relative to build.sbt
     val hexLines     = readHexFileToList(filePath)
     val groupedUInts = groupHexLines(hexLines, nWide).map(_.map(hexStringToUInt))
-    println("fuck:     \n", groupedUInts(0).length)
+    println("groupedUInts(0).length:     \n", groupedUInts(0).length)
     val pcSeq =
       Seq.range(0, groupedUInts(0).length, 1).map(i => i % ((1 << config.pcIndexWidth) - 1)).map(i => i.asUInt)
-    println("fuck:     \n", pcSeq)
+    println("pcSeq:     \n", pcSeq)
     test(new FrUnit(config)).withAnnotations(GetBackendAnnotation()) { dut =>
       val in = dut.io.in.map(_.initSource())
 
       val forks = ListBuffer[TesterThreadList]()
       (0 until config.nWide).foreach(j => {
-        forks += fork { dut.io.in(j).enqueueSeq(groupedUInts(j)) }
+        forks += fork { in(j).enqueueSeq(groupedUInts(j)) }
         forks += fork {
           (0 until config.nWide).foreach(j => {
-            dut.io.out(j).ready.poke(1)
+            dut.io.toFloat(j).ready.poke(0) // TODO
+          })
+        }
+        forks += fork {
+          (0 until config.nWide).foreach(j => {
+            dut.io.toInt(j).ready.poke(1)
             step(50)
-            dut.io.out(j).ready.poke(0)
+            dut.io.toInt(j).ready.poke(0)
             step(5)
-            dut.io.out(j).ready.poke(1)
+            dut.io.toInt(j).ready.poke(1)
             step(50)
-            dut.io.out(j).ready.poke(0)
+            dut.io.toInt(j).ready.poke(0)
             step(50)
-            dut.io.out(j).ready.poke(1)
+            dut.io.toInt(j).ready.poke(1)
             step(50)
           })
         }
       })
-      // forks += fork { dut.io.pcIdx.enqueueSeq(pcSeq) }
+      forks += fork { dut.io.pcIdx.enqueueSeq(pcSeq) }
       forks.map(_.join()).foreach(_ => ())
     }
   }

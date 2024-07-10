@@ -12,7 +12,7 @@ class WriteBackSpec extends AnyFlatSpec with ChiselScalatestTester with Parallel
   (1 to tconfig.maxWidth).foreach(j => {
     val config = new WoodConfig(nWide = j)
     "WriteBackStage" should s"emit Verilog ${j} wide" in {
-      TestGenerateVerilog(new WriteBackStage(config), testNames.filter(_.contains("emit Verilog")), j)
+      TestGenerateVerilog(new WritebackStage(config), testNames.filter(_.contains("emit Verilog")), j)
     }
   })
 }

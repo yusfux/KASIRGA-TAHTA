@@ -19,17 +19,18 @@ class MIStageSpec extends AnyFlatSpec with ChiselScalatestTester with ParallelTe
     val miSequences: List[List[MI]] = sequences.map(_.map(data => MI(config, 0.U, Map("inst" -> data))))
 
     test(new MIStage(config)).withAnnotations(GetBackendAnnotation()) { dut =>
-      val inSources = dut.io.in.map(_.initSource())
-      val outSinks  = dut.io.out.map(_.initSink())
+      val inSources     = dut.io.in.map(_.initSource())
+      val outSinksInt   = dut.io.toInt.map(_.initSink())
+      val outSinksFloat = dut.io.toFloat.map(_.initSink())
 
       fork {
         inSources(0).enqueueSeq(miSequences(0))
       }.fork {
         inSources(1).enqueueSeq(miSequences(1))
       }.fork {
-        outSinks(0).expectDequeueSeq(miSequences(0))
+        outSinksInt(0).expectDequeueSeq(miSequences(0))
       }.fork {
-        outSinks(1).expectDequeueSeq(miSequences(1))
+        outSinksInt(1).expectDequeueSeq(miSequences(1))
       }.joinAndStep()
     }
   }
@@ -42,8 +43,9 @@ class MIStageSpec extends AnyFlatSpec with ChiselScalatestTester with ParallelTe
     val miSequences: List[List[MI]] = sequences.map(_.map(data => MI(config, 0.U, Map("inst" -> data))))
 
     test(new MIStage(config)).withAnnotations(GetBackendAnnotation()) { dut =>
-      val inSources = dut.io.in.map(_.initSource())
-      val outSinks  = dut.io.out.map(_.initSink())
+      val inSources     = dut.io.in.map(_.initSource())
+      val outSinksInt   = dut.io.toInt.map(_.initSink())
+      val outSinksFloat = dut.io.toFloat.map(_.initSink())
 
       fork {
         inSources(0).enqueue(miSequences(0)(0))
@@ -51,15 +53,15 @@ class MIStageSpec extends AnyFlatSpec with ChiselScalatestTester with ParallelTe
         inSources(0).enqueue(miSequences(0)(2))
         inSources(0).enqueue(miSequences(0)(3))
       }.fork {
-        outSinks(0).expectDequeue(miSequences(0)(0))
-        outSinks(0).expectInvalid()
-        outSinks(0).expectDequeue(miSequences(0)(2))
-        outSinks(0).expectInvalid()
+        outSinksInt(0).expectDequeue(miSequences(0)(0))
+        outSinksInt(0).expectInvalid()
+        outSinksInt(0).expectDequeue(miSequences(0)(2))
+        outSinksInt(0).expectInvalid()
       }.fork {
-        outSinks(1).expectInvalid()
-        outSinks(1).expectDequeue(miSequences(0)(1))
-        outSinks(1).expectInvalid()
-        outSinks(1).expectDequeue(miSequences(0)(3))
+        outSinksInt(1).expectInvalid()
+        outSinksInt(1).expectDequeue(miSequences(0)(1))
+        outSinksInt(1).expectInvalid()
+        outSinksInt(1).expectDequeue(miSequences(0)(3))
       }.joinAndStep()
     }
   }
@@ -72,8 +74,9 @@ class MIStageSpec extends AnyFlatSpec with ChiselScalatestTester with ParallelTe
     val miSequences: List[List[MI]] = sequences.map(_.map(data => MI(config, 0.U, Map("inst" -> data))))
 
     test(new MIStage(config)).withAnnotations(GetBackendAnnotation()) { dut =>
-      val inSources = dut.io.in.map(_.initSource())
-      val outSinks  = dut.io.out.map(_.initSink())
+      val inSources     = dut.io.in.map(_.initSource())
+      val outSinksInt   = dut.io.toInt.map(_.initSink())
+      val outSinksFloat = dut.io.toFloat.map(_.initSink())
 
       fork {
         inSources(0).enqueue(miSequences(0)(0))
@@ -84,17 +87,17 @@ class MIStageSpec extends AnyFlatSpec with ChiselScalatestTester with ParallelTe
         inSources(1).enqueue(miSequences(1)(1))
         inSources(1).enqueue(miSequences(1)(2))
       }.fork {
-        outSinks(0).expectDequeue(miSequences(0)(0))
-        outSinks(0).expectDequeue(miSequences(1)(1))
-        outSinks(0).expectInvalid()
+        outSinksInt(0).expectDequeue(miSequences(0)(0))
+        outSinksInt(0).expectDequeue(miSequences(1)(1))
+        outSinksInt(0).expectInvalid()
       }.fork {
-        outSinks(1).expectDequeue(miSequences(1)(0))
-        outSinks(1).expectInvalid()
-        outSinks(1).expectDequeue(miSequences(0)(2))
+        outSinksInt(1).expectDequeue(miSequences(1)(0))
+        outSinksInt(1).expectInvalid()
+        outSinksInt(1).expectDequeue(miSequences(0)(2))
       }.fork {
-        outSinks(2).expectInvalid()
-        outSinks(2).expectDequeue(miSequences(0)(1))
-        outSinks(2).expectDequeue(miSequences(1)(2))
+        outSinksInt(2).expectInvalid()
+        outSinksInt(2).expectDequeue(miSequences(0)(1))
+        outSinksInt(2).expectDequeue(miSequences(1)(2))
       }.joinAndStep()
     }
   }

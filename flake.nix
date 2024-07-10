@@ -6,56 +6,70 @@
   inputs.pre-commit-hooks.inputs.nixpkgs.follows = "nixpkgs";
   inputs.flake-utils.url = "github:numtide/flake-utils";
 
-  outputs = {
-    self,
-    nixpkgs,
-    pre-commit-hooks,
-    flake-utils,
-  }:
+  outputs =
+    {
+      self,
+      nixpkgs,
+      pre-commit-hooks,
+      flake-utils,
+    }:
     flake-utils.lib.eachDefaultSystem (
-      system: let
+      system:
+      let
         pkgs = import nixpkgs {
           inherit system;
           config.allowUnfree = true;
         };
-      in {
+      in
+      {
         checks = {
           pre-commit-check = pre-commit-hooks.lib.${system}.run {
             src = ./.;
             hooks = {
-              alejandra.enable = true;
+              nixfmt = {
+                enable = true;
+                package = pkgs.nixfmt-rfc-style;
+              };
               ruff.enable = true;
               checkmake.enable = true;
               clang-format = {
                 enable = true;
-                types_or = pkgs.lib.mkForce ["c" "c++"];
+                types_or = pkgs.lib.mkForce [
+                  "c"
+                  "c++"
+                ];
               };
               scalafmt = {
                 enable = true;
                 name = "scalafmt";
                 entry = "${pkgs.scalafmt}/bin/scalafmt --respect-project-filters";
-                types = ["scala" "sbt"];
+                types = [
+                  "scala"
+                  "sbt"
+                ];
               };
               verible = {
                 enable = true;
                 name = "verible-verilog-format";
                 entry = "${pkgs.verible}/bin/verible-verilog-format --wrap_spaces 3 --indentation_spaces 3 --inplace";
-                types = ["verilog"];
+                types = [ "verilog" ];
               };
               scalafix = {
                 enable = true;
                 name = "scalafix";
                 entry = "${pkgs.bash}/bin/bash -c '${pkgs.sbt}/bin/sbt --batch -Dsbt.server.forcestart=true scalafix'";
-                types = ["scala"];
+                types = [ "scala" ];
               };
             };
-            settings = {
-            };
+            settings = { };
           };
         };
         devShells.default = pkgs.mkShell {
           CHISEL_FIRTOOL_PATH = "${pkgs.circt}/bin";
-          RISCV_PREFIX = "${pkgs.pkgsCross.riscv32-embedded.stdenv.cc}/bin/riscv32-none-elf-";
+
+          RISCV_PREFIX = "${
+            pkgs.pkgsCross.riscv32-embedded.buildPackages.gcc-unwrapped.override { enableMultilib = true; }
+          }/bin/riscv32-none-elf-";
 
           inherit (self.checks.${system}.pre-commit-check) shellHook;
           packages = [
@@ -72,14 +86,16 @@
             pkgs.verilog
             pkgs.espresso
 
-            (pkgs.spike.overrideAttrs
-              (oldAttrs: {
-                configureFlags = oldAttrs.configureFlags or [] ++ ["--enable-commitlog" "--enable-misaligned"];
-              }))
+            (pkgs.spike.overrideAttrs (oldAttrs: {
+              configureFlags = oldAttrs.configureFlags or [ ] ++ [
+                "--enable-commitlog"
+                "--enable-misaligned"
+              ];
+            }))
             pkgs.dtc
 
-            (pkgs.callPackage ./nix/gtkwave.nix {})
-            (pkgs.callPackage ./nix/surfer.nix {})
+            (pkgs.callPackage ./nix/gtkwave.nix { })
+            (pkgs.callPackage ./nix/surfer.nix { })
           ];
         };
       }

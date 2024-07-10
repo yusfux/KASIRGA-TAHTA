@@ -17,14 +17,14 @@ class ScheduleSpec extends AnyFlatSpec with ChiselScalatestTester with ParallelT
   })
   (1 to tconfig.maxWidth).foreach(j => {
     val config = new WoodConfig(nWide = j)
-    "OverrideTagValid" should s"emit Verilog ${j} wide" in {
+    "OverrideFromBus" should s"emit Verilog ${j} wide" in {
       TestGenerateVerilog(new OverrideFromBus(config), testNames.filter(_.contains("emit Verilog")), j)
     }
   })
   (1 to tconfig.maxWidth).foreach(j => {
     val config = new WoodConfig(nWide = j)
-    "ValidList" should s"emit Verilog ${j} wide" in {
-      TestGenerateVerilog(new ValidList(config), testNames.filter(_.contains("emit Verilog")), j)
+    "ReadyList" should s"emit Verilog ${j} wide" in {
+      TestGenerateVerilog(new ReadyList(config), testNames.filter(_.contains("emit Verilog")), j)
     }
   })
 }

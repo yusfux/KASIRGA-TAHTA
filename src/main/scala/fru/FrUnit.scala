@@ -4,8 +4,7 @@ import chisel3._
 import chisel3.experimental.BundleLiterals._
 import chisel3.util._
 import wood.WoodConfig
-import wood.exu.Bus
-import wood.fru.{DecodeConfig, DecodeStage, DistributeStage, MIStage}
+import wood.fru.{DecodeConfig, DecodeStage, MIStage}
 
 case class MI(config: WoodConfig) extends Bundle {
   val isFloat     = UInt(DecodeConfig.subWidths(0).W)
@@ -20,9 +19,9 @@ case class MI(config: WoodConfig) extends Bundle {
   val rd          = UInt(5.W)
   val pcIdx       = UInt(config.pcIndexWidth.W)
   val rs1Tag      = UInt(config.tagWidth.W)
-  val rs1TagValid = UInt(1.W)
+  val rs1TagReady = UInt(1.W)
   val rs2Tag      = UInt(config.tagWidth.W)
-  val rs2TagValid = UInt(1.W)
+  val rs2TagReady = UInt(1.W)
   val rdTag       = UInt(config.tagWidth.W)
   val rs1Data     = UInt(config.dataWidth.W)
   val rs2Data     = UInt(config.dataWidth.W)
@@ -46,9 +45,9 @@ object MI { // for testbench only, set all to value except overrides
       _.rd          -> overrides.getOrElse("rd", value),
       _.pcIdx       -> overrides.getOrElse("pcIdx", value),
       _.rs1Tag      -> overrides.getOrElse("rs1Tag", value),
-      _.rs1TagValid -> overrides.getOrElse("rs1TagValid", value),
+      _.rs1TagReady -> overrides.getOrElse("rs1TagReady", value),
       _.rs2Tag      -> overrides.getOrElse("rs2Tag", value),
-      _.rs2TagValid -> overrides.getOrElse("rs2TagValid", value),
+      _.rs2TagReady -> overrides.getOrElse("rs2TagReady", value),
       _.rdTag       -> overrides.getOrElse("rdTag", value),
       _.rs1Data     -> overrides.getOrElse("rs1Data", value),
       _.rs2Data     -> overrides.getOrElse("rs2Data", value),
@@ -62,25 +61,19 @@ object MI { // for testbench only, set all to value except overrides
 
 class FrUnit(config: WoodConfig) extends Module {
   val io = IO(new Bundle {
-    val in         = Flipped(Vec(config.nWide, Decoupled(UInt(32.W))))
-    val pcIdx      = Flipped(Decoupled(UInt(config.pcIndexWidth.W)))
-    val forwardBus = Flipped(Vec(config.nWide, Decoupled(new Bus(config))))
+    val in    = Flipped(Vec(config.nWide, Decoupled(UInt(32.W))))
+    val pcIdx = Flipped(Decoupled(UInt(config.pcIndexWidth.W)))
 
-    val out = Vec(config.nWide, Decoupled(new MI(config)))
+    val toFloat = Vec(config.numPortsFloat, Decoupled(new MI(config)))
+    val toInt   = Vec(config.numPortsInt, Decoupled(new MI(config)))
   })
 
   val destage = Module(new DecodeStage(config))
-  val distage = Module(new DistributeStage(config))
   val mistage = Module(new MIStage(config))
 
   destage.io.in    <> io.in
   destage.io.pcIdx <> io.pcIdx
-  destage.io.out   <> distage.io.in
-  distage.io.toInt <> mistage.io.in
-  mistage.io.out   <> io.out
-
-  (0 until config.nWide).foreach(j => {
-    distage.io.toFloat(j).ready := 0.U // TODO
-    io.forwardBus(j).ready      := 1.U // TODO
-  })
+  mistage.io.in    <> destage.io.out
+  io.toFloat       <> mistage.io.toFloat
+  io.toInt         <> mistage.io.toInt
 }

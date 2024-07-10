@@ -223,17 +223,17 @@ class Decoder(config: WoodConfig) extends Module {
   }
 
   Seq( // Override if rd is 0
-    io.out.writeRf -> DecodeConfig.bitRanges(2)
+    io.out.writeRf -> DecodeConfig.bitRanges(3)
   ).foreach {
     case (outField, (msbIndex, lsbIndex)) =>
       outField := Mux(
         io.out.rd === 0.U,
-        0.U,
+        DecodeConfig.WRITE_RF_1.toInt.U,
         instDecoder(msbIndex, lsbIndex)
       )
   }
 
-  io.out.rs2TagValid := MuxCase(
+  io.out.rs2TagReady := MuxCase(
     0.U,
     Array(
       (io.out.operand === Integer.parseInt(DecodeConfig.OPERAND_IMM, 2).U)   -> 1.U,
@@ -241,7 +241,7 @@ class Decoder(config: WoodConfig) extends Module {
     ).toIndexedSeq
   )
 
-  io.out.rs1TagValid := MuxCase(
+  io.out.rs1TagReady := MuxCase(
     0.U,
     Array(
       (io.out.operand === Integer.parseInt(DecodeConfig.OPERAND_PCIMM, 2).U) -> 1.U

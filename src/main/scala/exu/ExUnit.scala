@@ -4,7 +4,6 @@ import chisel3._
 import chisel3.util._
 import wood.WoodConfig
 import wood.fru.MI
-import wood.std.DCBus
 
 object ExEngine extends ChiselEnum {
   val alu, lsu, float, none = Value
@@ -17,62 +16,75 @@ object ExEngine extends ChiselEnum {
     toBitpat(op).rawString
 }
 
-class Bus(config: WoodConfig) extends Bundle {
-  val tag  = UInt(config.tagWidth.W)
+class Tag(config: WoodConfig) extends Bundle {
+  val tag = UInt(config.tagWidth.W)
+}
+
+class TagBus(config: WoodConfig) extends Tag(config) {}
+
+class DataBus(config: WoodConfig) extends TagBus(config) {
   val data = UInt(config.dataWidth.W)
 }
 
 class ExUnit(config: WoodConfig) extends Module {
   val io = IO(new Bundle {
-    val in = Flipped(Vec(config.nWide, Decoupled(new MI(config))))
-
-    val forwardBus = Vec(config.nWide, Decoupled(new Bus(config)))
+    val in         = Flipped(Vec(config.nWide, Decoupled(new MI(config))))
+    val forwardBus = Vec(config.nWide, ValidIO(new DataBus(config)))
   })
-
-  val frontEndBus  = Module(new DCBus(new MI(config))(config.nWide, 2))
-  val writeBackBus = Module(new DCBus(new Bus(config))(config.nWide, 2))
-  val commitedBus  = Module(new DCBus(new Bus(config))(config.nWide, 2))
-  val forwardBus   = Module(new DCBus(new Bus(config))(config.nWide, 3))
 
   val restage = Module(new RenameStage(config))
   val scstage = Module(new ScheduleStage(config))
   val rrstage = Module(new RegisterReadStage(config))
   val exstage = Module(new ExecuteStage(config))
 
-  val wbstage = Module(new WriteBackStage(config))
+  val wbstage = Module(new WritebackStage(config))
 
   val rbstage = Module(new ROBStage(config))
   val rsstage = Module(new RetiredStatusStage(config))
   val arstage = Module(new ArchRegisterFileStage(config))
 
-  frontEndBus.io.in     <> io.in
-  frontEndBus.io.out(0) <> restage.io.in
-  frontEndBus.io.out(1) <> rbstage.io.in
+  restage.io.in <> io.in
 
-  restage.io.out          <> scstage.io.in
-  scstage.io.out          <> rrstage.io.in
-  rrstage.io.out          <> exstage.io.in
-  exstage.io.out          <> wbstage.io.in
-  wbstage.io.writeBackBus <> writeBackBus.io.in
-  writeBackBus.io.out(0)  <> rsstage.io.writeBackBus
-  writeBackBus.io.out(1)  <> rrstage.io.writeBackBus
+  (0 until config.nWide).foreach(j => {
+    rbstage.io.in(j).bits  := restage.io.out(j).bits
+    rbstage.io.in(j).valid := restage.io.out(j).valid
 
-  rbstage.io.out         <> rsstage.io.in
-  rsstage.io.out         <> arstage.io.in
-  arstage.io.commitedBus <> commitedBus.io.in
-  commitedBus.io.out(0)  <> restage.io.commitedBus
-  commitedBus.io.out(1)  <> scstage.io.commitedBus
+    scstage.io.in(j).bits  := restage.io.out(j).bits
+    scstage.io.in(j).valid := restage.io.out(j).valid
 
-  arstage.io.previousRetiredStatus <> rsstage.io.previousRetiredStatus
+    restage.io.out(j).ready := rbstage.io.in(j).ready & scstage.io.in(j).ready
+  })
 
-  exstage.io.forwardBus <> forwardBus.io.in
-  forwardBus.io.out(0)  <> scstage.io.forwardBus
-  forwardBus.io.out(1)  <> rrstage.io.forwardBus
-  forwardBus.io.out(2)  <> io.forwardBus
+  rrstage.io.in <> scstage.io.out
+  exstage.io.in <> rrstage.io.out
+  wbstage.io.in <> exstage.io.out
+
+  rrstage.io.writebackBus <> wbstage.io.writebackBus
+  rsstage.io.writebackBus <> wbstage.io.writebackBus.map { bus =>
+    val tBus = Wire(ValidIO(new TagBus(config)))
+    tBus.bits.tag := bus.bits.tag
+    tBus.valid    := bus.valid
+    tBus
+  }
+
+  rsstage.io.in <> rbstage.io.out
+  arstage.io.in <> rsstage.io.out
+
+  restage.io.commitedBus <> arstage.io.commitedBus
+  scstage.io.commitedBus <> arstage.io.commitedBus
+
+  rsstage.io.previousRetiredStatus <> arstage.io.previousRetiredStatus
+
+  rrstage.io.forwardBus <> exstage.io.forwardBus
+  io.forwardBus         <> exstage.io.forwardBus
+  scstage.io.forwardBus <> exstage.io.forwardBus.map { bus =>
+    val tBus = Wire(ValidIO(new TagBus(config)))
+    tBus.bits.tag := bus.bits.tag
+    tBus.valid    := bus.valid
+    tBus
+  }
 
   scstage.io.wakeupBus <> rrstage.io.wakeupBus
 
-  rrstage.io.stall := 0.U // TODO
   scstage.io.stall := 0.U // TODO
-
 }

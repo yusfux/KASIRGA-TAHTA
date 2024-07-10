@@ -4,7 +4,7 @@ import _root_.circt.stage.ChiselStage
 import chisel3._
 import chiseltest.simulator.VerilatorFlags
 import chiseltest.{IcarusBackendAnnotation, TreadleBackendAnnotation, VerilatorBackendAnnotation, WriteVcdAnnotation}
-import treadle2.MemoryToVCD
+import treadle2.{MemoryToVCD, RandomizeAtStartupAnnotation}
 
 object GetGroupedSequences { // It is easier to follow sequences in a waveform
   def apply(numGroups: Int, numDataPerGroup: Int): List[List[UInt]] = {
@@ -72,8 +72,8 @@ object GetBackendAnnotation {
 
     val baseAnnotations = backend match {
       case "verilator"   => Seq(VerilatorBackendAnnotation, VerilatorFlags(Seq("--threads", s"${threads}")))
-      case "treadle"     => Seq(TreadleBackendAnnotation)
-      case "treadle_mem" => Seq(TreadleBackendAnnotation, MemoryToVCD("all"))
+      case "treadle"     => Seq(TreadleBackendAnnotation, RandomizeAtStartupAnnotation)
+      case "treadle_mem" => Seq(TreadleBackendAnnotation, MemoryToVCD("all"), RandomizeAtStartupAnnotation)
       case "iverilog"    => Seq(IcarusBackendAnnotation)
       // Add other simulators here
       case _ => throw new IllegalArgumentException(s"Unknown simulator: $backend")

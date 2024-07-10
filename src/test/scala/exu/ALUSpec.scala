@@ -35,7 +35,7 @@ trait ALUBehavior {
 
     it should s"$fn on width:$dataWidth" in {
       test(new ALU(config)).withAnnotations(GetBackendAnnotation()) { dut =>
-        dut.io.mi.initSource()
+        dut.io.in.initSource()
         dut.io.out.initSink()
 
         fork {
@@ -73,7 +73,7 @@ trait ALUBehavior {
                 )
               mi
           }
-          dut.io.mi.enqueueSeq(mis)
+          dut.io.in.enqueueSeq(mis)
         }.fork {
           for ((expected, index) <- results.zipWithIndex) {
             try {

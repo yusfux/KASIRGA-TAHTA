@@ -4,55 +4,32 @@ import chisel3._
 import chisel3.util._
 import wood.WoodConfig
 import wood.fru.MI
-import wood.std.DCBus
 
 class OverrideFromBus(val config: WoodConfig) extends Module {
   val io = IO(new Bundle {
-    val in         = Flipped(Decoupled(new MI(config)))
-    val forwardBus = Flipped(Vec(config.nWide, Decoupled(new Bus(config))))
-    val out        = Decoupled(new MI(config))
+    val in    = Flipped(Decoupled(new MI(config)))
+    val inBus = Input(Vec(config.nWide, ValidIO(new DataBus(config))))
+    val out   = Decoupled(new MI(config))
   })
 
-  val rs1TagMatches = Wire(Vec(config.nWide, UInt(1.W)))
-  val rs2TagMatches = Wire(Vec(config.nWide, UInt(1.W)))
-  val overriden     = Wire(Decoupled(new MI(config)))
+  val rs1TagMatches = Wire(Vec(config.nWide, Bool()))
+  val rs2TagMatches = Wire(Vec(config.nWide, Bool()))
 
-  (0 until config.nWide).foreach(j => {
-    rs1TagMatches(j) := MuxCase(
-      io.in.bits.rs1TagValid,
-      Array(
-        ((io.in.bits.rs1Tag === io.forwardBus(j).bits.tag) & io.forwardBus(j).valid) -> 1.U
-      ).toIndexedSeq
-    )
-    rs2TagMatches(j) := MuxCase(
-      io.in.bits.rs2TagValid,
-      Array(
-        ((io.in.bits.rs2Tag === io.forwardBus(j).bits.tag) & io.forwardBus(j).valid) -> 1.U
-      ).toIndexedSeq
-    )
+  (0 until config.nWide).foreach { i =>
+    rs1TagMatches(i) := (io.in.bits.rs1Tag === io.inBus(i).bits.tag) & io.inBus(i).valid
+    rs2TagMatches(i) := (io.in.bits.rs2Tag === io.inBus(i).bits.tag) & io.inBus(i).valid
+  }
 
-    io.forwardBus(j).ready := io.out.ready
-  })
+  val rs1MatchIndex = PriorityEncoder(rs1TagMatches.asUInt)
+  val rs2MatchIndex = PriorityEncoder(rs2TagMatches.asUInt)
 
-  val rs1MatchIndex = Wire(UInt(log2Ceil(config.nWide).W))
-  val rs2MatchIndex = Wire(UInt(log2Ceil(config.nWide).W))
-  rs1MatchIndex := PriorityEncoder(rs1TagMatches.asUInt)
-  rs2MatchIndex := PriorityEncoder(rs2TagMatches.asUInt)
+  val overriden = Wire(Decoupled(new MI(config)))
+  overriden              <> io.in
+  overriden.bits.rs1Data := Mux(rs1TagMatches.asUInt.orR, io.inBus(rs1MatchIndex).bits.data, io.in.bits.rs1Data)
+  overriden.bits.rs2Data := Mux(rs2TagMatches.asUInt.orR, io.inBus(rs2MatchIndex).bits.data, io.in.bits.rs2Data)
 
-  overriden                  <> io.in
-  overriden.bits.rs1TagValid := rs1TagMatches.asUInt.orR
-  overriden.bits.rs2TagValid := rs2TagMatches.asUInt.orR
-  overriden.bits.rs1Data := Mux(
-    rs1TagMatches.asUInt.orR,
-    io.forwardBus(rs1MatchIndex.asUInt).bits.data,
-    io.in.bits.rs1Data
-  )
-
-  overriden.bits.rs2Data := Mux(
-    rs2TagMatches.asUInt.orR,
-    io.forwardBus(rs2MatchIndex.asUInt).bits.data,
-    io.in.bits.rs2Data
-  )
+  overriden.bits.rs1TagReady := io.in.bits.rs1TagReady | rs1TagMatches.asUInt.orR
+  overriden.bits.rs2TagReady := io.in.bits.rs2TagReady | rs2TagMatches.asUInt.orR
 
   io.out <> overriden
 }
@@ -60,20 +37,17 @@ class OverrideFromBus(val config: WoodConfig) extends Module {
 class OverrideFromBuses(val config: WoodConfig) extends Module {
   val io = IO(new Bundle {
     val in    = Flipped(Vec(config.nWide, Decoupled(new MI(config))))
-    val inBus = Flipped(Vec(config.nWide, Decoupled(new Bus(config))))
+    val inBus = Input(Vec(config.nWide, ValidIO(new DataBus(config))))
     val out   = Vec(config.nWide, Decoupled(new MI(config)))
   })
 
-  val forwardBus = Module(new DCBus(new Bus(config))(config.nWide, config.nWide))
   val overriders = Seq.tabulate(config.nWide) { _ =>
     Module(new OverrideFromBus(config))
   }
 
-  forwardBus.io.in <> io.inBus
-
   (0 until config.nWide).foreach(j => {
-    overriders(j).io.in         <> io.in(j)
-    overriders(j).io.forwardBus <> forwardBus.io.out(j)
-    io.out(j)                   <> overriders(j).io.out
+    overriders(j).io.in    <> io.in(j)
+    overriders(j).io.inBus <> io.inBus
+    io.out(j)              <> overriders(j).io.out
   })
 }

@@ -4,59 +4,56 @@ import chisel3._
 import chisel3.util._
 import wood.WoodConfig
 import wood.fru.MI
-import wood.std.{BlockRAMParams, DCPipelineRegister, DecoupledBlockRAM}
+import wood.std.{BlockRAM, BlockRAMParams, DCCrossbar, DCPipelineRegister}
 
 class RegisterReadStage(config: WoodConfig) extends Module {
   val io = IO(new Bundle {
     val in           = Flipped(Vec(config.nWide, Decoupled(new MI(config))))
-    val writeBackBus = Flipped(Vec(config.nWide, Decoupled(new Bus(config))))
-    val forwardBus   = Flipped(Vec(config.nWide, Decoupled(new Bus(config))))
-    val wakeupBus    = Vec(config.nWide, Decoupled(new Bus(config)))
-    val out          = Vec(config.nWide, Decoupled(new MI(config)))
-
-    val stall = Input(UInt(1.W))
+    val writebackBus = Flipped(Vec(config.nWide, ValidIO(new DataBus(config))))
+    val forwardBus   = Flipped(Vec(config.nWide, ValidIO(new DataBus(config))))
+    val wakeupBus    = Vec(config.nWide, ValidIO(new TagBus(config)))
+    val out          = MixedVec(config.listExUnits.map(length => Vec(length, Decoupled(new MI(config)))))
   })
 
+  val overrideForward   = Module(new OverrideFromBuses(config))
+  val overrideWriteBack = Module(new OverrideFromBuses(config))
+  val crossbar          = Module(new DCCrossbar(new MI(config))(config.nWide, config.listExUnits))
+  val aluPRegs          = Module(new DCPipelineRegister(new MI(config))(config.nWide))
+
+  val aluCrossbarIndex = 0 // TODO: move to WoodConfig
+
   val prf = Module(
-    new DecoupledBlockRAM(UInt(config.dataWidth.W))(
+    new BlockRAM(UInt(config.dataWidth.W))(
       BlockRAMParams(config.prfDepth, config.nWide * 2, config.nWide)
     )
   )
-  val pReg = Module(new DCPipelineRegister(new MI(config))(config.nWide))
-
-  val overrideForward = Module(new OverrideFromBuses(config)) // override from the forwardBus
-  overrideForward.io.inBus <> io.forwardBus
 
   val overridenRFData = Wire(Vec(config.nWide, Decoupled(new MI(config))))
+  overridenRFData <> io.in
 
   (0 until config.nWide).foreach(j => {
-    io.wakeupBus(j).bits.tag  := io.in(j).bits.rdTag
-    io.wakeupBus(j).bits.data := DontCare
-    io.wakeupBus(j).valid     := io.in(j).bits.wakeup
+    io.wakeupBus(j).bits.tag := io.in(j).bits.rdTag
+    io.wakeupBus(j).valid    := io.in(j).bits.wakeup
 
-    prf.io.rip(j).bits.addr                := io.in(j).bits.rs1Tag
-    prf.io.rip(j).valid                    := io.in(j).valid
-    io.in(j).ready                         := prf.io.rip(j).ready
-    prf.io.rip(j + config.nWide).bits.addr := io.in(j).bits.rs2Tag
-    prf.io.rip(j + config.nWide).valid     := io.in(j).valid
-    io.in(j).ready                         := prf.io.rip(j).ready & prf.io.rip(j + config.nWide).ready
+    prf.io.rip(j).addr                := io.in(j).bits.rs1Tag
+    prf.io.rip(j + config.nWide).addr := io.in(j).bits.rs2Tag
 
-    overridenRFData(j).bits         := io.in(j).bits
-    overridenRFData(j).bits.rs1Data := prf.io.rop(j).bits.data
-    overridenRFData(j).bits.rs2Data := prf.io.rop(j + config.nWide).bits.data
-    overridenRFData(j).valid        := prf.io.rop(j).valid & prf.io.rop(j + config.nWide).valid
+    overridenRFData(j).bits.rs1Data := prf.io.rop(j).data
+    overridenRFData(j).bits.rs2Data := prf.io.rop(j + config.nWide).data
 
-    prf.io.rop(j).ready                := io.out(j).ready
-    prf.io.rop(j + config.nWide).ready := io.out(j).ready
+    prf.io.wp(j).addr   := io.writebackBus(j).bits.tag
+    prf.io.wp(j).enable := io.writebackBus(j).valid
+    prf.io.wp(j).data   := io.writebackBus(j).bits.data
 
-    prf.io.wp(j).bits.addr   := io.writeBackBus(j).bits.tag
-    prf.io.wp(j).bits.enable := io.writeBackBus(j).valid
-    prf.io.wp(j).bits.data   := io.writeBackBus(j).bits.data
-    prf.io.wp(j).valid       := io.writeBackBus(j).valid
-    io.writeBackBus(j).ready := prf.io.wp(j).ready
+    crossbar.io.sel(j) := io.in(j).bits.exEngine === ExEngine.alu.asUInt
   })
-  overrideForward.io.in <> overridenRFData
 
-  pReg.io.in <> overrideForward.io.out
-  io.out     <> pReg.io.out
+  overrideForward.io.inBus   <> io.forwardBus
+  overrideWriteBack.io.inBus <> io.writebackBus
+  overrideForward.io.in      <> overridenRFData
+  overrideWriteBack.io.in    <> overrideForward.io.out
+  crossbar.io.in             <> overrideWriteBack.io.out
+
+  aluPRegs.io.in           <> crossbar.io.out(aluCrossbarIndex)
+  io.out(aluCrossbarIndex) <> aluPRegs.io.out
 }
