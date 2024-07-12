@@ -3,7 +3,7 @@ package wood.exu
 import chisel3._
 import chisel3.util._
 import wood.WoodConfig
-import wood.fru.MI
+import wood.fru.{DecodeConfig, MI}
 import wood.std.{DCCrossbar, DCPipelineRegister}
 
 class RegisterReadStage(config: WoodConfig) extends Module {
@@ -31,8 +31,16 @@ class RegisterReadStage(config: WoodConfig) extends Module {
     io.wakeupBus(j).bits.tag := io.in(j).bits.rdTag
     io.wakeupBus(j).valid    := io.in(j).bits.wakeup
 
-    overridenRFData(j).bits.rs1Data := prf(io.in(j).bits.rs1Tag)
-    overridenRFData(j).bits.rs2Data := prf(io.in(j).bits.rs2Tag)
+    val rs1ValidZero = (io.in(j).bits.rs1 === 0.U) &
+      ((io.in(j).bits.operand === DecodeConfig.OPERAND_REG.toInt.U) ||
+        (io.in(j).bits.operand === DecodeConfig.OPERAND_IMM.toInt.U) ||
+        (io.in(j).bits.operand === DecodeConfig.OPERAND_PC.toInt.U))
+
+    val rs2ValidZero = (io.in(j).bits.rs2 === 0.U) &
+      (io.in(j).bits.operand === DecodeConfig.OPERAND_REG.toInt.U)
+
+    overridenRFData(j).bits.rs1Data := Mux(rs1ValidZero, 0.U, prf(io.in(j).bits.rs1Tag))
+    overridenRFData(j).bits.rs2Data := Mux(rs2ValidZero, 0.U, prf(io.in(j).bits.rs2Tag))
 
     when(io.writebackBus(j).valid) {
       prf(io.writebackBus(j).bits.tag) := io.writebackBus(j).bits.data

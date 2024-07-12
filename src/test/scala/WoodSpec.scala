@@ -57,9 +57,9 @@ class WoodSpec extends AnyFlatSpec with ChiselScalatestTester with ParallelTestE
     buildTestCode()
 
     val nWide        = 1
-    val prfDepth     = 32
-    val miQueueDepth = 8
-    val pcListDepth  = 8
+    val prfDepth     = 45
+    val miQueueDepth = 2
+    val pcListDepth  = 2
 
     val config =
       new WoodConfig(nWide = nWide, prfDepth = prfDepth, miQueueDepth = miQueueDepth, pcListDepth = pcListDepth)

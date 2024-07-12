@@ -4,7 +4,7 @@ import chisel3._
 import chisel3.experimental.BundleLiterals._
 import chisel3.util._
 import wood.WoodConfig
-import wood.fru.{DecodeConfig, DecodeStage, MIStage}
+import wood.fru.{DecodeConfig, DecodeStage}
 
 case class MI(config: WoodConfig) extends Bundle {
   val isFloat     = UInt(DecodeConfig.subWidths(0).W)
@@ -63,17 +63,12 @@ class FrUnit(config: WoodConfig) extends Module {
   val io = IO(new Bundle {
     val in    = Flipped(Vec(config.nWide, Decoupled(UInt(32.W))))
     val pcIdx = Flipped(Decoupled(UInt(config.pcIndexWidth.W)))
-
-    val toFloat = Vec(config.numPortsFloat, Decoupled(new MI(config)))
-    val toInt   = Vec(config.numPortsInt, Decoupled(new MI(config)))
+    val out   = Vec(config.numPortsInt, Decoupled(new MI(config)))
   })
 
   val destage = Module(new DecodeStage(config))
-  val mistage = Module(new MIStage(config))
 
   destage.io.in    <> io.in
   destage.io.pcIdx <> io.pcIdx
-  mistage.io.in    <> destage.io.out
-  io.toFloat       <> mistage.io.toFloat
-  io.toInt         <> mistage.io.toInt
+  io.out           <> destage.io.out
 }

@@ -9,17 +9,22 @@ import wood.std.DCRRShifter
   *
   * @param numPorts: number of input/output ports
   * @param queueDepth: queue depth
+  * @param unique: if true queue will reject consequtive identical inputs
   *
   * @example{{{
   * 32 deep Round Robin Queue from a single 2 port input interface to 2 port output interface, with 8 bit data size.
   *  new DCRRQueue(UInt(8.W))(2,32)
   * }}}
   */
-class DCRRQueue[T <: Data](gen: T)(numPorts: Int, queueDepth: Int) extends Module {
+class DCRRQueue[T <: Data](gen: T)(numPorts: Int, queueDepth: Int, unique: Boolean = false) extends Module {
   val io = IO(new Bundle {
     val in  = Flipped(Vec(numPorts, Decoupled(gen.cloneType)))
     val out = Vec(numPorts, Decoupled(gen.cloneType))
   })
+
+  val previousIn   = RegInit(VecInit(Seq.fill(numPorts)(0.U.asTypeOf(gen.cloneType))))
+  val is_duplicate = io.in.zip(previousIn).map { case (in, reg) => in.valid && (in.bits === reg) }
+  previousIn := io.in.zipWithIndex.map { case (in, i) => Mux(in.valid && !is_duplicate(i), in.bits, previousIn(i)) }
 
   val queues = Seq.tabulate(numPorts) { _ =>
     Module(new Queue(gen.cloneType, queueDepth, flow = true))
@@ -27,7 +32,14 @@ class DCRRQueue[T <: Data](gen: T)(numPorts: Int, queueDepth: Int) extends Modul
 
   val rrshifter = Module(new DCRRShifter(gen.cloneType)(numPorts))
 
-  (0 until numPorts).foreach(j => rrshifter.io.in(j) <> io.in(j))
+  if (unique)
+    (0 until numPorts).foreach(j => rrshifter.io.in(j).valid := io.in(j).valid && !is_duplicate(j))
+  else
+    (0 until numPorts).foreach(j => rrshifter.io.in(j).valid := io.in(j).valid)
+
+  rrshifter.io.in.zip(io.in).foreach { case (rrshift_in, in) => rrshift_in.bits := in.bits }
+  rrshifter.io.in.zip(io.in).foreach { case (rrshift_in, in) => in.ready := rrshift_in.ready }
+
   (0 until numPorts).foreach(j => queues(j).io.enq <> rrshifter.io.out(j))
 
   val out_ready = Wire(Vec(numPorts, Bool()))

@@ -82,20 +82,15 @@ class FrUnitSpec extends AnyFlatSpec with ChiselScalatestTester with ParallelTes
         forks += fork { in(j).enqueueSeq(groupedUInts(j)) }
         forks += fork {
           (0 until config.nWide).foreach(j => {
-            dut.io.toFloat(j).ready.poke(0) // TODO
-          })
-        }
-        forks += fork {
-          (0 until config.nWide).foreach(j => {
-            dut.io.toInt(j).ready.poke(1)
+            dut.io.out(j).ready.poke(1)
             step(50)
-            dut.io.toInt(j).ready.poke(0)
+            dut.io.out(j).ready.poke(0)
             step(5)
-            dut.io.toInt(j).ready.poke(1)
+            dut.io.out(j).ready.poke(1)
             step(50)
-            dut.io.toInt(j).ready.poke(0)
+            dut.io.out(j).ready.poke(0)
             step(50)
-            dut.io.toInt(j).ready.poke(1)
+            dut.io.out(j).ready.poke(1)
             step(50)
           })
         }

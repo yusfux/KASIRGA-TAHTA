@@ -1,4 +1,4 @@
-package wood.fru
+package wood.exu
 
 import chisel3._
 import chiseltest._
@@ -7,6 +7,7 @@ import org.scalatest.ParallelTestExecution
 
 import wood.{TestConfig, WoodConfig}
 import wood.util.{GetBackendAnnotation, GetGroupedSequences, TestGenerateVerilog}
+import wood.fru.MI
 
 class MIStageSpec extends AnyFlatSpec with ChiselScalatestTester with ParallelTestExecution {
   val numDataPerGroup = 30
@@ -19,9 +20,8 @@ class MIStageSpec extends AnyFlatSpec with ChiselScalatestTester with ParallelTe
     val miSequences: List[List[MI]] = sequences.map(_.map(data => MI(config, 0.U, Map("inst" -> data))))
 
     test(new MIStage(config)).withAnnotations(GetBackendAnnotation()) { dut =>
-      val inSources     = dut.io.in.map(_.initSource())
-      val outSinksInt   = dut.io.toInt.map(_.initSink())
-      val outSinksFloat = dut.io.toFloat.map(_.initSink())
+      val inSources   = dut.io.in.map(_.initSource())
+      val outSinksInt = dut.io.out.map(_.initSink())
 
       fork {
         inSources(0).enqueueSeq(miSequences(0))
@@ -43,9 +43,8 @@ class MIStageSpec extends AnyFlatSpec with ChiselScalatestTester with ParallelTe
     val miSequences: List[List[MI]] = sequences.map(_.map(data => MI(config, 0.U, Map("inst" -> data))))
 
     test(new MIStage(config)).withAnnotations(GetBackendAnnotation()) { dut =>
-      val inSources     = dut.io.in.map(_.initSource())
-      val outSinksInt   = dut.io.toInt.map(_.initSink())
-      val outSinksFloat = dut.io.toFloat.map(_.initSink())
+      val inSources   = dut.io.in.map(_.initSource())
+      val outSinksInt = dut.io.out.map(_.initSink())
 
       fork {
         inSources(0).enqueue(miSequences(0)(0))
@@ -74,9 +73,8 @@ class MIStageSpec extends AnyFlatSpec with ChiselScalatestTester with ParallelTe
     val miSequences: List[List[MI]] = sequences.map(_.map(data => MI(config, 0.U, Map("inst" -> data))))
 
     test(new MIStage(config)).withAnnotations(GetBackendAnnotation()) { dut =>
-      val inSources     = dut.io.in.map(_.initSource())
-      val outSinksInt   = dut.io.toInt.map(_.initSink())
-      val outSinksFloat = dut.io.toFloat.map(_.initSink())
+      val inSources   = dut.io.in.map(_.initSource())
+      val outSinksInt = dut.io.out.map(_.initSink())
 
       fork {
         inSources(0).enqueue(miSequences(0)(0))

@@ -6,6 +6,7 @@ import chisel3.util.experimental.decode.{EspressoMinimizer, TruthTable, decoder}
 import wood.WoodConfig
 import wood.exu.{ALUOp, ExEngine}
 import wood.fru.Instructions._
+import wood.std.DCPipelineRegisterMultiValid
 
 class ExpandBits(bitVectors: List[String]) {
   // Calculate the max width
@@ -304,7 +305,7 @@ class DecodeStage(config: WoodConfig) extends Module {
     val out   = Vec(config.nWide, Decoupled(new MI(config)))
   })
 
-  val pReg        = Module(new wood.std.DCPipelineRegisterMultiValid(new MI(config))(config.nWide, 1))
+  val pReg        = Module(new DCPipelineRegisterMultiValid(new MI(config))(config.nWide, 1))
   val decoders    = Seq.fill(config.nWide)(Module(new Decoder(config)))
   val overriden   = Wire(Vec(config.nWide, Decoupled(new MI(config))))
   val extraValids = Wire(Vec(config.nWide, UInt(1.W)))

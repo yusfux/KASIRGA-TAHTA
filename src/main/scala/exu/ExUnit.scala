@@ -32,6 +32,7 @@ class ExUnit(config: WoodConfig) extends Module {
     val forwardBus = Vec(config.nWide, ValidIO(new DataBus(config)))
   })
 
+  val mistage = Module(new MIStage(config))
   val restage = Module(new RenameStage(config))
   val scstage = Module(new ScheduleStage(config))
   val rrstage = Module(new RegisterReadStage(config))
@@ -43,7 +44,8 @@ class ExUnit(config: WoodConfig) extends Module {
   val rsstage = Module(new RetiredStatusStage(config))
   val arstage = Module(new ArchRegisterFileStage(config))
 
-  restage.io.in <> io.in
+  mistage.io.in <> io.in
+  restage.io.in <> mistage.io.out
 
   (0 until config.nWide).foreach(j => {
     rbstage.io.in(j).bits  := restage.io.out(j).bits
@@ -70,7 +72,7 @@ class ExUnit(config: WoodConfig) extends Module {
   rsstage.io.in <> rbstage.io.out
   arstage.io.in <> rsstage.io.out
 
-  restage.io.commitedBus <> arstage.io.commitedBus
+  mistage.io.commitedBus <> arstage.io.commitedBus
   scstage.io.commitedBus <> arstage.io.commitedBus
 
   rsstage.io.previousRetiredStatus <> arstage.io.previousRetiredStatus

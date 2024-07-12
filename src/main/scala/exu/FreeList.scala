@@ -11,8 +11,8 @@ class FreeList(config: WoodConfig) extends Module {
     val out = Vec(config.nWide, Decoupled(new Tag(config)))
   })
 
-  val initializer = Module(new DCQueueInitializer(new Tag(config))(config.nWide, config.prfDepth, "count"))
-  val q           = Module(new DCRRQueue(new Tag(config))(config.nWide, config.prfDepth))
+  val initializer = Module(new DCQueueInitializer(new Tag(config))(config.nWide, (config.prfDepth - 1), "count+1"))
+  val q           = Module(new DCRRQueue(new Tag(config))(config.nWide, config.prfDepth, unique = true))
 
   (0 until config.nWide).foreach(j => {
     initializer.io.in(j).bits.tag := io.in(j).bits.tag

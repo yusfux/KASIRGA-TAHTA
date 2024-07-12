@@ -57,11 +57,10 @@ class RetiredStatusStage(config: WoodConfig) extends Module {
   })
 
   (0 until config.nWide).foreach(j => {
-
     when(io.writebackBus(j).valid) {
       retiredStatusRegisterFile(io.writebackBus(j).bits.tag) := 1.U
     }
-    when(io.previousRetiredStatus(j).valid) {
+    when(io.previousRetiredStatus(j).valid & io.previousRetiredStatus(j).bits.retired.asBool) {
       retiredStatusRegisterFile(io.previousRetiredStatus(j).bits.rdTag) := 0.U
     }
   })
@@ -97,8 +96,7 @@ class ArchRegisterFileStage(config: WoodConfig) extends Module {
     val commitedBus           = Vec(config.nWide, ValidIO(new TagBus(config)))
   })
 
-  val archRegisterFile = RegInit(VecInit(Seq.fill(32)(0.U(config.tagWidth.W))))
-
+  val archRegisterFile      = RegInit(VecInit(Seq.fill(32)(0.U(config.tagWidth.W))))
   val archRegisterFileValid = RegInit(VecInit(Seq.fill(32)(0.U(1.W))))
 
   (0 until config.nWide).foreach(j => {
@@ -106,15 +104,15 @@ class ArchRegisterFileStage(config: WoodConfig) extends Module {
     io.previousRetiredStatus(j).valid := io.in(j).valid
     io.in(j).ready                    := 1.U // no reason to stall
 
-    when(io.in(j).bits.writeRf.asBool) {
+    val validWrite = io.in(j).bits.writeRf.asBool & io.in(j).valid & io.in(j).bits.retired.asBool
+
+    when(validWrite) {
       archRegisterFile(io.in(j).bits.rd)      := io.in(j).bits.rdTag
       archRegisterFileValid(io.in(j).bits.rd) := 1.U
     }
-  })
 
-  (0 until config.nWide).foreach(j => {
-    io.commitedBus(j).bits.tag := archRegisterFile(io.in(j).bits.rd) // TODO RegEnable
-    io.commitedBus(j).valid    := archRegisterFileValid(io.in(j).bits.rd) // TODO RegEnable
+    io.commitedBus(j).bits.tag := RegEnable(archRegisterFile(io.in(j).bits.rd), 0.U, 1.B)
+    io.commitedBus(j).valid    := RegEnable(archRegisterFileValid(io.in(j).bits.rd) & validWrite, 0.U, 1.B)
     dontTouch(io.in(j).bits.inst) // for testbench only
   })
 }

@@ -43,10 +43,6 @@ class Wood(config: WoodConfig) extends Module {
 
   frunit.io.in    <> io.in
   frunit.io.pcIdx <> io.pcIdx
-  exunit.io.in    <> frunit.io.toInt
+  exunit.io.in    <> frunit.io.out
   io.forwardBus   <> exunit.io.forwardBus
-
-  (0 until config.nWide).foreach(j => {
-    frunit.io.toFloat(j).ready := 0.U // TODO
-  })
 }
