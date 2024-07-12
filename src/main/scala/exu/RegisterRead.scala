@@ -4,7 +4,7 @@ import chisel3._
 import chisel3.util._
 import wood.WoodConfig
 import wood.fru.MI
-import wood.std.{BlockRAM, BlockRAMParams, DCCrossbar, DCPipelineRegister}
+import wood.std.{DCCrossbar, DCPipelineRegister}
 
 class RegisterReadStage(config: WoodConfig) extends Module {
   val io = IO(new Bundle {
@@ -22,11 +22,7 @@ class RegisterReadStage(config: WoodConfig) extends Module {
 
   val aluCrossbarIndex = 0 // TODO: move to WoodConfig
 
-  val prf = Module(
-    new BlockRAM(UInt(config.dataWidth.W))(
-      BlockRAMParams(config.prfDepth, config.nWide * 2, config.nWide)
-    )
-  )
+  val prf = RegInit(VecInit(Seq.fill(config.prfDepth)(0.U(config.dataWidth.W)))) // TODO: remove reset
 
   val overridenRFData = Wire(Vec(config.nWide, Decoupled(new MI(config))))
   overridenRFData <> io.in
@@ -35,16 +31,12 @@ class RegisterReadStage(config: WoodConfig) extends Module {
     io.wakeupBus(j).bits.tag := io.in(j).bits.rdTag
     io.wakeupBus(j).valid    := io.in(j).bits.wakeup
 
-    prf.io.rip(j).addr                := io.in(j).bits.rs1Tag
-    prf.io.rip(j + config.nWide).addr := io.in(j).bits.rs2Tag
+    overridenRFData(j).bits.rs1Data := prf(io.in(j).bits.rs1Tag)
+    overridenRFData(j).bits.rs2Data := prf(io.in(j).bits.rs2Tag)
 
-    overridenRFData(j).bits.rs1Data := prf.io.rop(j).data
-    overridenRFData(j).bits.rs2Data := prf.io.rop(j + config.nWide).data
-
-    prf.io.wp(j).addr   := io.writebackBus(j).bits.tag
-    prf.io.wp(j).enable := io.writebackBus(j).valid
-    prf.io.wp(j).data   := io.writebackBus(j).bits.data
-
+    when(io.writebackBus(j).valid) {
+      prf(io.writebackBus(j).bits.tag) := io.writebackBus(j).bits.data
+    }
     crossbar.io.sel(j) := io.in(j).bits.exEngine === ExEngine.alu.asUInt
   })
 

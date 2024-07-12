@@ -4,7 +4,7 @@ import chisel3._
 import chisel3.util._
 import wood.WoodConfig
 import wood.fru.MI
-import wood.std.{DCPipelineRegister, DCRRQueue}
+import wood.std.{DCArbiter, DCPipelineRegister, DCRRQueue}
 
 class ROBStage(config: WoodConfig) extends Module {
   val io = IO(new Bundle {
@@ -24,34 +24,45 @@ class RetiredStatusStage(config: WoodConfig) extends Module {
   val io = IO(new Bundle {
     val in                    = Flipped(Vec(config.nWide, Decoupled(new MI(config))))
     val writebackBus          = Flipped(Vec(config.nWide, ValidIO(new TagBus(config))))
-    val previousRetiredStatus = Flipped(Vec(config.nWide, ValidIO(new TagBus(config))))
+    val previousRetiredStatus = Flipped(Vec(config.nWide, ValidIO(new MI(config))))
 
     val out = Vec(config.nWide, Decoupled(new MI(config)))
   })
 
   val overrideWriteBack         = Module(new OverrideFromBuses(config))
   val pReg                      = Module(new DCPipelineRegister(new MI(config))(config.nWide))
-  val retiredStatusRegisterFile = Mem(config.prfDepth, UInt(1.W))
+  val retiredStatusRegisterFile = RegInit(VecInit(Seq.fill(config.prfDepth)(0.U(1.W))))
+  val retryArbiters = Seq.tabulate(config.nWide) { _ =>
+    Module(new DCArbiter(new MI(config))(2, 1))
+  }
 
   val overridenRetiredStatusData = Wire(Vec(config.nWide, Decoupled(new MI(config))))
-  overridenRetiredStatusData <> io.in
-
-  val allRetired = Wire(Vec(config.nWide, Bool()))
-  val allReady   = Wire(Vec(config.nWide, Bool()))
-  allRetired := io.previousRetiredStatus.map(_.valid)
-  allReady   := io.out.map(_.ready)
 
   (0 until config.nWide).foreach(j => {
-    overridenRetiredStatusData(j).bits.retired := retiredStatusRegisterFile.read(io.in(j).bits.rdTag)
+    retryArbiters(j).io.in(1)       <> io.in(j)
+    retryArbiters(j).io.in(0).bits  := io.previousRetiredStatus(j).bits
+    retryArbiters(j).io.in(0).valid := io.previousRetiredStatus(j).valid & (!io.previousRetiredStatus(j).bits.retired)
+    overridenRetiredStatusData(j)   <> retryArbiters(j).io.out(0)
+  })
+
+  val allPreviouslyRetired = Wire(Vec(config.nWide, Bool()))
+  val allPreviouslyValid   = Wire(Vec(config.nWide, Bool()))
+  val allOutReady          = Wire(Vec(config.nWide, Bool()))
+  allPreviouslyRetired := io.previousRetiredStatus.map(_.bits.retired.asBool)
+  allPreviouslyValid   := io.previousRetiredStatus.map(_.valid)
+  allOutReady          := io.out.map(_.ready)
+
+  (0 until config.nWide).foreach(j => {
+    overridenRetiredStatusData(j).bits.retired := retiredStatusRegisterFile(io.in(j).bits.rdTag)
   })
 
   (0 until config.nWide).foreach(j => {
 
     when(io.writebackBus(j).valid) {
-      retiredStatusRegisterFile.write(io.writebackBus(j).bits.tag, 1.U)
+      retiredStatusRegisterFile(io.writebackBus(j).bits.tag) := 1.U
     }
     when(io.previousRetiredStatus(j).valid) {
-      retiredStatusRegisterFile.write(io.previousRetiredStatus(j).bits.tag, 0.U)
+      retiredStatusRegisterFile(io.previousRetiredStatus(j).bits.rdTag) := 0.U
     }
   })
 
@@ -68,36 +79,41 @@ class RetiredStatusStage(config: WoodConfig) extends Module {
   io.out                  <> pReg.io.out
 
   (0 until config.nWide).foreach(j => {
-    pReg.io.out(j).ready := allRetired.asUInt.andR && allReady.asUInt.asBool
+    overrideWriteBack.io.out(j).ready := MuxCase(
+      0.U,
+      Array(
+        (allPreviouslyRetired.asUInt.andR & allPreviouslyValid.asUInt.asBool)  -> 1.U,
+        (!allPreviouslyRetired.asUInt.andR & allPreviouslyValid.asUInt.asBool) -> 0.U,
+        (!allPreviouslyValid.asUInt.asBool)                                    -> 1.U
+      ).toIndexedSeq
+    )
   })
 }
 
 class ArchRegisterFileStage(config: WoodConfig) extends Module {
   val io = IO(new Bundle {
     val in                    = Flipped(Vec(config.nWide, Decoupled(new MI(config))))
-    val previousRetiredStatus = Vec(config.nWide, ValidIO(new TagBus(config)))
+    val previousRetiredStatus = Vec(config.nWide, ValidIO(new MI(config)))
     val commitedBus           = Vec(config.nWide, ValidIO(new TagBus(config)))
   })
 
-  val arf = Mem(55, UInt(8.W))
-
-  val archRegisterFile = Mem(32, UInt(config.tagWidth.W))
+  val archRegisterFile = RegInit(VecInit(Seq.fill(32)(0.U(config.tagWidth.W))))
 
   val archRegisterFileValid = RegInit(VecInit(Seq.fill(32)(0.U(1.W))))
 
   (0 until config.nWide).foreach(j => {
-    io.previousRetiredStatus(j).bits.tag := io.in(j).bits.rdTag
-    io.previousRetiredStatus(j).valid    := io.in(j).bits.retired
-    io.in(j).ready                       := 1.U // no reason to stall
+    io.previousRetiredStatus(j).bits  := io.in(j).bits
+    io.previousRetiredStatus(j).valid := io.in(j).valid
+    io.in(j).ready                    := 1.U // no reason to stall
 
     when(io.in(j).bits.writeRf.asBool) {
-      archRegisterFile.write(io.in(j).bits.rd, io.in(j).bits.rdTag)
+      archRegisterFile(io.in(j).bits.rd)      := io.in(j).bits.rdTag
       archRegisterFileValid(io.in(j).bits.rd) := 1.U
     }
   })
 
   (0 until config.nWide).foreach(j => {
-    io.commitedBus(j).bits.tag := archRegisterFile.read(io.in(j).bits.rd) // TODO RegEnable
+    io.commitedBus(j).bits.tag := archRegisterFile(io.in(j).bits.rd) // TODO RegEnable
     io.commitedBus(j).valid    := archRegisterFileValid(io.in(j).bits.rd) // TODO RegEnable
     dontTouch(io.in(j).bits.inst) // for testbench only
   })

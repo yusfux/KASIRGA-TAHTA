@@ -4,7 +4,7 @@ import chisel3._
 import chisel3.util._
 import wood.WoodConfig
 import wood.fru.{DecodeConfig, MI}
-import wood.std.{BlockRAM, BlockRAMParams, DCPipelineRegister}
+import wood.std.DCPipelineRegister
 
 class RenameStage(config: WoodConfig) extends Module {
   val io = IO(new Bundle {
@@ -13,30 +13,22 @@ class RenameStage(config: WoodConfig) extends Module {
     val out         = Vec(config.nWide, Decoupled(new MI(config)))
   })
 
-  val flist = Module(new FreeList(config))
-  val pReg  = Module(new DCPipelineRegister(new MI(config))(config.nWide))
-
-  val frontEndRegisterFile = Module(
-    new BlockRAM(new Tag(config))(
-      BlockRAMParams(32, config.nWide * 2, config.nWide)
-    )
-  )
+  val flist                = Module(new FreeList(config))
+  val pReg                 = Module(new DCPipelineRegister(new MI(config))(config.nWide))
+  val frontEndRegisterFile = RegInit(VecInit(Seq.fill(32)(0.U(config.tagWidth.W))))
 
   (0 until config.nWide).foreach(j => {
     flist.io.in(j).bits.tag := io.commitedBus(j).bits.tag
     flist.io.in(j).valid    := io.commitedBus(j).valid
-
-    frontEndRegisterFile.io.rip(j).addr                := io.in(j).bits.rs1
-    frontEndRegisterFile.io.rip(j + config.nWide).addr := io.in(j).bits.rs2
   })
 
   (0 until config.nWide).foreach(j => {
     val read_freelist = io.in(j).bits.writeRf === DecodeConfig.WRITE_RF_1.toInt.U
     flist.io.out(j).ready := io.in(j).valid & read_freelist
 
-    frontEndRegisterFile.io.wp(j).addr     := io.in(j).bits.rd
-    frontEndRegisterFile.io.wp(j).data.tag := flist.io.out(j).bits.tag
-    frontEndRegisterFile.io.wp(j).enable   := (io.in(j).bits.writeRf === DecodeConfig.WRITE_RF_1.toInt.U) & flist.io.out(j).valid & io.in(j).valid
+    when((io.in(j).bits.writeRf === DecodeConfig.WRITE_RF_1.toInt.U) & flist.io.out(j).valid & io.in(j).valid) {
+      frontEndRegisterFile(io.in(j).bits.rd) := flist.io.out(j).bits.tag
+    }
   })
 
   val overriden = Wire(Vec(config.nWide, new MI(config)))
@@ -60,7 +52,7 @@ class RenameStage(config: WoodConfig) extends Module {
     when(rs1HasOverride) {
       overriden(j).rs1Tag := overrideRs1Tag
     }.otherwise {
-      overriden(j).rs1Tag := frontEndRegisterFile.io.rop(j).data.tag
+      overriden(j).rs1Tag := frontEndRegisterFile(io.in(j).bits.rs1)
     }
 
     val (rs2HasOverride, overrideRs2Tag) = (0 until j).foldLeft((0.B, 0.U)) { (acc, k) =>
@@ -76,7 +68,7 @@ class RenameStage(config: WoodConfig) extends Module {
     when(rs1HasOverride) {
       overriden(j).rs2Tag := overrideRs2Tag
     }.otherwise {
-      overriden(j).rs2Tag := frontEndRegisterFile.io.rop(j + config.nWide).data.tag
+      overriden(j).rs2Tag := frontEndRegisterFile(io.in(j).bits.rs2)
     }
 
     pReg.io.in(j).bits  := overriden(j)

@@ -66,10 +66,8 @@
         };
         devShells.default = pkgs.mkShell {
           CHISEL_FIRTOOL_PATH = "${pkgs.circt}/bin";
-
-          RISCV_PREFIX = "${
-            pkgs.pkgsCross.riscv32-embedded.buildPackages.gcc-unwrapped.override { enableMultilib = true; }
-          }/bin/riscv32-none-elf-";
+          RISCV = "${(pkgs.callPackage ./nix/riscv-gcc.nix { })}";
+          RISCV_PREFIX = "${(pkgs.callPackage ./nix/riscv-gcc.nix { })}/bin/riscv32-unknown-elf-";
 
           inherit (self.checks.${system}.pre-commit-check) shellHook;
           packages = [
@@ -96,6 +94,7 @@
 
             (pkgs.callPackage ./nix/gtkwave.nix { })
             (pkgs.callPackage ./nix/surfer.nix { })
+            (pkgs.callPackage ./nix/riscv-gcc.nix { })
           ];
         };
       }

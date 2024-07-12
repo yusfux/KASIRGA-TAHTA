@@ -1,6 +1,3 @@
-# Copyright lowRISC contributors.
-#
-# SPDX-License-Identifier: MIT
 {
   lib,
   fetchFromGitLab,
@@ -8,50 +5,65 @@
   pkg-config,
   openssl,
   wayland,
+  autoPatchelfHook,
   libxkbcommon,
   libGL,
+  libX11,
+  libXcursor,
+  libXi,
+  stdenv,
 }:
 rustPlatform.buildRustPackage rec {
   pname = "surfer";
-  version = "0.2.0-dev";
+  version = "0.3.0";
 
   src = fetchFromGitLab {
     owner = "surfer-project";
-    repo = pname;
-    rev = "c2df53af39e9545ab2893e016fee766689f3d8c7";
-    hash = "sha256-eX8xAx8u+KqmFPRF3E6HDhd6ioT6u0KNEBZ9hy2JVBA";
+    repo = "surfer";
+    rev = "5eafbf287ade7d40703548f84c628cfed75f9357";
+    hash = "sha256-hCrnOT2Bqxa/7uOnSQj0R9FAp6mEL9etD5WNeVMgnpY=";
     fetchSubmodules = true;
   };
 
-  nativeBuildInputs = [pkg-config];
-  buildInputs = [openssl wayland libxkbcommon libGL];
+  nativeBuildInputs = [
+    pkg-config
+    autoPatchelfHook
+  ];
 
-  # These libraries are dlopen'ed at runtime, but they won't be able to find anything in
-  # NixOS's path. So force them to be linked.
-  # This could alternatively be a wrapper which adds LD_LIBRARY_PATH.
-  RUSTFLAGS = map (a: "-C link-arg=${a}") [
-    "-Wl,--push-state,--no-as-needed"
-    "-lEGL"
-    "-lwayland-client"
-    "-lxkbcommon"
-    "-Wl,--pop-state"
+  buildInputs = [
+    openssl
+    stdenv.cc.cc.lib
+  ];
+
+  # Wayland and X11 libs are required at runtime since winit uses dlopen
+  runtimeDependencies = [
+    wayland
+    libxkbcommon
+    libGL
+    libX11
+    libXcursor
+    libXi
   ];
 
   cargoLock = {
     lockFile = "${src}/Cargo.lock";
     outputHashes = {
       "codespan-0.12.0" = "sha256-3F2006BR3hyhxcUTaQiOjzTEuRECKJKjIDyXonS/lrE=";
-      "egui_skia-0.5.0" = "sha256-dpkcIMPW+v742Ov18vjycLDwnn1JMsvbX6qdnuKOBC4=";
-      "tracing-tree-0.2.0" = "sha256-/JNeAKjAXmKPh0et8958yS7joORDbid9dhFB0VUAhZc=";
+      "egui_skia_renderer-0.1.0" = "sha256-K/IRanUbXjOa/8EsBKh7/CsqA60zLAo/g09bLdp3zR8=";
+      "spade-0.9.0" = "sha256-ZKUnvh9mUsrDzcj7GUjrDWz6kUJYFRFJ9ziQ5AP69PY=";
     };
   };
 
+  # Avoid the network attempt from skia. See: https://github.com/cargo2nix/cargo2nix/issues/318
   doCheck = false;
 
   meta = {
-    description = "An Extensible and Snappy Waveform Viewer";
-    homepage = "http://surfer-project.org/";
+    description = "Extensible and Snappy Waveform Viewer";
+    homepage = "https://surfer-project.org/";
+    changelog = "https://gitlab.com/surfer-project/surfer/-/releases/v${version}";
     license = lib.licenses.eupl12;
+    maintainers = with lib.maintainers; [ hakan-demirli ];
+    platforms = lib.platforms.linux;
     mainProgram = "surfer";
   };
 }

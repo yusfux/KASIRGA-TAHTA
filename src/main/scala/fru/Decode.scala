@@ -244,7 +244,8 @@ class Decoder(config: WoodConfig) extends Module {
   io.out.rs1TagReady := MuxCase(
     0.U,
     Array(
-      (io.out.operand === Integer.parseInt(DecodeConfig.OPERAND_PCIMM, 2).U) -> 1.U
+      ((io.out.operand === Integer.parseInt(DecodeConfig.OPERAND_IMM, 2).U) & (io.out.rs1 === 0.U)) -> 1.U,
+      (io.out.operand === Integer.parseInt(DecodeConfig.OPERAND_PCIMM, 2).U)                        -> 1.U
     ).toIndexedSeq
   )
 

@@ -4,7 +4,7 @@ import chisel3._
 import chisel3.util._
 import wood.WoodConfig
 import wood.fru.MI
-import wood.std.{BlockRAM, BlockRAMParams, DCPipelineRegister}
+import wood.std.{DCArbiter, DCDemux, DCPipelineRegister}
 
 class ReadyList(val config: WoodConfig) extends Module {
   val io = IO(new Bundle {
@@ -15,23 +15,15 @@ class ReadyList(val config: WoodConfig) extends Module {
     val out         = Vec(config.nWide, Decoupled(new MI(config)))
   })
 
-  val readyList = Module(
-    new BlockRAM(UInt(1.W))(
-      BlockRAMParams(config.prfDepth, config.nWide * 2, config.nWide * 2)
-    )
-  )
+  val readyList = RegInit(VecInit(Seq.fill(config.prfDepth)(0.U(1.W))))
 
   (0 until config.nWide).foreach(j => {
-    readyList.io.rip(j).addr                := io.in(j).bits.rs1Tag
-    readyList.io.rip(j + config.nWide).addr := io.in(j).bits.rs2Tag
-
-    readyList.io.wp(j).addr   := io.forwardBus(j).bits.tag
-    readyList.io.wp(j).enable := io.forwardBus(j).valid
-    readyList.io.wp(j).data   := 1.U
-
-    readyList.io.wp(j + config.nWide).addr   := io.commitedBus(j).bits.tag
-    readyList.io.wp(j + config.nWide).enable := io.commitedBus(j).valid
-    readyList.io.wp(j + config.nWide).data   := 0.U
+    when(io.forwardBus(j).valid) {
+      readyList(io.forwardBus(j).bits.tag) := 1.U
+    }
+    when(io.commitedBus(j).valid) {
+      readyList(io.commitedBus(j).bits.tag) := 0.U
+    }
   })
 
   // No need to forward the commitedBus, there is a 2 cycle delay between tag being added to the free list and ready list is being read.
@@ -56,8 +48,8 @@ class ReadyList(val config: WoodConfig) extends Module {
   val overridenRsTagReady = Wire(Vec(config.nWide, Decoupled(new MI(config))))
   overridenRsTagReady <> io.in
   (0 until config.nWide).foreach(j => {
-    overridenRsTagReady(j).bits.rs1TagReady := io.in(j).bits.rs1TagReady | readyList.io.rop(j).data
-    overridenRsTagReady(j).bits.rs2TagReady := io.in(j).bits.rs2TagReady | readyList.io.rop(j + config.nWide).data
+    overridenRsTagReady(j).bits.rs1TagReady := io.in(j).bits.rs1TagReady | readyList(io.in(j).bits.rs1Tag)
+    overridenRsTagReady(j).bits.rs2TagReady := io.in(j).bits.rs2TagReady | readyList(io.in(j).bits.rs2Tag)
   })
   overrideForward.io.in <> overridenRsTagReady
   overrideWakeup.io.in  <> overrideForward.io.out
@@ -78,6 +70,12 @@ class ScheduleStage(val config: WoodConfig) extends Module {
   val reservationStations = Seq.tabulate(config.nWide) { _ =>
     Module(new ReservationStation(config))
   }
+  val bypassArbiters = Seq.tabulate(config.nWide) { _ =>
+    Module(new DCArbiter(new MI(config))(2, 1))
+  }
+  val bypassDemuxes = Seq.tabulate(config.nWide) { _ =>
+    Module(new DCDemux(new MI(config))(1, 2))
+  }
 
   val readyList = Module(new ReadyList(config))
   val pReg      = Module(new DCPipelineRegister(new MI(config))(config.nWide))
@@ -88,12 +86,18 @@ class ScheduleStage(val config: WoodConfig) extends Module {
   readyList.io.forwardBus  <> io.forwardBus
 
   (0 until config.nWide).foreach(j => {
-    reservationStations(j).io.in            <> readyList.io.out(j)
+    bypassDemuxes(j).io.sel(0) := io.out(j).ready & io.in(j).valid & io.in(j).bits.rs1TagReady & io.in(j).bits.rs2TagReady
+
+    bypassDemuxes(j).io.in(0)    <> readyList.io.out(j)
+    reservationStations(j).io.in <> bypassDemuxes(j).io.out(0)(0)
+    bypassArbiters(j).io.in(1)   <> bypassDemuxes(j).io.out(1)(0)
+    bypassArbiters(j).io.in(0)   <> reservationStations(j).io.out
+
     reservationStations(j).io.forwardBus(j) <> io.forwardBus(j)
     reservationStations(j).io.wakeupBus(j)  <> io.wakeupBus(j)
     reservationStations(j).io.stall         := io.stall
 
-    pReg.io.in(j) <> reservationStations(j).io.out
+    pReg.io.in(j) <> bypassArbiters(j).io.out(0)
     io.out(j)     <> pReg.io.out(j)
   })
 }
