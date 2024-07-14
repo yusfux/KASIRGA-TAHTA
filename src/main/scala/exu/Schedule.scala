@@ -27,8 +27,8 @@ class ReadyList(val config: WoodConfig) extends Module {
   })
 
   // No need to forward the commitedBus, there is a 2 cycle delay between tag being added to the free list and ready list is being read.
-  val overrideForward = Module(new OverrideFromBuses(config))
-  val overrideWakeup  = Module(new OverrideFromBuses(config))
+  val overrideForward = Module(new OverrideRsFromBuses(config))
+  val overrideWakeup  = Module(new OverrideRsFromBuses(config))
 
   overrideForward.io.inBus := io.forwardBus.map { bus =>
     val dBus = Wire(ValidIO(new DataBus(config)))

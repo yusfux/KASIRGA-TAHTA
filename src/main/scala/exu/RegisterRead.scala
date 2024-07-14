@@ -15,8 +15,8 @@ class RegisterReadStage(config: WoodConfig) extends Module {
     val out          = MixedVec(config.listExUnits.map(length => Vec(length, Decoupled(new MI(config)))))
   })
 
-  val overrideForward   = Module(new OverrideFromBuses(config))
-  val overrideWriteBack = Module(new OverrideFromBuses(config))
+  val overrideForward   = Module(new OverrideRsFromBuses(config))
+  val overrideWriteBack = Module(new OverrideRsFromBuses(config))
   val crossbar          = Module(new DCCrossbar(new MI(config))(config.nWide, config.listExUnits))
   val aluPRegs          = Module(new DCPipelineRegister(new MI(config))(config.nWide))
 

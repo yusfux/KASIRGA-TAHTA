@@ -5,7 +5,7 @@ import chisel3.util._
 import wood.WoodConfig
 import wood.fru.MI
 
-class OverrideFromBus(val config: WoodConfig) extends Module {
+class OverrideRsFromBus(val config: WoodConfig) extends Module {
   val io = IO(new Bundle {
     val in    = Flipped(Decoupled(new MI(config)))
     val inBus = Input(Vec(config.nWide, ValidIO(new DataBus(config))))
@@ -34,7 +34,7 @@ class OverrideFromBus(val config: WoodConfig) extends Module {
   io.out <> overriden
 }
 
-class OverrideFromBuses(val config: WoodConfig) extends Module {
+class OverrideRsFromBuses(val config: WoodConfig) extends Module {
   val io = IO(new Bundle {
     val in    = Flipped(Vec(config.nWide, Decoupled(new MI(config))))
     val inBus = Input(Vec(config.nWide, ValidIO(new DataBus(config))))
@@ -42,7 +42,47 @@ class OverrideFromBuses(val config: WoodConfig) extends Module {
   })
 
   val overriders = Seq.tabulate(config.nWide) { _ =>
-    Module(new OverrideFromBus(config))
+    Module(new OverrideRsFromBus(config))
+  }
+
+  (0 until config.nWide).foreach(j => {
+    overriders(j).io.in    <> io.in(j)
+    overriders(j).io.inBus <> io.inBus
+    io.out(j)              <> overriders(j).io.out
+  })
+}
+
+class OverrideRdFromBus(val config: WoodConfig) extends Module {
+  val io = IO(new Bundle {
+    val in    = Flipped(Decoupled(new MI(config)))
+    val inBus = Input(Vec(config.nWide, ValidIO(new DataBus(config))))
+    val out   = Decoupled(new MI(config))
+  })
+
+  val rdTagMatches = Wire(Vec(config.nWide, Bool()))
+
+  (0 until config.nWide).foreach { i =>
+    rdTagMatches(i) := (io.in.bits.rdTag === io.inBus(i).bits.tag) & io.inBus(i).valid
+  }
+
+  val rdMatchIndex = PriorityEncoder(rdTagMatches.asUInt)
+
+  val overriden = Wire(Decoupled(new MI(config)))
+  overriden              <> io.in
+  overriden.bits.retired := Mux(rdTagMatches.asUInt.orR, 1.U, io.in.bits.retired)
+
+  io.out <> overriden
+}
+
+class OverrideRdFromBuses(val config: WoodConfig) extends Module {
+  val io = IO(new Bundle {
+    val in    = Flipped(Vec(config.nWide, Decoupled(new MI(config))))
+    val inBus = Input(Vec(config.nWide, ValidIO(new DataBus(config))))
+    val out   = Vec(config.nWide, Decoupled(new MI(config)))
+  })
+
+  val overriders = Seq.tabulate(config.nWide) { _ =>
+    Module(new OverrideRdFromBus(config))
   }
 
   (0 until config.nWide).foreach(j => {

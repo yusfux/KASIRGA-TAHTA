@@ -84,6 +84,14 @@
             pkgs.verilog
             pkgs.espresso
 
+            pkgs.python311
+            pkgs.python311Packages.mypy
+            pkgs.python311Packages.pytest
+            pkgs.python311Packages.riscof
+            (pkgs.python311Packages.cocotb.overrideAttrs (oldAttrs: {
+              patches = oldAttrs.patches or [ ] ++ [ ./nix/cocotb_pre_cmd.patch ];
+            }))
+
             (pkgs.spike.overrideAttrs (oldAttrs: {
               configureFlags = oldAttrs.configureFlags or [ ] ++ [
                 "--enable-commitlog"
@@ -95,6 +103,7 @@
             (pkgs.callPackage ./nix/gtkwave.nix { })
             (pkgs.callPackage ./nix/surfer.nix { })
             (pkgs.callPackage ./nix/riscv-gcc.nix { })
+            (pkgs.callPackage ./nix/questa.nix { })
           ];
         };
       }

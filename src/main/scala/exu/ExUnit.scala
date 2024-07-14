@@ -73,7 +73,10 @@ class ExUnit(config: WoodConfig) extends Module {
   arstage.io.in <> rsstage.io.out
 
   mistage.io.commitedBus <> arstage.io.commitedBus
-  scstage.io.commitedBus <> arstage.io.commitedBus
+  (0 until config.nWide).foreach(j => {
+    scstage.io.commitedBus(j).bits.tag := arstage.io.commitedBus(j).bits.tag
+    scstage.io.commitedBus(j).valid    := arstage.io.commitedBus(j).valid
+  })
 
   rsstage.io.previousRetiredStatus <> arstage.io.previousRetiredStatus
 

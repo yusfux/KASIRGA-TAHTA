@@ -1,0 +1,137 @@
+diff --git a/cocotb/runner.py b/cocotb/runner.py
+index 576e184..2e3d6fb 100644
+--- a/cocotb/runner.py
++++ b/cocotb/runner.py
+@@ -211,6 +211,7 @@ class Simulator(abc.ABC):
+         build_dir: Optional[PathLike] = None,
+         test_dir: Optional[PathLike] = None,
+         results_xml: str = "results.xml",
++        pre_cmd: list = [],
+         verbose: bool = False,
+     ) -> Path:
+         """Run the tests.
+@@ -236,6 +237,7 @@ class Simulator(abc.ABC):
+             test_dir: Directory to run the tests in.
+             results_xml: Name of xUnit XML file to store test results in.
+                 When running with pytest, the testcase name is prefixed to this name.
++            pre_cmd: Command to run before testing.
+             verbose: Enable verbose messages.
+ 
+         Returns:
+@@ -279,6 +281,11 @@ class Simulator(abc.ABC):
+             for gpi_if in self.supported_gpi_interfaces.values():
+                 self.gpi_interfaces.append(gpi_if[0])
+ 
++        if pre_cmd:
++            self.pre_cmd = pre_cmd
++        else:
++            self.pre_cmd = []
++
+         self.test_args = list(test_args)
+         self.plusargs = list(plusargs)
+         self.env = dict(extra_env)
+@@ -474,6 +481,8 @@ class Icarus(Simulator):
+         return self.build_dir / "sim.vvp"
+ 
+     def _test_command(self) -> List[Command]:
++        if self.pre_cmd:
++            print("WARNING: pre_cmd is not implemented for Icarus Verilog.")
+ 
+         return [
+             [
+@@ -569,6 +578,9 @@ class Questa(Simulator):
+ 
+         cmds = []
+ 
++        if self.pre_cmd:
++            self.pre_cmd = ["-do"] + self.pre_cmd
++
+         do_script = ""
+         if self.waves:
+             do_script += "log -recursive /*;"
+@@ -612,6 +624,7 @@ class Questa(Simulator):
+             + [as_tcl_value(v) for v in self._get_parameter_options(self.parameters)]
+             + [as_tcl_value(f"{self.hdl_toplevel_library}.{self.sim_hdl_toplevel}")]
+             + [as_tcl_value(v) for v in self.plusargs]
++            + self.pre_cmd
+             + ["-do", do_script]
+         )
+ 
+@@ -667,6 +680,8 @@ class Ghdl(Simulator):
+         return cmds
+ 
+     def _test_command(self) -> List[Command]:
++        if self.pre_cmd:
++            print("WARNING: pre_cmd is not implemented for GHDL.")
+ 
+         cmds = [
+             ["ghdl", "-r"]
+@@ -747,6 +762,8 @@ class Riviera(Simulator):
+         return [["vsimsa"] + ["-do"] + ["do"] + [do_file.name]]
+ 
+     def _test_command(self) -> List[Command]:
++        if self.pre_cmd:
++            print("WARNING: pre_cmd is not implemented for Riviera.")
+ 
+         do_script = "\nonerror {\n quit -code 1 \n} \n"
+ 
+@@ -880,6 +897,9 @@ class Verilator(Simulator):
+         return cmds
+ 
+     def _test_command(self) -> List[Command]:
++        if self.pre_cmd:
++            print("WARNING: pre_cmd is not implemented for Verilator.")
++
+         out_file = self.build_dir / self.sim_hdl_toplevel
+         return [[str(out_file)] + self.plusargs]
+ 
+@@ -958,6 +978,9 @@ class Xcelium(Simulator):
+     def _test_command(self) -> List[Command]:
+         self.env["CDS_AUTO_64BIT"] = "all"
+ 
++        if self.pre_cmd:
++            print("WARNING: pre_cmd is not implemented for Xcelium.")
++
+         verbosity_opts = []
+         if self.verbose:
+             verbosity_opts += ["-messages"]
+diff --git a/tests/pytest/test_runner.py b/tests/pytest/test_runner.py
+index dc827f4..955254a 100644
+--- a/tests/pytest/test_runner.py
++++ b/tests/pytest/test_runner.py
+@@ -33,7 +33,8 @@ async def cocotb_runner_test(dut):
+ @pytest.mark.parametrize(
+     "parameters", [{"WIDTH_IN": "8", "WIDTH_OUT": "16"}, {"WIDTH_IN": "16"}]
+ )
+-def test_runner(parameters):
++@pytest.mark.parametrize("pre_cmd", [["touch pre_cmd_test_file;"], []])
++def test_runner(parameters,pre_cmd):
+ 
+     hdl_toplevel_lang = os.getenv("HDL_TOPLEVEL_LANG", "verilog")
+     vhdl_gpi_interfaces = os.getenv("VHDL_GPI_INTERFACE", None)
+@@ -54,6 +55,17 @@ def test_runner(parameters):
+     if sim == "xcelium":
+         compile_args = ["-v93"]
+ 
++    # Pre-make build directory and test file for clean build assertions
++    build_dir = (
++        sim_build
++        + "/test_runner/"
++        + "_".join(("{}={}".format(*i) for i in parameters.items()))
++        + "_pre_cmd"
++        + str(len(pre_cmd))
++    )
++    os.makedirs(build_dir, exist_ok=True)
++    open(build_dir + "/clean_test_file", "a").close()
++
+     runner.build(
+         verilog_sources=verilog_sources,
+         vhdl_sources=vhdl_sources,
+@@ -70,6 +82,7 @@ def test_runner(parameters):
+     runner.test(
+         hdl_toplevel="runner",
+         test_module="test_runner",
++        pre_cmd=pre_cmd,
+         gpi_interfaces=gpi_interfaces,
+         extra_env=parameters,
+     )

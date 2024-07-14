@@ -29,7 +29,7 @@ class RetiredStatusStage(config: WoodConfig) extends Module {
     val out = Vec(config.nWide, Decoupled(new MI(config)))
   })
 
-  val overrideWriteBack         = Module(new OverrideFromBuses(config))
+  val overrideWriteBack         = Module(new OverrideRdFromBuses(config))
   val pReg                      = Module(new DCPipelineRegister(new MI(config))(config.nWide))
   val retiredStatusRegisterFile = RegInit(VecInit(Seq.fill(config.prfDepth)(0.U(1.W))))
   val retryArbiters = Seq.tabulate(config.nWide) { _ =>
@@ -93,16 +93,16 @@ class ArchRegisterFileStage(config: WoodConfig) extends Module {
   val io = IO(new Bundle {
     val in                    = Flipped(Vec(config.nWide, Decoupled(new MI(config))))
     val previousRetiredStatus = Vec(config.nWide, ValidIO(new MI(config)))
-    val commitedBus           = Vec(config.nWide, ValidIO(new TagBus(config)))
+    val commitedBus           = Vec(config.nWide, Decoupled(new Tag(config)))
   })
 
   val archRegisterFile      = RegInit(VecInit(Seq.fill(32)(0.U(config.tagWidth.W))))
   val archRegisterFileValid = RegInit(VecInit(Seq.fill(32)(0.U(1.W))))
+  val pReg                  = Module(new DCPipelineRegister(new Tag(config))(config.nWide))
 
   (0 until config.nWide).foreach(j => {
     io.previousRetiredStatus(j).bits  := io.in(j).bits
     io.previousRetiredStatus(j).valid := io.in(j).valid
-    io.in(j).ready                    := 1.U // no reason to stall
 
     val validWrite = io.in(j).bits.writeRf.asBool & io.in(j).valid & io.in(j).bits.retired.asBool
 
@@ -111,8 +111,11 @@ class ArchRegisterFileStage(config: WoodConfig) extends Module {
       archRegisterFileValid(io.in(j).bits.rd) := 1.U
     }
 
-    io.commitedBus(j).bits.tag := RegEnable(archRegisterFile(io.in(j).bits.rd), 0.U, 1.B)
-    io.commitedBus(j).valid    := RegEnable(archRegisterFileValid(io.in(j).bits.rd) & validWrite, 0.U, 1.B)
     dontTouch(io.in(j).bits.inst) // for testbench only
+
+    pReg.io.in(j).bits.tag := archRegisterFile(io.in(j).bits.rd)
+    pReg.io.in(j).valid    := validWrite & archRegisterFileValid(io.in(j).bits.rd)
+    io.in(j).ready         := pReg.io.in(j).ready
   })
+  pReg.io.out <> io.commitedBus
 }

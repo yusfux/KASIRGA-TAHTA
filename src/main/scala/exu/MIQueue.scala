@@ -10,7 +10,7 @@ import wood.std.{DCPipelineRegisterMultiValid, DCRRQueue}
 class MIStage(config: WoodConfig) extends Module {
   val io = IO(new Bundle {
     val in          = Flipped(Vec(config.nWide, Decoupled(new MI(config))))
-    val commitedBus = Input(Vec(config.nWide, ValidIO(new TagBus(config))))
+    val commitedBus = Flipped(Vec(config.nWide, Decoupled(new TagBus(config))))
     val out         = Vec(config.numPortsInt, Decoupled(new MI(config)))
   })
 
@@ -19,12 +19,8 @@ class MIStage(config: WoodConfig) extends Module {
   val pReg      = Module(new DCPipelineRegisterMultiValid(new MI(config))(config.nWide, 1))
   val overriden = Wire(Vec(config.nWide, Decoupled(new MI(config))))
 
-  miq.io.in <> io.in
-
-  (0 until config.nWide).foreach(j => {
-    flist.io.in(j).bits.tag := io.commitedBus(j).bits.tag
-    flist.io.in(j).valid    := io.commitedBus(j).valid
-  })
+  miq.io.in   <> io.in
+  flist.io.in <> io.commitedBus
 
   for (j <- 0 until config.nWide) {
     overriden(j).bits       := miq.io.out(j).bits
