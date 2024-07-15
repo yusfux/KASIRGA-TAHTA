@@ -12,19 +12,20 @@ class RenameStage(config: WoodConfig) extends Module {
     val out = Vec(config.nWide, Decoupled(new MI(config)))
   })
 
-  val pReg                 = Module(new DCPipelineRegister(new MI(config))(config.nWide))
+  val pRegs                = Seq.fill(config.nWide)(Module(new DCPipelineRegister(new MI(config))(1)))
   val frontEndRegisterFile = RegInit(VecInit(Seq.fill(32)(0.U(config.tagWidth.W))))
+  val self                 = Wire(Vec(config.nWide, Decoupled(new MI(config))))
+  val allInValid           = Wire(Vec(config.nWide, Bool())).suggestName("allInValid")
+  allInValid := io.in.map(_.valid)
 
   (0 until config.nWide).foreach(j => {
-    when((io.in(j).bits.writeRf === DecodeConfig.WRITE_RF_1.toInt.U) & io.in(j).valid & io.in(j).valid) {
+    when((io.in(j).bits.writeRf === DecodeConfig.WRITE_RF_1.toInt.U) & io.in(j).valid) {
       frontEndRegisterFile(io.in(j).bits.rd) := io.in(j).bits.rdTag
     }
   })
 
-  val overriden = Wire(Vec(config.nWide, new MI(config)))
-
   (0 until config.nWide).foreach(j => {
-    overriden(j) := io.in(j).bits
+    self(j).bits := io.in(j).bits
 
     val (rs1HasOverride, overrideRs1Tag) = (0 until j).foldLeft((0.B, 0.U)) { (acc, k) =>
       val rs1Match = (io.in(j).bits.rs1 === io.in(k).bits.rd)
@@ -39,9 +40,9 @@ class RenameStage(config: WoodConfig) extends Module {
     }
 
     when(rs1HasOverride) {
-      overriden(j).rs1Tag := overrideRs1Tag
+      self(j).bits.rs1Tag := overrideRs1Tag
     }.otherwise {
-      overriden(j).rs1Tag := frontEndRegisterFile(io.in(j).bits.rs1)
+      self(j).bits.rs1Tag := frontEndRegisterFile(io.in(j).bits.rs1)
     }
 
     val (rs2HasOverride, overrideRs2Tag) = (0 until j).foldLeft((0.B, 0.U)) { (acc, k) =>
@@ -55,15 +56,18 @@ class RenameStage(config: WoodConfig) extends Module {
     }
 
     when(rs1HasOverride) {
-      overriden(j).rs2Tag := overrideRs2Tag
+      self(j).bits.rs2Tag := overrideRs2Tag
     }.otherwise {
-      overriden(j).rs2Tag := frontEndRegisterFile(io.in(j).bits.rs2)
+      self(j).bits.rs2Tag := frontEndRegisterFile(io.in(j).bits.rs2)
     }
 
-    pReg.io.in(j).bits  := overriden(j)
-    pReg.io.in(j).valid := io.in(j).valid
-    io.in(j).ready      := pReg.io.in(j).ready
-  })
+    self(j).valid := allInValid.asUInt.andR
 
-  io.out <> pReg.io.out
+    pRegs(j).io.valids(0) := io.in(j).valid
+
+    io.in(j).ready := self(j).ready
+
+    pRegs(j).io.in <> self(j)
+    io.out(j)      <> pRegs(j).io.out
+  })
 }

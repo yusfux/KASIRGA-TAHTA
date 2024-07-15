@@ -6,7 +6,7 @@ import chisel3.util.experimental.decode.{EspressoMinimizer, TruthTable, decoder}
 import wood.WoodConfig
 import wood.exu.{ALUOp, ExEngine}
 import wood.fru.Instructions._
-import wood.std.DCPipelineRegisterMultiValid
+import wood.std.DCPipelineRegister
 
 class ExpandBits(bitVectors: List[String]) {
   // Calculate the max width
@@ -305,28 +305,27 @@ class DecodeStage(config: WoodConfig) extends Module {
     val out   = Vec(config.nWide, Decoupled(new MI(config)))
   })
 
-  val pReg        = Module(new DCPipelineRegisterMultiValid(new MI(config))(config.nWide, 1))
-  val decoders    = Seq.fill(config.nWide)(Module(new Decoder(config)))
-  val overriden   = Wire(Vec(config.nWide, Decoupled(new MI(config))))
-  val extraValids = Wire(Vec(config.nWide, UInt(1.W)))
+  val pRegs             = Seq.fill(config.nWide)(Module(new DCPipelineRegister(new MI(config))(2)))
+  val decoders          = Seq.fill(config.nWide)(Module(new Decoder(config)))
+  val self              = Wire(Vec(config.nWide, Decoupled(new MI(config))))
+  val atLeastOneIsReady = Wire(Vec(config.nWide, Bool())).suggestName("atLeastOneIsReady")
 
   for (j <- 0 until config.nWide) {
-    extraValids(j)    := io.pcIdx.valid
     decoders(j).io.in := io.in(j).bits
 
-    overriden(j).bits       := decoders(j).io.out
-    overriden(j).bits.pcIdx := io.pcIdx.bits
-    overriden(j).valid      := io.in(j).valid
-    io.in(j).ready          := overriden(j).ready
+    self(j).bits       := decoders(j).io.out
+    self(j).bits.pcIdx := io.pcIdx.bits
+
+    self(j).valid := io.in(j).valid & io.pcIdx.valid // output is valid only if all inputs are valid
+
+    pRegs(j).io.valids(0) := io.in(j).valid
+    pRegs(j).io.valids(1) := io.pcIdx.valid
+
+    io.in(j).ready       := self(j).ready
+    atLeastOneIsReady(j) := self(j).ready
+
+    pRegs(j).io.in <> self(j)
+    io.out(j)      <> pRegs(j).io.out
   }
-  pReg.io.valids(0) := extraValids
-  pReg.io.in        <> overriden
-  io.out            <> pReg.io.out
-
-  pReg.io.in <> overriden
-  io.out     <> pReg.io.out
-
-  val allOutReady = Wire(Vec(config.nWide, Bool()))
-  allOutReady    := pReg.io.in.map(_.ready)
-  io.pcIdx.ready := allOutReady.asUInt.andR
+  io.pcIdx.ready := atLeastOneIsReady.asUInt.orR
 }

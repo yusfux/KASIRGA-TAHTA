@@ -13,7 +13,8 @@ class ExecuteStage(config: WoodConfig) extends Module {
     val out        = Vec(config.nWide, Decoupled(new MI(config)))
   })
 
-  val pReg    = Module(new DCPipelineRegister(new MI(config))(config.nWide))
+  val pRegs = Seq.fill(config.nWide)(Module(new DCPipelineRegister(new MI(config))(1)))
+
   val arbiter = Module(new DCArbiter(new MI(config))(config.listExUnits.sum, config.nWide))
   val alus = Seq.tabulate(config.nWide) { _ =>
     Module(new ALU(config))
@@ -33,8 +34,10 @@ class ExecuteStage(config: WoodConfig) extends Module {
     io.forwardBus(j).bits.data := arbiter.io.out(j).bits.rdData
     io.forwardBus(j).bits.tag  := arbiter.io.out(j).bits.rdTag
     io.forwardBus(j).valid     := arbiter.io.out(j).valid
-  })
 
-  pReg.io.in <> arbiter.io.out
-  io.out     <> pReg.io.out
+    pRegs(j).io.valids(0) := io.in(0)(j).valid
+
+    pRegs(j).io.in <> arbiter.io.out(j)
+    io.out(j)      <> pRegs(j).io.out
+  })
 }

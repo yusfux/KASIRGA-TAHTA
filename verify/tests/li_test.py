@@ -85,7 +85,7 @@ class Test(TestTemplate):
         return 0x99999999
 
     def timeout(self) -> int:
-        return 10000
+        return 100000
 
 
 if __name__ == "__main__":

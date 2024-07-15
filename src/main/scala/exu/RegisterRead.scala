@@ -18,7 +18,7 @@ class RegisterReadStage(config: WoodConfig) extends Module {
   val overrideForward   = Module(new OverrideRsFromBuses(config))
   val overrideWriteBack = Module(new OverrideRsFromBuses(config))
   val crossbar          = Module(new DCCrossbar(new MI(config))(config.nWide, config.listExUnits))
-  val aluPRegs          = Module(new DCPipelineRegister(new MI(config))(config.nWide))
+  val aluPRegs          = Seq.fill(config.nWide)(Module(new DCPipelineRegister(new MI(config))(1)))
 
   val aluCrossbarIndex = 0 // TODO: move to WoodConfig
 
@@ -46,14 +46,16 @@ class RegisterReadStage(config: WoodConfig) extends Module {
       prf(io.writebackBus(j).bits.tag) := io.writebackBus(j).bits.data
     }
     crossbar.io.sel(j) := io.in(j).bits.exEngine === ExEngine.alu.asUInt
+
+    aluPRegs(j).io.valids(0) := io.in(j).valid
+
+    aluPRegs(j).io.in           <> crossbar.io.out(aluCrossbarIndex)(j)
+    io.out(j)(aluCrossbarIndex) <> aluPRegs(j).io.out
   })
 
   overrideForward.io.inBus   <> io.forwardBus
   overrideWriteBack.io.inBus <> io.writebackBus
-  overrideForward.io.in      <> overridenRFData
-  overrideWriteBack.io.in    <> overrideForward.io.out
-  crossbar.io.in             <> overrideWriteBack.io.out
-
-  aluPRegs.io.in           <> crossbar.io.out(aluCrossbarIndex)
-  io.out(aluCrossbarIndex) <> aluPRegs.io.out
+  overrideWriteBack.io.in    <> overridenRFData
+  overrideForward.io.in      <> overrideWriteBack.io.out
+  crossbar.io.in             <> overrideForward.io.out
 }

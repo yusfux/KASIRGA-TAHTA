@@ -5,7 +5,7 @@ import chisel3.util._
 import wood.WoodConfig
 import wood.exu.{FreeList, TagBus}
 import wood.fru.MI
-import wood.std.{DCPipelineRegisterMultiValid, DCRRQueue}
+import wood.std.{DCPipelineRegister, DCRRQueue}
 
 class MIStage(config: WoodConfig) extends Module {
   val io = IO(new Bundle {
@@ -14,22 +14,31 @@ class MIStage(config: WoodConfig) extends Module {
     val out         = Vec(config.numPortsInt, Decoupled(new MI(config)))
   })
 
-  val flist     = Module(new FreeList(config))
-  val miq       = Module(new DCRRQueue(new MI(config))(config.nWide, config.miQueueDepth))
-  val pReg      = Module(new DCPipelineRegisterMultiValid(new MI(config))(config.nWide, 1))
-  val overriden = Wire(Vec(config.nWide, Decoupled(new MI(config))))
+  val flist      = Module(new FreeList(config))
+  val miq        = Module(new DCRRQueue(new MI(config))(config.nWide, config.miQueueDepth))
+  val pRegs      = Seq.fill(config.nWide)(Module(new DCPipelineRegister(new MI(config))(3)))
+  val self       = Wire(Vec(config.nWide, Decoupled(new MI(config))))
+  val allInValid = Wire(Vec(config.nWide, Bool())).suggestName("allInValid ")
 
   miq.io.in   <> io.in
   flist.io.in <> io.commitedBus
 
   for (j <- 0 until config.nWide) {
-    overriden(j).bits       := miq.io.out(j).bits
-    overriden(j).bits.rdTag := flist.io.out(j).bits.tag
-    overriden(j).valid      := miq.io.out(j).valid
-    pReg.io.valids(0)(j)    := flist.io.out(j).valid
-    flist.io.out(j).ready   := pReg.io.in(j).ready
-    miq.io.out(j).ready     := pReg.io.in(j).ready
+    self(j).bits       := miq.io.out(j).bits
+    self(j).bits.rdTag := flist.io.out(j).bits.tag
+
+    allInValid(j) := miq.io.out(j).valid & flist.io.out(j).valid & io.in(j).valid // output is valid only if all inputs are valid
+    self(j).valid := allInValid.asUInt.andR
+
+    pRegs(j).io.valids(0) := io.in(j).valid
+    pRegs(j).io.valids(1) := miq.io.out(j).valid
+    pRegs(j).io.valids(2) := flist.io.out(j).valid
+
+    // io.in(j).ready        := self(j).ready // Decoupled from the rest via miqueue
+    flist.io.out(j).ready := self(j).ready
+    miq.io.out(j).ready   := self(j).ready
+
+    pRegs(j).io.in <> self(j)
+    io.out(j)      <> pRegs(j).io.out
   }
-  pReg.io.in <> overriden
-  io.out     <> pReg.io.out
 }

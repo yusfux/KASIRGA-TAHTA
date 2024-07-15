@@ -78,7 +78,7 @@ class ScheduleStage(val config: WoodConfig) extends Module {
   }
 
   val readyList = Module(new ReadyList(config))
-  val pReg      = Module(new DCPipelineRegister(new MI(config))(config.nWide))
+  val pRegs     = Seq.fill(config.nWide)(Module(new DCPipelineRegister(new MI(config))(1)))
 
   readyList.io.in          <> io.in
   readyList.io.commitedBus <> io.commitedBus
@@ -97,7 +97,9 @@ class ScheduleStage(val config: WoodConfig) extends Module {
     reservationStations(j).io.wakeupBus(j)  <> io.wakeupBus(j)
     reservationStations(j).io.stall         := io.stall
 
-    pReg.io.in(j) <> bypassArbiters(j).io.out(0)
-    io.out(j)     <> pReg.io.out(j)
+    pRegs(j).io.valids(0) := bypassArbiters(j).io.out(0).valid
+
+    pRegs(j).io.in <> bypassArbiters(j).io.out(0)
+    io.out(j)      <> pRegs(j).io.out
   })
 }
