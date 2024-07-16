@@ -17,7 +17,7 @@ OBJDUMP = $(RISCV_PREFIX)objdump
 
 .PHONY: all clean test
 
-all: dump2
+all: dump2 trace
 
 .PHONY: build_dir
 build_dir:
@@ -34,6 +34,12 @@ compile: build_dir
 dump2: compile
 		dump2gtkw  $(BUILD_DIR)/main.dump > $(BUILD_DIR)/main.gtkw.map
 		dump2vsim  $(BUILD_DIR)/main.dump > $(BUILD_DIR)/main.vsim.map
+
+.PHONY: trace
+trace: compile
+		spike -m0x80000000:0x200000  --log-commits --isa=rv32gc -l $(BUILD_DIR)/main.elf &> $(BUILD_DIR)/spike.trace
+		spiketrace2json -f $(BUILD_DIR)/spike.trace -o $(BUILD_DIR)/spike_trace.json
+
 
 clean:
 	rm -rf $(BUILD_DIR)

@@ -21,8 +21,11 @@ def run_test(
     include_dirs = [
         header.parent for header in list(system_verilog_headers) + list(verilog_headers)
     ]
-    print(include_dirs)
-    print(verilog_sources)
+    print("include_dirs: ", include_dirs)
+    print("verilog_sources: ", verilog_sources)
+    if not verilog_sources:
+        print(f"ERROR: No verilog sources found in hdl_dir: {hdl_dir}")
+        exit(1)
 
     runner = get_runner(simulator)
     runner.build(
@@ -63,10 +66,14 @@ if __name__ == "__main__":
     parser.add_argument("--waves", type=bool, help="Dump waves? <true,false>")
     args = parser.parse_args()
 
-    test_dir = Path(SCRIPT_DIR / "tb")
+    test_dir = Path(SCRIPT_DIR)
     tests = list(test_dir.rglob("*.py"))
     print("test_dir: ", test_dir)
     print("tests: ", tests)
+
+    if not tests:
+        print(f"ERROR: No tests found in test_dir: {test_dir}")
+        exit(1)
 
     test_names = {test.stem: test for test in test_dir.rglob("*.py")}
 

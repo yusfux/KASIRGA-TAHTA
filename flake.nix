@@ -107,6 +107,8 @@
             (pkgs.callPackage ./nix/dump2vsim.nix { })
             (pkgs.callPackage ./nix/dump2gtkw.nix { })
             (pkgs.callPackage ./nix/asmgen.nix { })
+            (pkgs.callPackage ./nix/grouphex.nix { })
+            (pkgs.callPackage ./nix/spiketrace2json.nix { })
 
             (pkgs.callPackage ./nix/gtkwave.nix { })
             (pkgs.callPackage ./nix/surfer.nix { })
