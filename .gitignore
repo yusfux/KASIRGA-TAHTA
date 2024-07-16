@@ -48,7 +48,9 @@
 *.obj
 *.in
 *.out
+*.dump
 
 *.gtkw
 *.do
-
+*.info
+*.txt

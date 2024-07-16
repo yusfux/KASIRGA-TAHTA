@@ -68,6 +68,7 @@
           CHISEL_FIRTOOL_PATH = "${pkgs.circt}/bin";
           RISCV = "${(pkgs.callPackage ./nix/riscv-gcc.nix { })}";
           RISCV_PREFIX = "${(pkgs.callPackage ./nix/riscv-gcc.nix { })}/bin/riscv32-unknown-elf-";
+          CSMITH_INCLUDE = "${pkgs.csmith}/include/csmith-2.3.0/";
 
           inherit (self.checks.${system}.pre-commit-check) shellHook;
           packages = [
@@ -99,6 +100,13 @@
               ];
             }))
             pkgs.dtc
+
+            pkgs.csmith
+
+            (pkgs.callPackage ./nix/bin2hex.nix { })
+            (pkgs.callPackage ./nix/dump2vsim.nix { })
+            (pkgs.callPackage ./nix/dump2gtkw.nix { })
+            (pkgs.callPackage ./nix/asmgen.nix { })
 
             (pkgs.callPackage ./nix/gtkwave.nix { })
             (pkgs.callPackage ./nix/surfer.nix { })
