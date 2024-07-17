@@ -23,7 +23,8 @@ case class WoodConfig(
   rsDepth:  Int = 4 // Reservation station depth
   //--------------
 ) {
-  val pcIndexWidth: Int = log2Ceil(pcListDepth)
+  // val pcIndexWidth: Int = log2Ceil(pcListDepth)
+  val pcIndexWidth: Int = 32 // TODO: use pc list not pc
 
   val tagWidth:      Int       = log2Ceil(prfDepth)
   val listExUnits:   List[Int] = List(nWide)

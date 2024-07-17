@@ -178,9 +178,7 @@ pkgs.writers.writePython3Bin "spiketrace2json" { } ''
       # Writing to file
       with args.output_file.open("w") as output_file:
           output_file.write("[\n")
-          for entry in trace:
-              json.dump(entry, output_file, separators=(",", ":"))
-              output_file.write(",\n")
+          output_file.write(",\n".join([json.dumps(entry, separators=(",", ":")) for entry in trace]))
           output_file.write("]\n")
 
 

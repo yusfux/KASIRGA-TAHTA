@@ -109,5 +109,6 @@ class ArchRegisterFileStage(config: WoodConfig) extends Module {
     io.commitedBus(j) <> pRegs(j).io.out
 
     dontTouch(io.in(j).bits.inst) // for testbench only
+    dontTouch(io.in(j).bits.pcIdx) // for testbench only
   })
 }
