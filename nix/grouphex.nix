@@ -54,6 +54,10 @@ pkgs.writers.writePython3Bin "grouphex" { } ''
       args = parser.parse_args()
 
       lists = group_hex(args.file, args.groups)
+
+      if not (args.groups % 2) == 0:
+          lists.reverse()
+
       for idx, lst in enumerate(lists):
           with open(f"{args.output_dir}/main{idx}.hex", "w") as f:
               for line in lst:

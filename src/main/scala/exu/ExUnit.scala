@@ -26,6 +26,10 @@ class DataBus(config: WoodConfig) extends TagBus(config) {
   val data = UInt(config.dataWidth.W)
 }
 
+class ARFBus(config: WoodConfig) extends TagBus(config) {
+  val rd = UInt(5.W)
+}
+
 class ExUnit(config: WoodConfig) extends Module {
   val io = IO(new Bundle {
     val in         = Flipped(Vec(config.nWide, Decoupled(new MI(config))))
@@ -43,6 +47,7 @@ class ExUnit(config: WoodConfig) extends Module {
   val rbstage = Module(new ROBStage(config))
   val rsstage = Module(new RetiredStatusStage(config))
   val arstage = Module(new ArchRegisterFileStage(config))
+  val rwstage = Module(new RetireWritebackStage(config))
 
   mistage.io.in <> io.in
   restage.io.in <> mistage.io.out
@@ -57,9 +62,9 @@ class ExUnit(config: WoodConfig) extends Module {
     restage.io.out(j).ready := rbstage.io.in(j).ready & scstage.io.in(j).ready
   })
 
-  rrstage.io.in <> scstage.io.out
-  exstage.io.in <> rrstage.io.out
-  wbstage.io.in <> exstage.io.out
+  rrstage.io.in    <> scstage.io.out
+  exstage.io.aluIn <> rrstage.io.aluOut
+  wbstage.io.in    <> exstage.io.out
 
   rrstage.io.writebackBus <> wbstage.io.writebackBus
   rsstage.io.writebackBus <> wbstage.io.writebackBus.map { bus =>
@@ -71,14 +76,17 @@ class ExUnit(config: WoodConfig) extends Module {
 
   rsstage.io.in <> rbstage.io.out
   arstage.io.in <> rsstage.io.out
+  rwstage.io.in <> arstage.io.out
 
-  mistage.io.commitedBus <> arstage.io.commitedBus
+  arstage.io.arfBus <> rwstage.io.arfBus
+
+  mistage.io.commitedBus <> rwstage.io.commitedBus
   (0 until config.nWide).foreach(j => {
-    scstage.io.commitedBus(j).bits.tag := arstage.io.commitedBus(j).bits.tag
-    scstage.io.commitedBus(j).valid    := arstage.io.commitedBus(j).valid
+    scstage.io.commitedBus(j).bits.tag := rwstage.io.commitedBus(j).bits.tag
+    scstage.io.commitedBus(j).valid    := rwstage.io.commitedBus(j).valid
 
-    rsstage.io.commitedBus(j).bits.tag := arstage.io.commitedBus(j).bits.tag
-    rsstage.io.commitedBus(j).valid    := arstage.io.commitedBus(j).valid
+    rsstage.io.commitedBus(j).bits.tag := rwstage.io.commitedBus(j).bits.tag
+    rsstage.io.commitedBus(j).valid    := rwstage.io.commitedBus(j).valid
   })
 
   rrstage.io.forwardBus <> exstage.io.forwardBus

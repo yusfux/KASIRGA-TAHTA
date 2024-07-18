@@ -20,6 +20,8 @@ class DCQueueWriter[T <: Data](gen: T)(numPorts: Int, depth: Int, dataPattern: S
     val out = Vec(numPorts, Decoupled(gen.cloneType))
   })
 
+  val oddNumberOfPorts = numPorts & 1
+
   var counterInitialValue = 0.U(log2Ceil(depth).W)
   if (dataPattern == "count+1")
     counterInitialValue = 1.U(log2Ceil(depth).W)
@@ -30,13 +32,15 @@ class DCQueueWriter[T <: Data](gen: T)(numPorts: Int, depth: Int, dataPattern: S
   val out_ready = Wire(Vec(numPorts, Bool()))
   out_ready := io.out.map(_.ready)
 
-  val ready     = out_ready.asUInt.andR
-  val was_ready = RegNext(ready)
+  val ready = out_ready.asUInt.andR
 
   val stopCount = Wire(UInt(log2Ceil(depth).W))
-  stopCount := depth.asUInt - 1.U
+  stopCount := depth.asUInt - numPorts.U
   if (dataPattern == "count+1")
-    stopCount := depth.asUInt
+    if (oddNumberOfPorts == 1)
+      stopCount := depth.asUInt - numPorts.U + 1.U
+    else
+      stopCount := depth.asUInt - numPorts.U
 
   when(!initialized && ready) {
     counter := counter + numPorts.U

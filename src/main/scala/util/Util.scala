@@ -23,13 +23,27 @@ object GetGroupedSequences { // It is easier to follow sequences in a waveform
 
 object TestGenerateVerilog {
   def apply(gen: => RawModule, testNames: Set[String], testIndex: Int): Unit = {
-    val currentTestName = testNames.toList.map(_.replaceAll(" ", "_"))(testIndex - 1)
-    val testRunDir      = s"test_run_dir/$currentTestName"
-    val dir             = new java.io.File(testRunDir)
+    val currentTestName = "INVALID_TEST_NAME"
+    try {
+      val currentTestName = testNames.toList.map(_.replaceAll(" ", "_"))(testIndex - 1)
+    } catch {
+      case e: Exception =>
+        println("\n[ERROR]: TestGenerateVerilog. INVALID TEST NAME\n")
+        throw e
+    }
+    val testRunDir = s"test_run_dir/$currentTestName"
+    val dir        = new java.io.File(testRunDir)
     if (!dir.exists()) {
       dir.mkdirs()
     }
-    GenerateVerilog(gen, path = testRunDir)
+
+    try {
+      GenerateVerilog(gen, path = testRunDir)
+    } catch {
+      case e: Exception =>
+        println("\n[ERROR]: TestGenerateVerilog: CANT GENERATE VERILOG\n")
+        throw e
+    }
   }
 }
 
@@ -49,13 +63,12 @@ object GenerateVerilog {
       firtoolOpts = Array(
         "--disable-all-randomization",
         "--strip-debug-info",
-        "--lowering-options=disallowLocalVariables,disallowPackedArrays",
         "--split-verilog",
-        "--lowering-options=disallowLocalVariables",
+        "--lowering-options=disallowLocalVariables,disallowPackedArrays,emitWireInPorts,disallowPortDeclSharing,disallowMuxInlining",
         "--lower-memories",
-        // "--ignore-read-enable-mem",
-        "-o=" + file_path,
-        "-O=release"
+        "--preserve-values=named",
+        "-O=debug",
+        "-o=" + file_path
       )
     )
   }

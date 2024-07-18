@@ -12,7 +12,7 @@ class RegisterReadStage(config: WoodConfig) extends Module {
     val writebackBus = Flipped(Vec(config.nWide, ValidIO(new DataBus(config))))
     val forwardBus   = Flipped(Vec(config.nWide, ValidIO(new DataBus(config))))
     val wakeupBus    = Vec(config.nWide, ValidIO(new TagBus(config)))
-    val out          = MixedVec(config.listExUnits.map(length => Vec(length, Decoupled(new MI(config)))))
+    val aluOut       = Vec(config.nWide, Decoupled(new MI(config)))
   })
 
   val overrideForward   = Module(new OverrideRsFromBuses(config))
@@ -41,8 +41,8 @@ class RegisterReadStage(config: WoodConfig) extends Module {
 
     aluPRegs(j).io.valids(0) := io.in(j).valid
 
-    aluPRegs(j).io.in           <> crossbar.io.out(aluCrossbarIndex)(j)
-    io.out(j)(aluCrossbarIndex) <> aluPRegs(j).io.out
+    aluPRegs(j).io.in <> crossbar.io.out(aluCrossbarIndex)(j)
+    io.aluOut(j)      <> aluPRegs(j).io.out
   })
 
   overrideForward.io.inBus   <> io.forwardBus

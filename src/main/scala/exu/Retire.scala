@@ -34,29 +34,20 @@ class RetiredStatusStage(config: WoodConfig) extends Module {
   })
 
   val pRegs                     = Seq.fill(config.nWide)(Module(new DCPipelineRegister(new MI(config))(1)))
-  val writebackOverriders       = Seq.fill(config.nWide)(Module(new OverrideRdFromBus(config)))
   val retiredStatusRegisterFile = RegInit(VecInit(Seq.fill(config.prfDepth)(0.U(1.W))))
 
-  val self                       = Wire(Vec(config.nWide, Decoupled(new MI(config))))
-  val overridenRetiredStatusData = Wire(Vec(config.nWide, Decoupled(new MI(config))))
+  val self                   = Wire(Vec(config.nWide, Decoupled(new MI(config))))
+  val overridenRetiredStatus = Wire(Vec(config.nWide, Decoupled(new MI(config))))
 
   val allRetired = Wire(Vec(config.nWide, Bool()))
   val allInValid = Wire(Vec(config.nWide, Bool()))
-  allRetired := writebackOverriders.map(_.io.out.bits.retired.asBool)
+  allRetired := overridenRetiredStatus.map(_.bits.retired.asBool)
   allInValid := io.in.map(_.valid)
 
-  overridenRetiredStatusData <> io.in
+  overridenRetiredStatus <> io.in
 
   (0 until config.nWide).foreach(j => {
-    writebackOverriders(j).io.inBus := io.writebackBus.map { bus =>
-      val dBus = Wire(ValidIO(new DataBus(config)))
-      dBus.bits.tag  := bus.bits.tag
-      dBus.valid     := bus.valid
-      dBus.bits.data := DontCare
-      dBus
-    }
-    overridenRetiredStatusData(j).bits.retired := retiredStatusRegisterFile(io.in(j).bits.rdTag)
-    writebackOverriders(j).io.in               <> overridenRetiredStatusData(j)
+    overridenRetiredStatus(j).bits.retired := retiredStatusRegisterFile(io.in(j).bits.rdTag)
 
     when(io.writebackBus(j).valid) {
       retiredStatusRegisterFile(io.writebackBus(j).bits.tag) := 1.U
@@ -65,48 +56,80 @@ class RetiredStatusStage(config: WoodConfig) extends Module {
       retiredStatusRegisterFile(io.commitedBus(j).bits.tag) := 0.U
     }
 
-    self(j).bits  := writebackOverriders(j).io.out.bits
+    self(j).bits  := overridenRetiredStatus(j).bits
     self(j).valid := allInValid.asUInt.andR & allRetired.asUInt.andR
 
     pRegs(j).io.valids(0) := io.in(j).valid
 
-    writebackOverriders(j).io.out.ready := self(j).ready
-    io.in(j).ready                      := self(j).ready
+    overridenRetiredStatus(j).ready := self(j).ready
 
-    pRegs(j).io.in <> self(j) //overrideWriteBack.io.out(j)
+    pRegs(j).io.in <> self(j)
     io.out(j)      <> pRegs(j).io.out
   })
 }
 
 class ArchRegisterFileStage(config: WoodConfig) extends Module {
   val io = IO(new Bundle {
-    val in          = Flipped(Vec(config.nWide, Decoupled(new MI(config))))
-    val commitedBus = Vec(config.nWide, Decoupled(new Tag(config)))
+    val in     = Flipped(Vec(config.nWide, Decoupled(new MI(config))))
+    val arfBus = Input(Vec(config.nWide, ValidIO(new ARFBus(config))))
+    val out    = Vec(config.nWide, Decoupled(new MI(config)))
   })
 
   val archRegisterFile      = RegInit(VecInit(Seq.fill(32)(0.U(config.tagWidth.W))))
   val archRegisterFileValid = RegInit(VecInit(Seq.fill(32)(0.U(1.W))))
-  val pRegs                 = Seq.fill(config.nWide)(Module(new DCPipelineRegister(new Tag(config))(1)))
+  val arfOverriders         = Seq.fill(config.nWide)(Module(new OverrideRdTagFromBus(config)))
+  val pRegs                 = Seq.fill(config.nWide)(Module(new DCPipelineRegister(new MI(config))(1)))
 
-  val self = Wire(Vec(config.nWide, Decoupled(new Tag(config))))
+  val overridenRF = Wire(Vec(config.nWide, Decoupled(new MI(config))))
 
   (0 until config.nWide).foreach(j => {
-    val validWrite = io.in(j).bits.writeRf.asBool & io.in(j).valid
+    overridenRF(j)               <> io.in(j)
+    overridenRF(j).bits.arfTag   := archRegisterFile(io.in(j).bits.rd)
+    overridenRF(j).bits.arfValid := archRegisterFileValid(io.in(j).bits.rd)
+    overridenRF(j).valid         := io.in(j).valid
 
-    when(validWrite) {
-      archRegisterFile(io.in(j).bits.rd)      := io.in(j).bits.rdTag
-      archRegisterFileValid(io.in(j).bits.rd) := 1.U
+    arfOverriders(j).io.inBus <> io.arfBus
+    arfOverriders(j).io.in    <> overridenRF(j)
+
+    when(io.arfBus(j).valid) {
+      archRegisterFile(io.arfBus(j).bits.rd)      := io.arfBus(j).bits.tag
+      archRegisterFileValid(io.arfBus(j).bits.rd) := 1.U
     }
 
-    self(j).bits.tag := Mux(validWrite, archRegisterFile(io.in(j).bits.rd), io.in(j).bits.rd)
-    self(j).valid    := io.in(j).valid & Mux(validWrite, archRegisterFileValid(io.in(j).bits.rd), io.in(j).valid)
+    pRegs(j).io.valids(0) := io.in(j).valid // READ ARCH RF VALID
 
-    pRegs(j).io.valids(0) := io.in(j).valid
+    io.in(j).ready := arfOverriders(j).io.out.ready
 
-    io.in(j).ready := self(j).ready
+    pRegs(j).io.in <> arfOverriders(j).io.out
+    io.out(j)      <> pRegs(j).io.out
+  })
+}
 
-    pRegs(j).io.in    <> self(j)
-    io.commitedBus(j) <> pRegs(j).io.out
+class RetireWritebackStage(config: WoodConfig) extends Module {
+  val io = IO(new Bundle {
+    val in          = Flipped(Vec(config.nWide, Decoupled(new MI(config))))
+    val arfBus      = Vec(config.nWide, ValidIO(new ARFBus(config)))
+    val commitedBus = Vec(config.nWide, Decoupled(new Tag(config)))
+  })
+
+  (0 until config.nWide).foreach(j => {
+    io.arfBus(j).bits.rd  := io.in(j).bits.rd
+    io.arfBus(j).bits.tag := io.in(j).bits.rdTag
+
+    io.in(j).ready := io.commitedBus(j).ready
+
+    io.arfBus(j).bits.rd  := io.in(j).bits.rd
+    io.arfBus(j).bits.tag := io.in(j).bits.rdTag
+
+    val noARFModify  = io.in(j).valid && !io.in(j).bits.writeRf.asBool
+    val writeToARF   = io.in(j).valid && io.in(j).bits.writeRf.asBool
+    val validARFTag  = io.in(j).valid && io.in(j).bits.arfValid
+    val commitARFTag = validARFTag && writeToARF
+
+    io.arfBus(j).valid := writeToARF
+
+    io.commitedBus(j).bits.tag := Mux(commitARFTag, io.in(j).bits.arfTag, io.in(j).bits.rdTag)
+    io.commitedBus(j).valid    := validARFTag | noARFModify
 
     dontTouch(io.in(j).bits.inst) // for testbench only
     dontTouch(io.in(j).bits.pcIdx) // for testbench only

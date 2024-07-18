@@ -2,6 +2,7 @@ import json
 import os
 from decimal import Decimal
 from pathlib import Path
+from typing import List, Tuple
 
 import cocotb
 import git
@@ -20,10 +21,15 @@ tb_wood is a generic N wide testbench
     WOOD_INSTRUCTION_PATH = nWide hex files as list
     WOOD_SPIKE_TRACE_PATH = spike.trace file path as str
 """
-
+CLOCK_PERIOD = 10
+TIME_UNIT = "ns"
 TIMEOUT = 800  # watchdog timer, resets itself
 WOOD_NWIDE = 1
-WOOD_INSTRUCTION_PATH = Path(f"{build_dir}/main0.hex")
+WOOD_INSTRUCTION_PATH = []
+for n in range(0, WOOD_NWIDE):
+    WOOD_INSTRUCTION_PATH.append(Path(f"{build_dir}/main{n}.hex"))
+print(WOOD_INSTRUCTION_PATH)
+
 WOOD_SPIKE_TRACE_PATH = Path(f"{build_dir}/spike_trace.json")
 
 timeout = Event(name="timeout")
@@ -40,7 +46,7 @@ async def watchdog_timer():
             timer = 0
             timeout.clear()
         timer = timer + 1
-        await Timer(Decimal("1"), units="ns")
+        await Timer(Decimal("1"), units=TIME_UNIT)
     assert 0, "TIMEOUT! DUT halted."
 
 
@@ -61,104 +67,184 @@ async def diff_traces(dut):
 
     previous_pc = 69
     while True:
-        rd = getattr(dut, "exunit.arstage.io_in_0_bits_rd").value.integer
-        rd_tag = getattr(dut, "exunit.arstage.io_in_0_bits_rdTag").value.integer
-        inst = getattr(dut, "exunit.arstage.io_in_0_bits_inst").value.integer
-        we = getattr(dut, "exunit.arstage.validWrite").value.integer
-        pc = getattr(dut, "exunit.arstage.io_in_0_bits_pcIdx").value.integer
-        rd_data = getattr(dut, f"exunit.rrstage.prf_{rd_tag}").value.integer
+        rd = [0 for _ in range(WOOD_NWIDE)]
+        rd_tag = [0 for _ in range(WOOD_NWIDE)]
+        inst = [0 for _ in range(WOOD_NWIDE)]
+        we = [0 for _ in range(WOOD_NWIDE)]
+        pc = [0 for _ in range(WOOD_NWIDE)]
+        rd_data = [0 for _ in range(WOOD_NWIDE)]
+        for n in range(0, WOOD_NWIDE):
+            rd[n] = getattr(dut, f"exunit.rwstage.io_arfBus_{n}_bits_rd").value.integer
+            rd_tag[n] = getattr(
+                dut, f"exunit.rwstage.io_arfBus_{n}_bits_tag"
+            ).value.integer
+            inst[n] = getattr(dut, f"exunit.rwstage.io_in_{n}_bits_inst").value.integer
+            pc[n] = getattr(dut, f"exunit.rwstage.io_in_{n}_bits_pcIdx").value.integer
+            rd_data[n] = getattr(dut, f"exunit.rrstage.prf_{rd_tag[n]}").value.integer
+            we_comm = getattr(
+                dut, f"exunit.rwstage.io_commitedBus_{n}_valid"
+            ).value.integer
+            we_arf = getattr(dut, f"exunit.rwstage.io_arfBus_{n}_valid").value.integer
+            in_valid = getattr(dut, f"exunit.rwstage.io_in_{n}_valid").value.integer
+            we[n] = we_comm or we_arf or (rd[n] == 0 and in_valid)
+            # print(we[n])
+            print(we[n], " ", pc, previous_pc)
 
-        if we and (previous_pc != pc):
-            previous_pc = pc
-            golden_reference = spike_trace.pop(0)
-            print(golden_reference)
+        golden_reference = [{} for _ in range(WOOD_NWIDE)]
+        inst_p = ["" for _ in range(WOOD_NWIDE)]
+        pc_p = ["" for _ in range(WOOD_NWIDE)]
+        rd_data_p = ["" for _ in range(WOOD_NWIDE)]
+        # if previous_pc != pc:
+        previous_pc = pc
+        for n in range(0, WOOD_NWIDE):
+            if we[n]:
+                golden_reference[n] = spike_trace.pop(0)
+                print(golden_reference[n])
 
-            inst_p = "{0:#0{1}x}".format(inst, 10)
-            pc_p = "{0:#0{1}x}".format(pc, 10)
-            rd_data_p = "{0:#0{1}x}".format(rd_data, 10)
-            inst = f"{inst_p}".strip()
-            result = f"x{rd:>2} {rd_data_p}"
+                inst_p[n] = "{0:#0{1}x}".format(inst[n], 10)
+                pc_p[n] = "{0:#0{1}x}".format(pc[n], 10)
+                rd_data_p[n] = "{0:#0{1}x}".format(rd_data[n], 10)
+                inst_p[n] = f"{inst_p[n]}".strip()
+                rd_data_p[n] = f"x{rd[n]:>2} {rd_data_p[n]}"
 
-            print(
-                f"{{'pc': '{pc_p}', 'inst': '{inst}','result': '{result}', 'time': {get_sim_time(units='ns')}ns}}"
-            )
+                print(
+                    f"{{'pc': '{pc_p[n]}', 'inst': '{inst_p[n]}','result': '{rd_data_p[n]}', 'time': {get_sim_time(units=TIME_UNIT)}{TIME_UNIT}, 'n': {n}}}"
+                )
 
-            assert (
-                inst == golden_reference["inst"]
-            ), f"Instruction is {inst} but it should be {golden_reference['inst']} at {get_sim_time(units='ns')}ns"
-            golden_result = golden_reference["result"]
-            if not golden_result:
-                golden_result = "x 0 0x00000000"
-            if "x 0" in result:
-                result = "x 0 0x00000000"
-            assert (
-                result == golden_result
-            ), f"Result is {result} but it should be {golden_reference['result']} at {get_sim_time(units='ns')}ns"
+                assert (
+                    inst_p[n] == golden_reference[n]["inst"]
+                ), f"Instruction is {inst_p[n]} but it should be {golden_reference[n]['inst']} at {get_sim_time(units=TIME_UNIT)}{TIME_UNIT}"
+                golden_result = golden_reference[n]["result"]
+                if not golden_result:
+                    golden_result = "x 0 0x00000000"
+                if "x 0" in rd_data_p[n]:
+                    rd_data_p[n] = "x 0 0x00000000"
+                assert (
+                    rd_data_p[n] == golden_result
+                ), f"Result is {rd_data_p[n]} at tag {rd_tag[n]} but it should be {golden_reference[n]['result']} at {get_sim_time(units=TIME_UNIT)}{TIME_UNIT}"
 
             timeout.set()
         await RisingEdge(dut.clock)
 
 
+async def group_pc(hex_lines: List[str], num_groups: int) -> List[List[str]]:
+    hex_lines.reverse()
+
+    target_size = (len(hex_lines) + num_groups - 1) // num_groups
+    grouped_lines = [[] for _ in range(num_groups)]
+
+    for index, line in enumerate(hex_lines):
+        grouped_lines[index % num_groups].append(line.strip())
+
+    # Pad short lists with zeros (if needed)
+    for i in range(num_groups):
+        grouped_lines[i].reverse()
+        group = grouped_lines[i]
+        if len(group) < target_size:
+            group.extend(
+                ["0" * (target_size - len(group))] * (target_size - len(group))
+            )
+
+    return grouped_lines
+
+
 @cocotb.coroutine
 async def decode_driver(dut):
-    index = 0  # WOOD_NWIDE - 1  # TODO
+    insts: list[list[str]] = [[] for _ in range(WOOD_NWIDE)]
+    pcs: list[list[str]] = [[] for _ in range(WOOD_NWIDE)]
+    for idx, inst_hex_file in enumerate(WOOD_INSTRUCTION_PATH):
+        with open(inst_hex_file, "r") as f:
+            raw_lines = f.readlines()
+            insts[idx] = [line.strip() for line in raw_lines]
+            print(f"[INFO] Reading: {inst_hex_file}")
 
-    with open(WOOD_INSTRUCTION_PATH, "r") as f:
-        inst_list = f.readlines()
-
-    pc_and_inst = []
+    all_insts = [item.strip() for sublist in insts for item in sublist]
+    all_pcs = []
     base_address = 0x80000000
-    for i, instruction in enumerate(inst_list):
+    for i, _ in enumerate(all_insts):
         pc_address = base_address + 4 * i
-        pc_instructions_tuple = (pc_address, int(instruction.strip(), 16))
-        pc_and_inst.append(pc_instructions_tuple)
+        all_pcs.append(f"{pc_address:0>8X}")
 
-    if not inst_list:
-        print(
-            f"No instructions found in WOOD_INSTRUCTION_PATH: {WOOD_INSTRUCTION_PATH}"
-        )
-        assert 0
+    pcs = await group_pc(all_pcs, WOOD_NWIDE)
 
-    dut.io_in_0_valid.value = 0
-    dut.io_in_0_bits.value = 0
-    dut.io_pcIdx_valid.value = 0
+    pc_and_insts: list[list[Tuple[str, str]]] = [[] for _ in range(WOOD_NWIDE)]
+    for idx_n, (pc_n, inst_n) in enumerate(zip(pcs, insts)):
+        for pc, inst in zip(pc_n, inst_n):
+            pc_and_insts[idx_n].append((pc, inst))
+    print(pc_and_insts)
 
-    pc, inst = pc_and_inst.pop(0)
+    for idx, pc_and_inst_n in enumerate(pc_and_insts):
+        if not pc_and_inst_n:
+            assert 0, f"No instructions found in WOOD_INSTRUCTION_PATH for n={idx}: {WOOD_INSTRUCTION_PATH}"
 
-    in_valid = getattr(dut, f"io_in_{index}_valid")
-    in_bits = getattr(dut, f"io_in_{index}_bits")
+    in_valid = []
+    in_ready = []
+    in_bits = []
     pc_idx = getattr(dut, "io_pcIdx_bits")
+    pc_idx_valid = getattr(dut, "io_pcIdx_valid")
+    for n in range(0, WOOD_NWIDE):
+        in_valid.append(getattr(dut, f"io_in_{n}_valid"))
+        in_bits.append(getattr(dut, f"io_in_{n}_bits"))
+        in_ready.append(getattr(dut, f"io_in_{n}_ready"))
 
-    in_valid.value = 1
-    in_bits.value = inst
-    pc_idx.value = pc
+    pc_idx.value = 0
+    pc_idx_valid.value = 0
+    for n in range(0, WOOD_NWIDE):
+        in_valid[n].value = 0
+        in_bits[n].value = 0
+
+    pi_n = [("", "") for _ in range(WOOD_NWIDE)]
+    for n in range(0, WOOD_NWIDE):
+        (p, i) = pc_and_insts[n].pop(0)
+        pi_n[n] = (p, i)
+
+    pc_idx_valid.value = 1
+    (p, i) = pi_n[0]
+    pc_idx.value = int(p, 16)
+    for n in range(0, WOOD_NWIDE):
+        in_valid[n].value = 1
+        (p, i) = pi_n[n]
+        in_bits[n].value = int(i, 16)
 
     dut.reset.value = 0  # START
     start.set()
 
     while True:
-        if not pc_and_inst:
-            break
-        in_valid.value = 1
-        in_bits.value = inst
-        pc_idx.value = pc
+        (p, i) = pi_n[0]
+        pc_idx_valid.value = 1
+        pc_idx.value = int(p, 16)
+        for n in range(0, WOOD_NWIDE):
+            in_valid[n].value = 1
+            (p, i) = pi_n[n]
+            in_bits[n].value = int(i, 16)
 
-        dut.io_pcIdx_valid.value = 1
+            if not i:
+                break
+
+        pc_idx_valid.value = 1
+
         await RisingEdge(dut.clock)
-        # print(inst)
+
         try:
-            if dut.io_in_0_ready.value.integer:
-                pc, inst = pc_and_inst.pop(0)
+            all_valid = 0
+            for n in range(0, WOOD_NWIDE):
+                all_valid = all_valid | in_ready[n].value.integer
+
+            if all_valid:
+                for n in range(0, WOOD_NWIDE):
+                    (p, i) = pc_and_insts[n].pop(0)
+                    pi_n[n] = (p, i)
             else:
                 pass
         except Exception as e:
-            print(e)
-            assert 0
+            assert 0, e
 
 
 @cocotb.test()
 async def test_wood(dut):
-    await cocotb.start(Clock(dut.clock, 10, "ns").start(start_high=False))
+    await cocotb.start(
+        Clock(dut.clock, CLOCK_PERIOD, TIME_UNIT).start(start_high=False)
+    )
     await RisingEdge(dut.clock)
     dut.reset.value = 1
     await RisingEdge(dut.clock)

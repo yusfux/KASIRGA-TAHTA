@@ -5,7 +5,7 @@ import chisel3.util._
 import wood.exu.{DataBus, ExUnit}
 import wood.fru.FrUnit
 
-case class TestConfig(val maxWidth: Int = 1) {}
+case class TestConfig(val maxWidth: Int = 2) {}
 
 case class WoodConfig(
   nWide:     Int = 4,
@@ -23,8 +23,10 @@ case class WoodConfig(
   rsDepth:  Int = 4 // Reservation station depth
   //--------------
 ) {
+  require(prfDepth > (32 + nWide + 5), "Min 32 tags will be entrapped in ArchRF. Increase prfDepth")
   // val pcIndexWidth: Int = log2Ceil(pcListDepth)
-  val pcIndexWidth: Int = 32 // TODO: use pc list not pc
+  val pcIndexWidth:       Int = 32 // TODO: use pc list not pc
+  val pcIndexOffsetWidth: Int = log2Ceil(nWide)
 
   val tagWidth:      Int       = log2Ceil(prfDepth)
   val listExUnits:   List[Int] = List(nWide)

@@ -10,8 +10,9 @@ import wood.{TestConfig, WoodConfig}
 class WoodSpec extends AnyFlatSpec with ChiselScalatestTester with ParallelTestExecution {
 
   "Wood" should "emit for cocotb" in {
-    val nWide        = sys.props.getOrElse("nWide", "1").toInt
-    val prfDepth     = sys.props.getOrElse("prfDepth", "32").toInt
+    val nWide = sys.props.getOrElse("nWide", "1").toInt
+    // val prfDepth     = sys.props.getOrElse("prfDepth", "32").toInt
+    val prfDepth     = (nWide * 32) + 10
     val miQueueDepth = sys.props.getOrElse("miQueueDepth", "1").toInt
     // val pcListDepth  = sys.props.getOrElse("pcListDepth", "32").toInt // TODO
 

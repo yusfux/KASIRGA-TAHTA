@@ -18,7 +18,7 @@ class DCCrossbar[T <: Data](gen: T)(numInputs: Int, numOutputs: List[Int]) exten
   val io = IO(new Bundle {
     val sel = Input(Vec(numInputs, UInt(log2Ceil(numOutputs.length).W)))
     val in  = Flipped(Vec(numInputs, Decoupled(gen.cloneType)))
-    val out = MixedVec(numOutputs.map(length => Vec(length, Decoupled(gen.cloneType))))
+    val out = MixedVec(numOutputs.map(length => Vec(length, Decoupled(gen.cloneType)))) // buggy. Dont ever use mixedvec again
   })
 
   val demux = Module(new DCDemux(gen.cloneType)(numInputs, numOutputs.length))

@@ -93,9 +93,9 @@ class ScheduleStage(val config: WoodConfig) extends Module {
     bypassArbiters(j).io.in(1)   <> bypassDemuxes(j).io.out(1)(0)
     bypassArbiters(j).io.in(0)   <> reservationStations(j).io.out
 
-    reservationStations(j).io.forwardBus(j) <> io.forwardBus(j)
-    reservationStations(j).io.wakeupBus(j)  <> io.wakeupBus(j)
-    reservationStations(j).io.stall         := io.stall
+    reservationStations(j).io.forwardBus <> io.forwardBus
+    reservationStations(j).io.wakeupBus  <> io.wakeupBus
+    reservationStations(j).io.stall      := io.stall
 
     pRegs(j).io.valids(0) := bypassArbiters(j).io.out(0).valid
 

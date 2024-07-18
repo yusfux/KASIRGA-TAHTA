@@ -256,15 +256,18 @@ class Decoder(config: WoodConfig) extends Module {
   io.out.rd       := io.in(11,  7)
   // format: on
 
-  io.out.pcIdx   := DontCare
-  io.out.rs1Tag  := DontCare
-  io.out.rs2Tag  := DontCare
-  io.out.rdTag   := DontCare
-  io.out.retired := DontCare
-  io.out.rs1Data := DontCare
-  io.out.rs2Data := DontCare
-  io.out.rdData  := DontCare
-  io.out.inst    := io.in
+  io.out.pcIdx         := DontCare
+  io.out.pcIndexOffset := DontCare
+  io.out.rs1Tag        := DontCare
+  io.out.rs2Tag        := DontCare
+  io.out.rdTag         := DontCare
+  io.out.retired       := DontCare
+  io.out.arfTag        := DontCare
+  io.out.arfValid      := DontCare
+  io.out.rs1Data       := DontCare
+  io.out.rs2Data       := DontCare
+  io.out.rdData        := DontCare
+  io.out.inst          := io.in
 
   val inst_type = Wire(UInt(DecodeConfig.typeWidth.W))
   inst_type := MuxCase(
@@ -313,8 +316,9 @@ class DecodeStage(config: WoodConfig) extends Module {
   for (j <- 0 until config.nWide) {
     decoders(j).io.in := io.in(j).bits
 
-    self(j).bits       := decoders(j).io.out
-    self(j).bits.pcIdx := io.pcIdx.bits
+    self(j).bits               := decoders(j).io.out
+    self(j).bits.pcIdx         := io.pcIdx.bits
+    self(j).bits.pcIndexOffset := j.asUInt
 
     self(j).valid := io.in(j).valid & io.pcIdx.valid // output is valid only if all inputs are valid
 

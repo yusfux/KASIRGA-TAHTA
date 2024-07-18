@@ -8,7 +8,7 @@ import wood.std.{DCArbiter, DCPipelineRegister}
 
 class ExecuteStage(config: WoodConfig) extends Module {
   val io = IO(new Bundle {
-    val in         = Flipped(MixedVec(config.listExUnits.map(length => Vec(length, Decoupled(new MI(config))))))
+    val aluIn      = Flipped(Vec(config.nWide, Decoupled(new MI(config))))
     val forwardBus = Vec(config.nWide, ValidIO(new DataBus(config)))
     val out        = Vec(config.nWide, Decoupled(new MI(config)))
   })
@@ -25,9 +25,7 @@ class ExecuteStage(config: WoodConfig) extends Module {
   aluInputs  <> alus.map(_.io.in)
   aluOutputs <> alus.map(_.io.out)
 
-  val aluArbiterIndex = 0 // TODO: move to WoodConfig. Hard coded to 0 for priority forwarding
-
-  aluInputs     <> io.in(aluArbiterIndex)
+  aluInputs     <> io.aluIn
   arbiter.io.in <> aluOutputs
 
   (0 until config.nWide).foreach(j => {
@@ -35,7 +33,7 @@ class ExecuteStage(config: WoodConfig) extends Module {
     io.forwardBus(j).bits.tag  := arbiter.io.out(j).bits.rdTag
     io.forwardBus(j).valid     := arbiter.io.out(j).valid
 
-    pRegs(j).io.valids(0) := io.in(0)(j).valid
+    pRegs(j).io.valids(0) := io.aluIn(j).valid
 
     pRegs(j).io.in <> arbiter.io.out(j)
     io.out(j)      <> pRegs(j).io.out

@@ -7,27 +7,30 @@ import wood.WoodConfig
 import wood.fru.{DecodeConfig, DecodeStage}
 
 case class MI(config: WoodConfig) extends Bundle {
-  val isFloat     = UInt(DecodeConfig.subWidths(0).W)
-  val wakeup      = UInt(DecodeConfig.subWidths(1).W)
-  val operand     = UInt(DecodeConfig.subWidths(2).W)
-  val writeRf     = UInt(DecodeConfig.subWidths(3).W)
-  val exEngine    = UInt(DecodeConfig.subWidths(4).W)
-  val exOp        = UInt(DecodeConfig.subWidths(5).W)
-  val imm         = UInt(32.W) // TODO
-  val rs1         = UInt(5.W)
-  val rs2         = UInt(5.W)
-  val rd          = UInt(5.W)
-  val pcIdx       = UInt(config.pcIndexWidth.W)
-  val rs1Tag      = UInt(config.tagWidth.W)
-  val rs1TagReady = UInt(1.W)
-  val rs2Tag      = UInt(config.tagWidth.W)
-  val rs2TagReady = UInt(1.W)
-  val rdTag       = UInt(config.tagWidth.W)
-  val rs1Data     = UInt(config.dataWidth.W)
-  val rs2Data     = UInt(config.dataWidth.W)
-  val rdData      = UInt(config.dataWidth.W)
-  val retired     = UInt(1.W)
-  val inst        = UInt(32.W) // for testbench only
+  val isFloat       = UInt(DecodeConfig.subWidths(0).W)
+  val wakeup        = UInt(DecodeConfig.subWidths(1).W)
+  val operand       = UInt(DecodeConfig.subWidths(2).W)
+  val writeRf       = UInt(DecodeConfig.subWidths(3).W)
+  val exEngine      = UInt(DecodeConfig.subWidths(4).W)
+  val exOp          = UInt(DecodeConfig.subWidths(5).W)
+  val imm           = UInt(32.W) // TODO
+  val rs1           = UInt(5.W)
+  val rs2           = UInt(5.W)
+  val rd            = UInt(5.W)
+  val pcIdx         = UInt(config.pcIndexWidth.W)
+  val pcIndexOffset = UInt(config.pcIndexOffsetWidth.W)
+  val rs1Tag        = UInt(config.tagWidth.W)
+  val rs1TagReady   = Bool()
+  val rs2Tag        = UInt(config.tagWidth.W)
+  val rs2TagReady   = Bool()
+  val rdTag         = UInt(config.tagWidth.W)
+  val rs1Data       = UInt(config.dataWidth.W)
+  val rs2Data       = UInt(config.dataWidth.W)
+  val rdData        = UInt(config.dataWidth.W)
+  val retired       = Bool()
+  val arfTag        = UInt(config.tagWidth.W)
+  val arfValid      = Bool()
+  val inst          = UInt(32.W) // for testbench only
 }
 
 object MI { // for testbench only, set all to value except overrides
@@ -53,6 +56,8 @@ object MI { // for testbench only, set all to value except overrides
       _.rs2Data     -> overrides.getOrElse("rs2Data", value),
       _.rdData      -> overrides.getOrElse("rdData", value),
       _.retired     -> overrides.getOrElse("retired", value),
+      _.arfTag      -> overrides.getOrElse("arfTag", value),
+      _.arfValid    -> overrides.getOrElse("arfValid", value),
       _.inst        -> overrides.getOrElse("inst", value)
     )
     mi

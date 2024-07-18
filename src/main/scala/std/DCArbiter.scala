@@ -47,7 +47,7 @@ class DCArbiter[T <: Data](gen: T)(numInputs: Int, numOutputs: Int) extends Modu
   }
 
   for (i <- 0 until numInputs) {
-    io.in(i).ready := masks(numOutputs - 1)(i)
+    io.in(i).ready := masks(numOutputs - 1)(i) | !io.in(i).valid
   }
 
   for (j <- 0 until numOutputs) {
