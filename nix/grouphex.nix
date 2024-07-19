@@ -8,17 +8,17 @@ pkgs.writers.writePython3Bin "grouphex" { } ''
   def group_hex(hex_file: Path, num_groups: int) -> List[List[str]]:
       with open(hex_file, "r") as source:
           hex_lines = source.readlines()
-      hex_lines.reverse()
 
       target_size = (len(hex_lines) + num_groups - 1) // num_groups
       grouped_lines = [[] for _ in range(num_groups)]
 
-      for index, line in enumerate(hex_lines):
-          grouped_lines[index % num_groups].append(line.strip())
+      group_index = 0
+      for line in hex_lines:
+          grouped_lines[group_index].append(line.strip())
+          group_index = (group_index + 1) % num_groups
 
       # Pad short lists with zeros (if needed)
       for i in range(num_groups):
-          grouped_lines[i].reverse()
           group = grouped_lines[i]
           if len(group) < target_size:
               group.extend(
@@ -54,9 +54,6 @@ pkgs.writers.writePython3Bin "grouphex" { } ''
       args = parser.parse_args()
 
       lists = group_hex(args.file, args.groups)
-
-      if not (args.groups % 2) == 0:
-          lists.reverse()
 
       for idx, lst in enumerate(lists):
           with open(f"{args.output_dir}/main{idx}.hex", "w") as f:

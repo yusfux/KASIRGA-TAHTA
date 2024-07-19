@@ -67,7 +67,7 @@ object GenerateVerilog {
         "--lowering-options=disallowLocalVariables,disallowPackedArrays,emitWireInPorts,disallowPortDeclSharing,disallowMuxInlining",
         "--lower-memories",
         "--preserve-values=named",
-        "-O=debug",
+        "-O=release",
         "-o=" + file_path
       )
     )

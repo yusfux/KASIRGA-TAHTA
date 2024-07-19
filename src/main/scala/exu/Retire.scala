@@ -112,11 +112,14 @@ class RetireWritebackStage(config: WoodConfig) extends Module {
     val commitedBus = Vec(config.nWide, Decoupled(new Tag(config)))
   })
 
+  val allReady = Wire(Vec(config.nWide, Bool())).suggestName("allInValid ")
+  allReady := io.commitedBus.map(_.ready)
+
   (0 until config.nWide).foreach(j => {
     io.arfBus(j).bits.rd  := io.in(j).bits.rd
     io.arfBus(j).bits.tag := io.in(j).bits.rdTag
 
-    io.in(j).ready := io.commitedBus(j).ready
+    io.in(j).ready := allReady.asUInt.andR
 
     io.arfBus(j).bits.rd  := io.in(j).bits.rd
     io.arfBus(j).bits.tag := io.in(j).bits.rdTag

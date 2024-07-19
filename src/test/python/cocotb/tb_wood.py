@@ -65,7 +65,7 @@ async def diff_traces(dut):
     await RisingEdge(dut.clock)
     await RisingEdge(dut.clock)
 
-    previous_pc = 69
+    # previous_pc = 69
     while True:
         rd = [0 for _ in range(WOOD_NWIDE)]
         rd_tag = [0 for _ in range(WOOD_NWIDE)]
@@ -86,16 +86,17 @@ async def diff_traces(dut):
             ).value.integer
             we_arf = getattr(dut, f"exunit.rwstage.io_arfBus_{n}_valid").value.integer
             in_valid = getattr(dut, f"exunit.rwstage.io_in_{n}_valid").value.integer
-            we[n] = we_comm or we_arf or (rd[n] == 0 and in_valid)
+            in_ready = getattr(dut, f"exunit.rwstage.io_in_{n}_ready").value.integer
+            we[n] = (we_comm or we_arf or (rd[n] == 0 and in_valid)) and in_ready
             # print(we[n])
-            print(we[n], " ", pc, previous_pc)
+            # print(we[n], " ", pc, previous_pc)
 
         golden_reference = [{} for _ in range(WOOD_NWIDE)]
         inst_p = ["" for _ in range(WOOD_NWIDE)]
         pc_p = ["" for _ in range(WOOD_NWIDE)]
         rd_data_p = ["" for _ in range(WOOD_NWIDE)]
         # if previous_pc != pc:
-        previous_pc = pc
+        # previous_pc = pc
         for n in range(0, WOOD_NWIDE):
             if we[n]:
                 golden_reference[n] = spike_trace.pop(0)
