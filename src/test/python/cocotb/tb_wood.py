@@ -1,8 +1,9 @@
 import json
 import os
 from decimal import Decimal
+from enum import Enum
 from pathlib import Path
-from typing import List, Tuple
+from typing import Any, List, Tuple
 
 import cocotb
 import git
@@ -36,6 +37,22 @@ timeout = Event(name="timeout")
 start = Event(name="start")
 timeout.clear()
 start.clear()
+
+
+class Color(Enum):
+    BLACK = "30"
+    RED = "31"
+    GREEN = "32"
+    YELLOW = "33"
+    BLUE = "34"
+    MAGENTA = "35"
+    CYAN = "36"
+    WHITE = "37"
+
+
+def color(arg: Any, color: Color) -> str:
+    text = str(arg)
+    return f"\033[{color.value}m{text}\033[0m"
 
 
 @cocotb.coroutine
@@ -100,7 +117,7 @@ async def diff_traces(dut):
         for n in range(0, WOOD_NWIDE):
             if we[n]:
                 golden_reference[n] = spike_trace.pop(0)
-                print(golden_reference[n])
+                print(color(golden_reference[n], Color.YELLOW))
 
                 inst_p[n] = "{0:#0{1}x}".format(inst[n], 10)
                 pc_p[n] = "{0:#0{1}x}".format(pc[n], 10)
@@ -122,7 +139,7 @@ async def diff_traces(dut):
                     rd_data_p[n] = "x 0 0x00000000"
                 assert (
                     rd_data_p[n] == golden_result
-                ), f"Result is {rd_data_p[n]} at tag {rd_tag[n]} but it should be {golden_reference[n]['result']} at {get_sim_time(units=TIME_UNIT)}{TIME_UNIT}"
+                ), f"Result is {color(rd_data_p[n], Color.YELLOW)} at tag {color(rd_tag[n], Color.YELLOW)} but it should be {color(golden_reference[n]['result'], Color.YELLOW)} at {get_sim_time(units=TIME_UNIT)}{TIME_UNIT}"
 
             timeout.set()
         await RisingEdge(dut.clock)

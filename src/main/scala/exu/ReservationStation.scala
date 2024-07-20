@@ -75,10 +75,10 @@ class ReservationStationRow(config: WoodConfig) extends Module {
   io.out.bits := row
 
   for (j <- 0 until config.nWide) {
-    busR1MatchesForward(j) := io.forwardBus(j).valid & (row.rs1 === io.forwardBus(j).bits.tag)
-    busR2MatchesForward(j) := io.forwardBus(j).valid & (row.rs2 === io.forwardBus(j).bits.tag)
-    busR1MatchesWakeup(j)  := io.wakeupBus(j).valid & (row.rs1 === io.wakeupBus(j).bits.tag)
-    busR2MatchesWakeup(j)  := io.wakeupBus(j).valid & (row.rs2 === io.wakeupBus(j).bits.tag)
+    busR1MatchesForward(j) := io.forwardBus(j).valid & (row.rs1Tag === io.forwardBus(j).bits.tag)
+    busR2MatchesForward(j) := io.forwardBus(j).valid & (row.rs2Tag === io.forwardBus(j).bits.tag)
+    busR1MatchesWakeup(j)  := io.wakeupBus(j).valid & (row.rs1Tag === io.wakeupBus(j).bits.tag)
+    busR2MatchesWakeup(j)  := io.wakeupBus(j).valid & (row.rs2Tag === io.wakeupBus(j).bits.tag)
   }
 }
 

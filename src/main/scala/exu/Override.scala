@@ -72,7 +72,7 @@ class OverrideRdFromBus(val config: WoodConfig) extends Module {
   io.out <> overriden
 }
 
-class OverrideRdTagFromBus(val config: WoodConfig) extends Module {
+class OverrideArfTagFromBus(val config: WoodConfig) extends Module {
   val io = IO(new Bundle {
     val in    = Flipped(Decoupled(new MI(config)))
     val inBus = Input(Vec(config.nWide, ValidIO(new ARFBus(config))))
@@ -88,8 +88,8 @@ class OverrideRdTagFromBus(val config: WoodConfig) extends Module {
   val rdMatchIndex = PriorityEncoder(rdMatches.asUInt)
 
   val overriden = Wire(Decoupled(new MI(config)))
-  overriden            <> io.in
-  overriden.bits.rdTag := Mux(rdMatches.asUInt.orR, io.inBus(rdMatchIndex).bits.tag, io.in.bits.rdTag)
+  overriden             <> io.in
+  overriden.bits.arfTag := Mux(rdMatches.asUInt.orR, io.inBus(rdMatchIndex).bits.tag, io.in.bits.arfTag)
 
   io.out <> overriden
 }

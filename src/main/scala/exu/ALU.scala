@@ -3,7 +3,7 @@ package wood.exu
 import chisel3._
 import chisel3.util._
 import wood.WoodConfig
-import wood.fru.DecodeConfig.{OPERAND_IMM, OPERAND_PCIMM, OPERAND_REG}
+import wood.fru.DecodeConfig.{OPERAND1_PC, OPERAND1_REG, OPERAND2_IMM, OPERAND2_REG}
 import wood.fru.MI
 
 object ALUOp extends ChiselEnum {
@@ -31,16 +31,15 @@ class ALU(config: WoodConfig) extends Module {
   val data1 = MuxCase(
     io.in.bits.rs1Data,
     Array(
-      (io.in.bits.operand === OPERAND_REG.toInt.U)   -> io.in.bits.rs1Data,
-      (io.in.bits.operand === OPERAND_PCIMM.toInt.U) -> io.in.bits.pcIdx
+      (io.in.bits.operand1 === Integer.parseInt(OPERAND1_REG, 2).U) -> io.in.bits.rs1Data,
+      (io.in.bits.operand1 === Integer.parseInt(OPERAND1_PC, 2).U)  -> io.in.bits.pcIdx
     ).toIndexedSeq
   )
   val data2 = MuxCase(
     io.in.bits.rs2Data,
     Array(
-      (io.in.bits.operand === OPERAND_REG.toInt.U)   -> io.in.bits.rs2Data,
-      (io.in.bits.operand === OPERAND_IMM.toInt.U)   -> io.in.bits.imm,
-      (io.in.bits.operand === OPERAND_PCIMM.toInt.U) -> io.in.bits.imm
+      (io.in.bits.operand2 === Integer.parseInt(OPERAND2_REG, 2).U) -> io.in.bits.rs2Data,
+      (io.in.bits.operand2 === Integer.parseInt(OPERAND2_IMM, 2).U) -> io.in.bits.imm
     ).toIndexedSeq
   )
 

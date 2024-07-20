@@ -9,10 +9,11 @@ import wood.fru.{DecodeConfig, DecodeStage}
 case class MI(config: WoodConfig) extends Bundle {
   val isFloat       = UInt(DecodeConfig.subWidths(0).W)
   val wakeup        = UInt(DecodeConfig.subWidths(1).W)
-  val operand       = UInt(DecodeConfig.subWidths(2).W)
-  val writeRf       = UInt(DecodeConfig.subWidths(3).W)
-  val exEngine      = UInt(DecodeConfig.subWidths(4).W)
-  val exOp          = UInt(DecodeConfig.subWidths(5).W)
+  val operand1      = UInt(DecodeConfig.subWidths(2).W)
+  val operand2      = UInt(DecodeConfig.subWidths(3).W)
+  val writeRf       = UInt(DecodeConfig.subWidths(4).W)
+  val exEngine      = UInt(DecodeConfig.subWidths(5).W)
+  val exOp          = UInt(DecodeConfig.subWidths(6).W)
   val imm           = UInt(32.W) // TODO
   val rs1           = UInt(5.W)
   val rs2           = UInt(5.W)
@@ -38,7 +39,8 @@ object MI { // for testbench only, set all to value except overrides
     val mi = new MI(config).Lit(
       _.isFloat     -> overrides.getOrElse("isFloat", value),
       _.wakeup      -> overrides.getOrElse("wakeup", value),
-      _.operand     -> overrides.getOrElse("operand", value),
+      _.operand2    -> overrides.getOrElse("operand2", value),
+      _.operand1    -> overrides.getOrElse("operand1", value),
       _.writeRf     -> overrides.getOrElse("writeRf", value),
       _.exEngine    -> overrides.getOrElse("exEngine", value),
       _.exOp        -> overrides.getOrElse("exOp", value),

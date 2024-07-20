@@ -51,14 +51,19 @@ class RegisterReadStage(config: WoodConfig) extends Module {
   overrideForward.io.in      <> overrideWriteBack.io.out
   crossbar.io.in             <> overrideForward.io.out
 
-  (0 until config.nWide).foreach(j => {
-    val rs1ValidZero = (io.in(j).bits.rs1 === 0.U) &
-      ((io.in(j).bits.operand === DecodeConfig.OPERAND_REG.toInt.U) ||
-        (io.in(j).bits.operand === DecodeConfig.OPERAND_IMM.toInt.U) ||
-        (io.in(j).bits.operand === DecodeConfig.OPERAND_PC.toInt.U))
+  println("bonkers reg", Integer.parseInt(DecodeConfig.OPERAND1_REG, 2))
+  println("bonkers", Integer.parseInt(DecodeConfig.OPERAND1_X0, 2))
 
-    val rs2ValidZero = (io.in(j).bits.rs2 === 0.U) &
-      (io.in(j).bits.operand === DecodeConfig.OPERAND_REG.toInt.U)
+  (0 until config.nWide).foreach(j => {
+    val rs1AdrX0      = dontTouch(io.in(j).bits.rs1 === 0.U)
+    val rs1IndirectX0 = dontTouch(io.in(j).bits.operand1 === Integer.parseInt(DecodeConfig.OPERAND1_REG, 2).U)
+    val rs1DirectX0   = dontTouch(io.in(j).bits.operand1 === Integer.parseInt(DecodeConfig.OPERAND1_X0, 2).U)
+
+    val rs1ValidZero = dontTouch((rs1AdrX0 && rs1IndirectX0) || (rs1DirectX0))
+
+    val rs2AdrX0      = io.in(j).bits.rs2 === 0.U
+    val rs2IndirectX0 = io.in(j).bits.operand2 === Integer.parseInt(DecodeConfig.OPERAND2_REG, 2).U
+    val rs2ValidZero  = (rs2AdrX0 && rs2IndirectX0)
 
     crossbar.io.in(j).bits.rs1Data := Mux(rs1ValidZero, 0.U, overrideForward.io.out(j).bits.rs1Data)
     crossbar.io.in(j).bits.rs2Data := Mux(rs2ValidZero, 0.U, overrideForward.io.out(j).bits.rs2Data)

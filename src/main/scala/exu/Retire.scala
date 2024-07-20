@@ -77,7 +77,7 @@ class ArchRegisterFileStage(config: WoodConfig) extends Module {
 
   val archRegisterFile      = RegInit(VecInit(Seq.fill(32)(0.U(config.tagWidth.W))))
   val archRegisterFileValid = RegInit(VecInit(Seq.fill(32)(0.U(1.W))))
-  val arfOverriders         = Seq.fill(config.nWide)(Module(new OverrideRdTagFromBus(config)))
+  val arfOverriders         = Seq.fill(config.nWide)(Module(new OverrideArfTagFromBus(config)))
   val pRegs                 = Seq.fill(config.nWide)(Module(new DCPipelineRegister(new MI(config))(1)))
 
   val overridenRF = Wire(Vec(config.nWide, Decoupled(new MI(config))))
@@ -120,9 +120,6 @@ class RetireWritebackStage(config: WoodConfig) extends Module {
     io.arfBus(j).bits.tag := io.in(j).bits.rdTag
 
     io.in(j).ready := allReady.asUInt.andR
-
-    io.arfBus(j).bits.rd  := io.in(j).bits.rd
-    io.arfBus(j).bits.tag := io.in(j).bits.rdTag
 
     val noARFModify  = io.in(j).valid && !io.in(j).bits.writeRf.asBool
     val writeToARF   = io.in(j).valid && io.in(j).bits.writeRf.asBool

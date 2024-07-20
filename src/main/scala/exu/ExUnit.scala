@@ -54,7 +54,7 @@ class ExUnit(config: WoodConfig) extends Module {
 
   (0 until config.nWide).foreach(j => {
     rbstage.io.in(j).bits  := restage.io.out(j).bits
-    rbstage.io.in(j).valid := restage.io.out(j).valid
+    rbstage.io.in(j).valid := restage.io.out(j).fire // enqueue on fire
 
     scstage.io.in(j).bits  := restage.io.out(j).bits
     scstage.io.in(j).valid := restage.io.out(j).valid

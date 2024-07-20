@@ -5,6 +5,9 @@ pkgs.writers.writePython3Bin "asmgen" { } ''
   import random
 
 
+  random.seed(42)  # Replace 42 with your desired seed
+
+
   class RiscVTestGenerator:
       def __init__(self, num_registers: int = 32) -> None:
           self.num_registers = num_registers
