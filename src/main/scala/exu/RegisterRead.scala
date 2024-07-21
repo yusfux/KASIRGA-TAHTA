@@ -51,15 +51,12 @@ class RegisterReadStage(config: WoodConfig) extends Module {
   overrideForward.io.in      <> overrideWriteBack.io.out
   crossbar.io.in             <> overrideForward.io.out
 
-  println("bonkers reg", Integer.parseInt(DecodeConfig.OPERAND1_REG, 2))
-  println("bonkers", Integer.parseInt(DecodeConfig.OPERAND1_X0, 2))
-
   (0 until config.nWide).foreach(j => {
-    val rs1AdrX0      = dontTouch(io.in(j).bits.rs1 === 0.U)
-    val rs1IndirectX0 = dontTouch(io.in(j).bits.operand1 === Integer.parseInt(DecodeConfig.OPERAND1_REG, 2).U)
-    val rs1DirectX0   = dontTouch(io.in(j).bits.operand1 === Integer.parseInt(DecodeConfig.OPERAND1_X0, 2).U)
+    val rs1AdrX0      = io.in(j).bits.rs1 === 0.U
+    val rs1IndirectX0 = io.in(j).bits.operand1 === Integer.parseInt(DecodeConfig.OPERAND1_REG, 2).U
+    val rs1DirectX0   = io.in(j).bits.operand1 === Integer.parseInt(DecodeConfig.OPERAND1_X0, 2).U
 
-    val rs1ValidZero = dontTouch((rs1AdrX0 && rs1IndirectX0) || (rs1DirectX0))
+    val rs1ValidZero = (rs1AdrX0 && rs1IndirectX0) || (rs1DirectX0)
 
     val rs2AdrX0      = io.in(j).bits.rs2 === 0.U
     val rs2IndirectX0 = io.in(j).bits.operand2 === Integer.parseInt(DecodeConfig.OPERAND2_REG, 2).U

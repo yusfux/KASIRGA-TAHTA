@@ -86,7 +86,7 @@ class ScheduleStage(val config: WoodConfig) extends Module {
   readyList.io.forwardBus  <> io.forwardBus
 
   (0 until config.nWide).foreach(j => {
-    bypassDemuxes(j).io.sel(0) := io.out(j).ready & io.in(j).valid & io.in(j).bits.rs1TagReady & io.in(j).bits.rs2TagReady
+    bypassDemuxes(j).io.sel(0) := io.out(j).ready & io.in(j).valid & readyList.io.out(j).bits.rs1TagReady & readyList.io.out(j).bits.rs2TagReady
 
     bypassDemuxes(j).io.in(0)    <> readyList.io.out(j)
     reservationStations(j).io.in <> bypassDemuxes(j).io.out(0)(0)

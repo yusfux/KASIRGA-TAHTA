@@ -25,7 +25,7 @@ tb_wood is a generic N wide testbench
 CLOCK_PERIOD = 10
 TIME_UNIT = "ns"
 TIMEOUT = 800  # watchdog timer, resets itself
-WOOD_NWIDE = 1
+WOOD_NWIDE = 2
 WOOD_INSTRUCTION_PATH = []
 for n in range(0, WOOD_NWIDE):
     WOOD_INSTRUCTION_PATH.append(Path(f"{build_dir}/main{n}.hex"))
@@ -131,7 +131,8 @@ async def diff_traces(dut):
 
                 assert (
                     inst_p[n] == golden_reference[n]["inst"]
-                ), f"Instruction is {inst_p[n]} but it should be {golden_reference[n]['inst']} at {get_sim_time(units=TIME_UNIT)}{TIME_UNIT}"
+                ), f"Instruction is {color(inst_p[n], Color.GREEN)} but it should be {color(golden_reference[n]['inst'], Color.YELLOW)} at {get_sim_time(units=TIME_UNIT)}{TIME_UNIT}"
+
                 golden_result = golden_reference[n]["result"]
                 if not golden_result:
                     golden_result = "x 0 0x00000000"
@@ -139,7 +140,7 @@ async def diff_traces(dut):
                     rd_data_p[n] = "x 0 0x00000000"
                 assert (
                     rd_data_p[n] == golden_result
-                ), f"Result is {color(rd_data_p[n], Color.YELLOW)} at tag {color(rd_tag[n], Color.YELLOW)} but it should be {color(golden_reference[n]['result'], Color.YELLOW)} at {get_sim_time(units=TIME_UNIT)}{TIME_UNIT}"
+                ), f"Result is {color(rd_data_p[n], Color.GREEN)} at tag {color(rd_tag[n], Color.GREEN)} but it should be {color(golden_reference[n]['result'], Color.YELLOW)} at {get_sim_time(units=TIME_UNIT)}{TIME_UNIT}"
 
             timeout.set()
         await RisingEdge(dut.clock)

@@ -18,8 +18,13 @@ class RenameStage(config: WoodConfig) extends Module {
   val allInValid           = Wire(Vec(config.nWide, Bool())).suggestName("allInValid")
   allInValid := io.in.map(_.valid)
 
+  val selfReady = Wire(Vec(config.nWide, Bool()))
+  selfReady := self.map(_.ready)
+  val outReady = Wire(Vec(config.nWide, Bool()))
+  outReady := io.out.map(_.ready)
+
   (0 until config.nWide).foreach(j => {
-    when((io.in(j).bits.writeRf === Integer.parseInt(DecodeConfig.WRITE_RF_1, 2).U) & io.out(j).fire) {
+    when((io.in(j).bits.writeRf === Integer.parseInt(DecodeConfig.WRITE_RF_1, 2).U) & io.in(j).fire) {
       frontEndRegisterFile(io.in(j).bits.rd) := io.in(j).bits.rdTag
     }
   })
@@ -63,9 +68,10 @@ class RenameStage(config: WoodConfig) extends Module {
 
     pRegs(j).io.valids(0) := io.in(j).valid
 
-    io.in(j).ready := self(j).ready
+    io.in(j).ready := selfReady.asUInt.andR
 
-    pRegs(j).io.in <> self(j)
-    io.out(j)      <> pRegs(j).io.out
+    pRegs(j).io.in        <> self(j)
+    io.out(j)             <> pRegs(j).io.out
+    pRegs(j).io.out.ready := outReady.asUInt.andR
   })
 }
