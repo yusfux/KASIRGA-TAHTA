@@ -58,7 +58,7 @@ class RenameStage(config: WoodConfig) extends Module {
       (acc._1 || matchFound, Mux(matchFound, io.in(k).bits.rdTag, acc._2))
     }
 
-    when(rs1HasOverride) {
+    when(rs2HasOverride) {
       self(j).bits.rs2Tag := overrideRs2Tag
     }.otherwise {
       self(j).bits.rs2Tag := frontEndRegisterFile(io.in(j).bits.rs2)

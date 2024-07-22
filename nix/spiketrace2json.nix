@@ -81,8 +81,7 @@ pkgs.writers.writePython3Bin "spiketrace2json" { } ''
       alias_numeric_list = []
       for line in lines:
           for alias, xnum in register_aliases.items():
-              if alias in line:
-                  line = line.replace(alias, xnum)
+              line = re.sub(r'\b' + re.escape(alias) + r'\b(?!\d)', xnum, line)
           alias_numeric_list.append(line)
 
       return alias_numeric_list

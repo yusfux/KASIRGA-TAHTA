@@ -29,7 +29,7 @@ class RegisterReadStage(config: WoodConfig) extends Module {
 
   (0 until config.nWide).foreach(j => {
     io.wakeupBus(j).bits.tag := io.in(j).bits.rdTag
-    io.wakeupBus(j).valid    := io.in(j).bits.wakeup
+    io.wakeupBus(j).valid    := io.in(j).bits.wakeup & io.in(j).valid
 
     overridenRFData(j).bits.rs1Data := prf(io.in(j).bits.rs1Tag)
     overridenRFData(j).bits.rs2Data := prf(io.in(j).bits.rs2Tag)

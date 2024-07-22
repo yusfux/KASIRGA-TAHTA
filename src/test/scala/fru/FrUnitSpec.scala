@@ -57,12 +57,12 @@ class FrUnitSpec extends AnyFlatSpec with ChiselScalatestTester with ParallelTes
     buildTestCode()
 
     val nWide        = 1
-    val prfDepth     = 32
+    val robDepth     = 32
     val miQueueDepth = 16
     val pcListDepth  = 16
 
     val config =
-      new WoodConfig(nWide = nWide, prfDepth = prfDepth, miQueueDepth = miQueueDepth, pcListDepth = pcListDepth)
+      new WoodConfig(nWide = nWide, robDepth = robDepth, miQueueDepth = miQueueDepth, pcListDepth = pcListDepth)
 
     val cwd = System.getProperty("user.dir")
     println(s"CWD: $cwd")

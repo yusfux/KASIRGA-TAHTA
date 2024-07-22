@@ -19,11 +19,22 @@ case class WoodConfig(
   miQueueDepth: Int = 16,
   //--------------
   // ExUnitConfig
-  prfDepth: Int = 128,
+  robDepth: Int = 16,
   rsDepth:  Int = 4 // Reservation station depth
   //--------------
 ) {
-  require(prfDepth > (32 + nWide + 5), "Min 32 tags will be entrapped in ArchRF. Increase prfDepth")
+
+  require(
+    robDepth % nWide == 0,
+    "RobDepth must be divisible by nWide"
+  )
+
+  val prfDepth = (32 + (rsDepth * nWide) + (8 * nWide) + (robDepth * nWide))
+  require(
+    (prfDepth % nWide == 0),
+    "prfDepth must be divisible by nWide and smaller than prfDepth"
+  )
+
   // val pcIndexWidth: Int = log2Ceil(pcListDepth)
   val pcIndexWidth:       Int = 32 // TODO: use pc list not pc
   val pcIndexOffsetWidth: Int = log2Ceil(nWide)

@@ -14,7 +14,7 @@ import wood.fru.DecodeConfig
 class RenameStageSpec extends AnyFlatSpec with ChiselScalatestTester with ParallelTestExecution {
 
   "RenameStage" should "work (1 wide)" in {
-    val config = new WoodConfig(nWide = 1, prfDepth = 16)
+    val config = new WoodConfig(nWide = 1, robDepth = 16)
     test(new RenameStage(config)).withAnnotations(GetBackendAnnotation()) { dut =>
       val inMIs = dut.io.in.map(_.initSource())
       // val inFlistRetire = dut.io.in.map(_.initSource())

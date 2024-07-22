@@ -84,29 +84,51 @@ async def diff_traces(dut):
 
     # previous_pc = 69
     while True:
-        rd = [0 for _ in range(WOOD_NWIDE)]
-        rd_tag = [0 for _ in range(WOOD_NWIDE)]
+        in_valid = [0 for _ in range(WOOD_NWIDE)]
+        in_ready = [0 for _ in range(WOOD_NWIDE)]
+        in_wrf = [0 for _ in range(WOOD_NWIDE)]
+
+        arfBus_adr = [0 for _ in range(WOOD_NWIDE)]
+        arfBus_tag = [0 for _ in range(WOOD_NWIDE)]
+        arfBus_valid = [0 for _ in range(WOOD_NWIDE)]
+        commBus_tag = [0 for _ in range(WOOD_NWIDE)]
+        commBus_valid = [0 for _ in range(WOOD_NWIDE)]
         inst = [0 for _ in range(WOOD_NWIDE)]
-        we = [0 for _ in range(WOOD_NWIDE)]
         pc = [0 for _ in range(WOOD_NWIDE)]
         rd_data = [0 for _ in range(WOOD_NWIDE)]
+
+        retired = [0 for _ in range(WOOD_NWIDE)]
         for n in range(0, WOOD_NWIDE):
-            rd[n] = getattr(dut, f"exunit.rwstage.io_arfBus_{n}_bits_rd").value.integer
-            rd_tag[n] = getattr(
+            arfBus_adr[n] = getattr(
+                dut, f"exunit.rwstage.io_arfBus_{n}_bits_rd"
+            ).value.integer
+            arfBus_tag[n] = getattr(
                 dut, f"exunit.rwstage.io_arfBus_{n}_bits_tag"
             ).value.integer
-            inst[n] = getattr(dut, f"exunit.rwstage.io_in_{n}_bits_inst").value.integer
-            pc[n] = getattr(dut, f"exunit.rwstage.io_in_{n}_bits_pcIdx").value.integer
-            rd_data[n] = getattr(dut, f"exunit.rrstage.prf_{rd_tag[n]}").value.integer
-            we_comm = getattr(
+            arfBus_valid[n] = getattr(
+                dut, f"exunit.rwstage.io_arfBus_{n}_valid"
+            ).value.integer
+
+            commBus_valid[n] = getattr(
                 dut, f"exunit.rwstage.io_commitedBus_{n}_valid"
             ).value.integer
-            we_arf = getattr(dut, f"exunit.rwstage.io_arfBus_{n}_valid").value.integer
-            in_valid = getattr(dut, f"exunit.rwstage.io_in_{n}_valid").value.integer
-            in_ready = getattr(dut, f"exunit.rwstage.io_in_{n}_ready").value.integer
-            we[n] = (we_comm or we_arf or (rd[n] == 0 and in_valid)) and in_ready
-            # print(we[n])
-            # print(we[n], " ", pc, previous_pc)
+            commBus_tag[n] = getattr(
+                dut, f"exunit.rwstage.io_commitedBus_{n}_bits_tag"
+            ).value.integer
+
+            inst[n] = getattr(dut, f"exunit.rwstage.io_in_{n}_bits_inst").value.integer
+            pc[n] = getattr(dut, f"exunit.rwstage.io_in_{n}_bits_pcIdx").value.integer
+            rd_data[n] = getattr(
+                dut, f"exunit.rrstage.prf_{arfBus_tag[n]}"
+            ).value.integer
+            in_valid[n] = getattr(dut, f"exunit.rwstage.io_in_{n}_valid").value.integer
+            in_ready[n] = getattr(dut, f"exunit.rwstage.io_in_{n}_ready").value.integer
+            in_wrf[n] = getattr(
+                dut, f"exunit.rwstage.io_in_{n}_bits_writeRf"
+            ).value.integer
+            retired[n] = (in_wrf[n] or (arfBus_adr[n] == 0)) and (
+                in_ready[n] and in_valid[n]
+            )
 
         golden_reference = [{} for _ in range(WOOD_NWIDE)]
         inst_p = ["" for _ in range(WOOD_NWIDE)]
@@ -114,8 +136,9 @@ async def diff_traces(dut):
         rd_data_p = ["" for _ in range(WOOD_NWIDE)]
         # if previous_pc != pc:
         # previous_pc = pc
+
         for n in range(0, WOOD_NWIDE):
-            if we[n]:
+            if retired[n]:
                 golden_reference[n] = spike_trace.pop(0)
                 print(color(golden_reference[n], Color.YELLOW))
 
@@ -123,7 +146,7 @@ async def diff_traces(dut):
                 pc_p[n] = "{0:#0{1}x}".format(pc[n], 10)
                 rd_data_p[n] = "{0:#0{1}x}".format(rd_data[n], 10)
                 inst_p[n] = f"{inst_p[n]}".strip()
-                rd_data_p[n] = f"x{rd[n]:>2} {rd_data_p[n]}"
+                rd_data_p[n] = f"x{arfBus_adr[n]:>2} {rd_data_p[n]}"
 
                 print(
                     f"{{'pc': '{pc_p[n]}', 'inst': '{inst_p[n]}','result': '{rd_data_p[n]}', 'time': {get_sim_time(units=TIME_UNIT)}{TIME_UNIT}, 'n': {n}}}"
@@ -140,7 +163,14 @@ async def diff_traces(dut):
                     rd_data_p[n] = "x 0 0x00000000"
                 assert (
                     rd_data_p[n] == golden_result
-                ), f"Result is {color(rd_data_p[n], Color.GREEN)} at tag {color(rd_tag[n], Color.GREEN)} but it should be {color(golden_reference[n]['result'], Color.YELLOW)} at {get_sim_time(units=TIME_UNIT)}{TIME_UNIT}"
+                ), f"Result is {color(rd_data_p[n], Color.GREEN)} at tag {color(arfBus_tag[n], Color.GREEN)} but it should be {color(golden_reference[n]['result'], Color.YELLOW)} at {get_sim_time(units=TIME_UNIT)}{TIME_UNIT}"
+
+        for n in range(0, WOOD_NWIDE):
+            if retired[n]:
+                if arfBus_valid[n] and commBus_valid[n]:
+                    assert (
+                        arfBus_tag[n] != commBus_tag[n]
+                    ), f"Tag duplication! tag_{n} {color(arfBus_tag[n], Color.GREEN)} is also commited at {get_sim_time(units=TIME_UNIT)}{TIME_UNIT}"
 
             timeout.set()
         await RisingEdge(dut.clock)

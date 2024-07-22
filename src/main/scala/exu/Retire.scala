@@ -12,7 +12,7 @@ class ROBStage(config: WoodConfig) extends Module {
     val out = Vec(config.nWide, Decoupled(new MI(config)))
   })
 
-  val q     = Module(new DCRRQueue(new MI(config))(config.nWide, config.prfDepth))
+  val q     = Module(new DCRRQueue(new MI(config))(config.nWide, config.robDepth))
   val pRegs = Seq.fill(config.nWide)(Module(new DCPipelineRegister(new MI(config))(1)))
 
   q.io.in <> io.in
@@ -112,8 +112,10 @@ class RetireWritebackStage(config: WoodConfig) extends Module {
     val commitedBus = Vec(config.nWide, Decoupled(new Tag(config)))
   })
 
-  val allReady = Wire(Vec(config.nWide, Bool())).suggestName("allInValid ")
+  val allReady = Wire(Vec(config.nWide, Bool())).suggestName("allInValid")
   allReady := io.commitedBus.map(_.ready)
+
+  val rdOverriden = Wire(Vec(config.nWide, Bool()))
 
   (0 until config.nWide).foreach(j => {
     io.arfBus(j).bits.rd  := io.in(j).bits.rd
@@ -121,15 +123,19 @@ class RetireWritebackStage(config: WoodConfig) extends Module {
 
     io.in(j).ready := allReady.asUInt.andR
 
-    val noARFModify  = io.in(j).valid && !io.in(j).bits.writeRf.asBool
-    val writeToARF   = io.in(j).valid && io.in(j).bits.writeRf.asBool
-    val validARFTag  = io.in(j).valid && io.in(j).bits.arfValid
-    val commitARFTag = validARFTag && writeToARF
+    rdOverriden(j) := ((j + 1) until config.nWide).foldRight(false.B) { (k, acc) =>
+      val rdM = (io.in(j).bits.rd === io.in(k).bits.rd) & io.in(k).bits.writeRf.asBool
+      acc || rdM
+    }
 
-    io.arfBus(j).valid := writeToARF
+    val attemptArfWrite = (io.in(j).valid & io.in(j).bits.writeRf.asBool)
+    val arfWrite        = !rdOverriden(j) & attemptArfWrite
+    io.arfBus(j).valid := arfWrite
 
-    io.commitedBus(j).bits.tag := Mux(commitARFTag, io.in(j).bits.arfTag, io.in(j).bits.rdTag)
-    io.commitedBus(j).valid    := validARFTag | noARFModify
+    val arfTagToCommitBus = io.in(j).bits.arfValid & arfWrite
+
+    io.commitedBus(j).bits.tag := Mux(arfTagToCommitBus, io.in(j).bits.arfTag, io.in(j).bits.rdTag)
+    io.commitedBus(j).valid    := Mux(arfTagToCommitBus, io.in(j).bits.arfValid, attemptArfWrite & io.in(j).bits.arfValid)
 
     dontTouch(io.in(j).bits.inst) // for testbench only
     dontTouch(io.in(j).bits.pcIdx) // for testbench only
