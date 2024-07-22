@@ -102,6 +102,4 @@ class ExUnit(config: WoodConfig) extends Module {
   }
 
   scstage.io.wakeupBus <> rrstage.io.wakeupBus
-
-  scstage.io.stall := 0.U // TODO
 }

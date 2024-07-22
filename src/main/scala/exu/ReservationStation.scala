@@ -13,63 +13,64 @@ class ReservationStationRow(config: WoodConfig) extends Module {
     val wakeupBus  = Input(Vec(config.nWide, ValidIO(new TagBus(config))))
     val out        = Decoupled(new MI(config))
 
-    val stall = Input(Bool())
   })
-
-  val r1ValidNext = Wire(UInt(1.W))
-  val r2ValidNext = Wire(UInt(1.W))
-  val rowNext     = Wire(new MI(config))
-  val row         = RegEnable(rowNext, 0.U.asTypeOf(new MI(config)), !io.stall)
 
   val busR1MatchesForward = Wire(Vec(config.nWide, Bool()))
   val busR2MatchesForward = Wire(Vec(config.nWide, Bool()))
   val busR1MatchesWakeup  = Wire(Vec(config.nWide, Bool()))
   val busR2MatchesWakeup  = Wire(Vec(config.nWide, Bool()))
 
-  val emptyNext      = Wire(Bool())
-  val empty          = RegEnable(emptyNext, 1.B, !io.stall)
-  val outReadyToFire = Wire(UInt(1.W))
-  val outFiring      = Wire(UInt(1.W))
+  val rs1TagReadyNext = Wire(UInt(1.W))
+  val rs2TagReadyNext = Wire(UInt(1.W))
+  val rowNext         = Wire(new MI(config))
+  val emptyNext       = Wire(Bool())
 
-  outReadyToFire := row.rs1TagReady.asBool && row.rs2TagReady.asBool && !empty
-  io.out.valid   := outReadyToFire
-  outFiring      := outReadyToFire.asBool && io.out.ready
-  io.in.ready    := outFiring | empty
+  val writeToRow = (io.in.valid & io.in.ready)
 
-  emptyNext := MuxCase(
-    empty,
-    Seq(
-      io.in.valid                       -> 0.U,
-      (outFiring.asBool & !io.in.valid) -> 1.U
-    )
-  )
+  val row         = RegEnable(rowNext, 0.U.asTypeOf(new MI(config)), 1.B)
+  val rs1TagReady = RegEnable(rs1TagReadyNext, 0.U, 1.B)
+  val rs2TagReady = RegEnable(rs2TagReadyNext, 0.U, 1.B)
+  val empty       = RegEnable(emptyNext, 1.B, 1.B)
 
-  r1ValidNext := MuxCase(
-    row.rs1TagReady,
-    Seq(
-      io.in.valid                                      -> io.in.bits.rs1TagReady,
-      (empty.asBool & !io.in.valid)                    -> 0.U,
-      (!empty.asBool & busR1MatchesForward.asUInt.orR) -> 1.U,
-      (!empty.asBool & busR1MatchesWakeup.asUInt.orR)  -> 1.U
-    )
-  )
+  val sOnlyRead     = io.out.fire
+  val sOnlyWrite    = io.in.fire
+  val sReadAndWrite = io.in.fire & io.out.fire
 
-  r2ValidNext := MuxCase(
-    row.rs2TagReady,
-    Seq(
-      io.in.valid                                      -> io.in.bits.rs2TagReady,
-      (empty.asBool & !io.in.valid)                    -> 0.U,
-      (!empty.asBool & busR2MatchesForward.asUInt.orR) -> 1.U,
-      (!empty.asBool & busR2MatchesWakeup.asUInt.orR)  -> 1.U
-    )
-  )
+  io.in.ready  := empty | (!empty & io.out.fire)
+  io.out.valid := !empty & (rs1TagReady & rs2TagReady)
 
-  when(io.in.valid) {
-    rowNext := io.in.bits
+  when(io.in.fire & io.out.fire) {
+    emptyNext       := 0.U
+    rowNext         := io.in.bits
+    rs1TagReadyNext := io.in.bits.rs1TagReady
+    rs2TagReadyNext := io.in.bits.rs2TagReady
+  }.elsewhen(io.in.fire) {
+    emptyNext       := 0.U
+    rowNext         := io.in.bits
+    rs1TagReadyNext := io.in.bits.rs1TagReady
+    rs2TagReadyNext := io.in.bits.rs2TagReady
+  }.elsewhen(io.out.fire) {
+    emptyNext       := 1.U
+    rowNext         := 0.U.asTypeOf(new MI(config))
+    rs1TagReadyNext := 0.U
+    rs2TagReadyNext := 0.U
   }.otherwise {
-    rowNext             := row
-    rowNext.rs1TagReady := r1ValidNext
-    rowNext.rs2TagReady := r2ValidNext
+    emptyNext := empty
+    rowNext   := row
+    rs1TagReadyNext := rs1TagReady | MuxCase(
+      0.U,
+      Seq(
+        (!empty.asBool & busR1MatchesForward.asUInt.orR) -> 1.U,
+        (!empty.asBool & busR1MatchesWakeup.asUInt.orR)  -> 1.U
+      )
+    )
+    rs2TagReadyNext := rs2TagReady | MuxCase(
+      0.U,
+      Seq(
+        (!empty.asBool & busR2MatchesForward.asUInt.orR) -> 1.U,
+        (!empty.asBool & busR2MatchesWakeup.asUInt.orR)  -> 1.U
+      )
+    )
   }
 
   io.out.bits := row
@@ -88,8 +89,6 @@ class ReservationStation(config: WoodConfig) extends Module {
     val forwardBus = Input(Vec(config.nWide, ValidIO(new TagBus(config))))
     val wakeupBus  = Input(Vec(config.nWide, ValidIO(new TagBus(config))))
     val out        = Decoupled(new MI(config))
-
-    val stall = Input(UInt(1.W))
   })
 
   val rows    = Seq.fill(config.rsDepth)(Module(new ReservationStationRow(config)))
@@ -104,7 +103,6 @@ class ReservationStation(config: WoodConfig) extends Module {
   (0 until config.rsDepth).foreach(j => {
     rowReady(j) := rows(j).io.in.ready
 
-    rows(j).io.stall      := io.stall
     rows(j).io.forwardBus <> io.forwardBus
     rows(j).io.wakeupBus  <> io.wakeupBus
 

@@ -64,7 +64,7 @@ async def watchdog_timer():
             timeout.clear()
         timer = timer + 1
         await Timer(Decimal("1"), units=TIME_UNIT)
-    assert 0, "TIMEOUT! DUT halted."
+    assert 0, color("TIMEOUT! DUT halted.", Color.RED)
 
 
 async def get_spike_trace():
@@ -172,7 +172,7 @@ async def diff_traces(dut):
                         arfBus_tag[n] != commBus_tag[n]
                     ), f"Tag duplication! tag_{n} {color(arfBus_tag[n], Color.GREEN)} is also commited at {get_sim_time(units=TIME_UNIT)}{TIME_UNIT}"
 
-            timeout.set()
+                timeout.set()
         await RisingEdge(dut.clock)
 
 

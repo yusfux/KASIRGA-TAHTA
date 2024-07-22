@@ -62,7 +62,6 @@ class ScheduleStage(val config: WoodConfig) extends Module {
     val forwardBus  = Input(Vec(config.nWide, ValidIO(new TagBus(config))))
     val wakeupBus   = Input(Vec(config.nWide, ValidIO(new TagBus(config))))
     val commitedBus = Input(Vec(config.nWide, ValidIO(new TagBus(config))))
-    val stall       = Input(UInt(1.W))
 
     val out = Vec(config.nWide, Decoupled(new MI(config)))
   })
@@ -95,7 +94,6 @@ class ScheduleStage(val config: WoodConfig) extends Module {
 
     reservationStations(j).io.forwardBus <> io.forwardBus
     reservationStations(j).io.wakeupBus  <> io.wakeupBus
-    reservationStations(j).io.stall      := io.stall
 
     pRegs(j).io.valids(0) := bypassArbiters(j).io.out(0).valid
 
