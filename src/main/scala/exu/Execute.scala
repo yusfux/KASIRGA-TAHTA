@@ -10,10 +10,12 @@ class ExecuteStage(config: WoodConfig) extends Module {
   val totalNumPorts = config.listExUnits.sum
   val numALUs       = config.listExUnits(config.aluCrossbarIndex)
   val numIMUs       = config.listExUnits(config.imuCrossbarIndex)
+  val numIDUs       = config.listExUnits(config.iduCrossbarIndex)
 
   val io = IO(new Bundle {
     val aluIn      = Flipped(Vec(numALUs, Decoupled(new MI(config))))
     val imuIn      = Flipped(Vec(numIMUs, Decoupled(new MI(config))))
+    val iduIn      = Flipped(Vec(numIMUs, Decoupled(new MI(config))))
     val forwardBus = Vec(config.nWide, ValidIO(new DataBus(config)))
     val out        = Vec(config.nWide, Decoupled(new MI(config)))
   })
@@ -26,6 +28,9 @@ class ExecuteStage(config: WoodConfig) extends Module {
   val imus = Seq.tabulate(numIMUs) { _ =>
     Module(new IMU(config))
   }
+  val idus = Seq.tabulate(numIDUs) { _ =>
+    Module(new IDU(config))
+  }
 
   val aluOutputs = Wire(Vec(numALUs, Decoupled(new MI(config))))
   val aluInputs  = Wire(Vec(numALUs, Decoupled(new MI(config))))
@@ -37,16 +42,26 @@ class ExecuteStage(config: WoodConfig) extends Module {
   imuInputs  <> imus.map(_.io.in)
   imuOutputs <> imus.map(_.io.out)
 
+  val iduOutputs = Wire(Vec(numIDUs, Decoupled(new MI(config))))
+  val iduInputs  = Wire(Vec(numIDUs, Decoupled(new MI(config))))
+  iduInputs  <> idus.map(_.io.in)
+  iduOutputs <> idus.map(_.io.out)
+
   aluInputs <> io.aluIn
   imuInputs <> io.imuIn
+  iduInputs <> io.iduIn
 
   val aluRange = (0 until numALUs)
-  val imuRange = (numALUs until totalNumPorts)
+  val imuRange = (numALUs until numALUs + numIMUs)
+  val iduRange = (numALUs + numIMUs until totalNumPorts)
   (aluRange).foreach(j => {
     arbiter.io.in(j) <> aluOutputs(j)
   })
   (imuRange).foreach(j => {
     arbiter.io.in(j) <> imuOutputs(j - imuRange(0))
+  })
+  (iduRange).foreach(j => {
+    arbiter.io.in(j) <> iduOutputs(j - iduRange(0))
   })
 
   (0 until config.nWide).foreach(j => {
@@ -54,7 +69,7 @@ class ExecuteStage(config: WoodConfig) extends Module {
     io.forwardBus(j).bits.tag  := arbiter.io.out(j).bits.rdTag
     io.forwardBus(j).valid     := arbiter.io.out(j).valid
 
-    pRegs(j).io.valids(0) := io.aluIn(j).valid
+    pRegs(j).io.valids(0) := io.aluIn(j).valid // TODO: BUG: BUG: BUG:
 
     pRegs(j).io.in <> arbiter.io.out(j)
     io.out(j)      <> pRegs(j).io.out

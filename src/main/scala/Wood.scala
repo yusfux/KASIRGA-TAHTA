@@ -41,12 +41,13 @@ case class WoodConfig(
   val pcIndexOffsetWidth: Int = log2Ceil(nWide)
 
   val tagWidth:      Int       = log2Ceil(prfDepth)
-  val listExUnits:   List[Int] = List(nWide, 1) // alu,mdu
+  val listExUnits:   List[Int] = List(nWide, 1, 1) // alu,mdu, idu
   val numPortsFloat: Int       = nWide
   val numPortsInt:   Int       = nWide
 
   val aluCrossbarIndex = 0 // NOTE: ALU has to be 0
   val imuCrossbarIndex = 1
+  val iduCrossbarIndex = 2
 }
 
 class Wood(config: WoodConfig) extends Module {

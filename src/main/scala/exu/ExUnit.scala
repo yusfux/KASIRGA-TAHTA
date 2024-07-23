@@ -6,8 +6,8 @@ import wood.WoodConfig
 import wood.fru.MI
 
 object ExEngine extends ChiselEnum {
-  val alu, imu, lsu, float, none = Value
-  val values                     = IndexedSeq(alu, lsu, float, none)
+  val alu, imu, idu, lsu, float, none = Value
+  val values                          = IndexedSeq(alu, imu, idu, lsu, float, none)
 
   def toBitpat(op: ExEngine.Type): BitPat =
     BitPat(op.litValue.U(getWidth.W))
@@ -68,6 +68,7 @@ class ExUnit(config: WoodConfig) extends Module {
   rrstage.io.in    <> scstage.io.out
   exstage.io.aluIn <> rrstage.io.aluOut
   exstage.io.imuIn <> rrstage.io.imuOut
+  exstage.io.iduIn <> rrstage.io.iduOut
   wbstage.io.in    <> exstage.io.out
 
   rrstage.io.writebackBus <> wbstage.io.writebackBus

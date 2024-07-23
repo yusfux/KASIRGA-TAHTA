@@ -14,6 +14,7 @@ class RegisterReadStage(config: WoodConfig) extends Module {
     val wakeupBus    = Vec(config.nWide, ValidIO(new TagBus(config)))
     val aluOut       = Vec(config.listExUnits(config.aluCrossbarIndex), Decoupled(new MI(config)))
     val imuOut       = Vec(config.listExUnits(config.imuCrossbarIndex), Decoupled(new MI(config)))
+    val iduOut       = Vec(config.listExUnits(config.iduCrossbarIndex), Decoupled(new MI(config)))
   })
 
   val overrideForward   = Module(new OverrideRsFromBuses(config))
@@ -21,6 +22,7 @@ class RegisterReadStage(config: WoodConfig) extends Module {
   val crossbar          = Module(new DCCrossbar(new MI(config))(config.nWide, config.listExUnits))
   val aluPRegs          = Seq.fill(config.listExUnits(config.aluCrossbarIndex))(Module(new DCPipelineRegister(new MI(config))(1)))
   val imuPRegs          = Seq.fill(config.listExUnits(config.imuCrossbarIndex))(Module(new DCPipelineRegister(new MI(config))(1)))
+  val iduPRegs          = Seq.fill(config.listExUnits(config.iduCrossbarIndex))(Module(new DCPipelineRegister(new MI(config))(1)))
 
   val prf = RegInit(VecInit(Seq.fill(config.prfDepth)(0.U(config.dataWidth.W)))) // TODO: remove reset
 
@@ -37,7 +39,15 @@ class RegisterReadStage(config: WoodConfig) extends Module {
     when(io.writebackBus(j).valid) {
       prf(io.writebackBus(j).bits.tag) := io.writebackBus(j).bits.data
     }
-    crossbar.io.sel(j) := Mux(io.in(j).bits.exEngine === ExEngine.alu.asUInt, config.aluCrossbarIndex.U, config.imuCrossbarIndex.U)
+
+    crossbar.io.sel(j) := MuxCase(
+      config.aluCrossbarIndex.U,
+      Array(
+        (io.in(j).bits.exEngine === ExEngine.alu.asUInt) -> config.aluCrossbarIndex.U,
+        (io.in(j).bits.exEngine === ExEngine.idu.asUInt) -> config.iduCrossbarIndex.U,
+        (io.in(j).bits.exEngine === ExEngine.imu.asUInt) -> config.imuCrossbarIndex.U
+      ).toIndexedSeq
+    )
   })
 
   (0 until config.listExUnits(config.aluCrossbarIndex)).foreach(j => {
@@ -50,6 +60,12 @@ class RegisterReadStage(config: WoodConfig) extends Module {
     imuPRegs(j).io.in        <> crossbar.io.out(config.imuCrossbarIndex)(j)
     imuPRegs(j).io.valids(0) := io.in(j).valid
     io.imuOut(j)             <> imuPRegs(j).io.out
+  })
+
+  (0 until config.listExUnits(config.iduCrossbarIndex)).foreach(j => {
+    iduPRegs(j).io.in        <> crossbar.io.out(config.iduCrossbarIndex)(j)
+    iduPRegs(j).io.valids(0) := io.in(j).valid
+    io.iduOut(j)             <> iduPRegs(j).io.out
   })
 
   overrideForward.io.inBus   <> io.forwardBus

@@ -15,7 +15,8 @@ pkgs.writers.writePython3Bin "asmgen" { } ''
           self.shift_instructions = ["slli", "srli", "srai"]
           self.register_instructions = ["add", "sub", "xor", "or", "and",
                                         "sll", "srl", "sra", "slt", "sltu",
-                                        "mul", "mulh", "mulhu", "mulhsu"]
+                                        "mul", "mulh", "mulhu", "mulhsu",
+                                        "div", "divu", "rem", "remu"]
 
       def generate_inst(self, inst_type: str) -> str:
           if inst_type == "li":
@@ -80,10 +81,11 @@ pkgs.writers.writePython3Bin "asmgen" { } ''
       parser.add_argument(
           "--inst",
           type=str,
-          choices=["addi", "xori", "ori", "andi", "slli", "srli", "srai",
+          choices=["li", "addi", "xori", "ori", "andi", "slli", "srli", "srai",
                    "slti", "sltiu", "add", "sub", "xor", "or",
                    "and", "sll", "srl", "sra", "slt", "sltu",
-                   "mul", "mulh", "mulhu", "mulhsu"],
+                   "mul", "mulh", "mulhu", "mulhsu",
+                   "div", "divu", "rem", "remu"],
           required=True,
           help="inst type to generate (li, add, sub, addi, xori, ori, or andi)",
       )
