@@ -9,18 +9,24 @@ pkgs.writers.writePython3Bin "asmgen" { } ''
   class RiscVTestGenerator:
       def __init__(self, num_registers: int = 32) -> None:
           self.num_registers = num_registers
-          self.immediate_instructions = ["addi", "xori", "ori", "andi"]
+          self.immediate_instructions = ["addi", "xori", "ori", "andi",
+                                         "slli", "srli", "srai", "slti",
+                                         "sltiu"]
+          self.shift_instructions = ["slli", "srli", "srai"]
+          self.register_instructions = ["add", "sub", "xor", "or", "and",
+                                        "sll", "srl", "sra", "slt", "sltu",
+                                        "mul", "mulh", "mulhu", "mulhsu"]
 
       def generate_inst(self, inst_type: str) -> str:
           if inst_type == "li":
               register = f"x{random.randint(0, self.num_registers - 1)}"
               value = random.randint(0, 65535)  # 16-bit value for li
               return f"li {register}, {value}"
-          elif inst_type == "add":
+          elif inst_type in self.register_instructions:
               register1 = f"x{random.randint(0, self.num_registers - 1)}"
               register2 = f"x{random.randint(0, self.num_registers - 1)}"
               register3 = f"x{random.randint(0, self.num_registers - 1)}"
-              return f"add {register3}, {register1}, {register2}"
+              return f"{inst_type} {register3}, {register1}, {register2}"
           elif inst_type in self.immediate_instructions:
               return self.generate_immediate_inst(inst_type)
           else:
@@ -29,7 +35,10 @@ pkgs.writers.writePython3Bin "asmgen" { } ''
       def generate_immediate_inst(self, inst_type: str) -> str:
           register1 = f"x{random.randint(0, self.num_registers - 1)}"
           register2 = f"x{random.randint(0, self.num_registers - 1)}"
-          immediate = random.randint(-2048, 2047)  # 12-bit signed imm
+          if inst_type in self.shift_instructions:
+              immediate = random.randint(0, 31)
+          else:
+              immediate = random.randint(-2048, 2047)
           return f"{inst_type} {register2}, {register1}, {immediate}"
 
       def generate_order_test(self, num_insts: int, inst_type: str) -> str:
@@ -40,15 +49,20 @@ pkgs.writers.writePython3Bin "asmgen" { } ''
                   for i in range(self.num_registers):
                       asm_code.append(f"   li x{i}, {c}")
                       c += 1
-          elif inst_type == "add":
+          elif inst_type in self.register_instructions:
               for _ in range(num_insts):
                   for i in range(self.num_registers - 2):
-                      asm_code.append(f"   add x{i+2}, x{i}, x{i+1}")
+                      asm_code.append(f"   {inst_type} x{i+2}, x{i}, x{i+1}")
           elif inst_type in self.immediate_instructions:
               for _ in range(num_insts):
                   for i in range(self.num_registers - 1):
                       asm_code.append(f"   {inst_type} x{i+1}, x{i}, {c}")
                       c = (c + 1) % 2048  # imm within 12-bit signed range
+          elif inst_type in self.immediate_instructions:
+              for _ in range(num_insts):
+                  for i in range(self.num_registers - 1):
+                      asm_code.append(f"   {inst_type} x{i+1}, x{i}, {c}")
+                      c = (c + 1) % 32  # imm within 12-bit signed range
           else:
               raise ValueError(f"Unsupported inst type: {inst_type}")
           return "\n".join(asm_code)
@@ -66,9 +80,12 @@ pkgs.writers.writePython3Bin "asmgen" { } ''
       parser.add_argument(
           "--inst",
           type=str,
-          choices=["li", "add", "addi", "xori", "ori", "andi"],
+          choices=["addi", "xori", "ori", "andi", "slli", "srli", "srai",
+                   "slti", "sltiu", "add", "sub", "xor", "or",
+                   "and", "sll", "srl", "sra", "slt", "sltu",
+                   "mul", "mulh", "mulhu", "mulhsu"],
           required=True,
-          help="inst type to generate (li, add, addi, xori, ori, or andi)",
+          help="inst type to generate (li, add, sub, addi, xori, ori, or andi)",
       )
       parser.add_argument(
           "--num-insts", type=int, default=32, help="Num of insts to generate"

@@ -11,7 +11,7 @@ pkgs.stdenv.mkDerivation {
   };
 
   configureFlags = [
-    "--with-arch=rv32i"
+    "--with-arch=rv32im"
     "--with-abi=ilp32"
     "--enable-multilib"
   ];

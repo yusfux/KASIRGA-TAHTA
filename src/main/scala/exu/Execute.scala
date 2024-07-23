@@ -7,26 +7,47 @@ import wood.fru.MI
 import wood.std.{DCArbiter, DCPipelineRegister}
 
 class ExecuteStage(config: WoodConfig) extends Module {
+  val totalNumPorts = config.listExUnits.sum
+  val numALUs       = config.listExUnits(config.aluCrossbarIndex)
+  val numIMUs       = config.listExUnits(config.imuCrossbarIndex)
+
   val io = IO(new Bundle {
-    val aluIn      = Flipped(Vec(config.nWide, Decoupled(new MI(config))))
+    val aluIn      = Flipped(Vec(numALUs, Decoupled(new MI(config))))
+    val imuIn      = Flipped(Vec(numIMUs, Decoupled(new MI(config))))
     val forwardBus = Vec(config.nWide, ValidIO(new DataBus(config)))
     val out        = Vec(config.nWide, Decoupled(new MI(config)))
   })
 
-  val pRegs = Seq.fill(config.nWide)(Module(new DCPipelineRegister(new MI(config))(1)))
-
-  val arbiter = Module(new DCArbiter(new MI(config))(config.listExUnits.sum, config.nWide))
-  val alus = Seq.tabulate(config.nWide) { _ =>
+  val pRegs   = Seq.fill(config.nWide)(Module(new DCPipelineRegister(new MI(config))(1)))
+  val arbiter = Module(new DCArbiter(new MI(config))(totalNumPorts, config.nWide))
+  val alus = Seq.tabulate(numALUs) { _ =>
     Module(new ALU(config))
   }
+  val imus = Seq.tabulate(numIMUs) { _ =>
+    Module(new IMU(config))
+  }
 
-  val aluOutputs = Wire(Vec(config.nWide, Decoupled(new MI(config))))
-  val aluInputs  = Wire(Vec(config.nWide, Decoupled(new MI(config))))
+  val aluOutputs = Wire(Vec(numALUs, Decoupled(new MI(config))))
+  val aluInputs  = Wire(Vec(numALUs, Decoupled(new MI(config))))
   aluInputs  <> alus.map(_.io.in)
   aluOutputs <> alus.map(_.io.out)
 
-  aluInputs     <> io.aluIn
-  arbiter.io.in <> aluOutputs
+  val imuOutputs = Wire(Vec(numIMUs, Decoupled(new MI(config))))
+  val imuInputs  = Wire(Vec(numIMUs, Decoupled(new MI(config))))
+  imuInputs  <> imus.map(_.io.in)
+  imuOutputs <> imus.map(_.io.out)
+
+  aluInputs <> io.aluIn
+  imuInputs <> io.imuIn
+
+  val aluRange = (0 until numALUs)
+  val imuRange = (numALUs until totalNumPorts)
+  (aluRange).foreach(j => {
+    arbiter.io.in(j) <> aluOutputs(j)
+  })
+  (imuRange).foreach(j => {
+    arbiter.io.in(j) <> imuOutputs(j - imuRange(0))
+  })
 
   (0 until config.nWide).foreach(j => {
     io.forwardBus(j).bits.data := arbiter.io.out(j).bits.rdData

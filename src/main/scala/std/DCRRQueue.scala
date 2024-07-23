@@ -5,18 +5,19 @@ import chisel3.util._
 import wood.std.DCRRShifter
 
 /**
-  * DCRRQueue is a round robin queue from a single numPorts number of ports input interface to a single numPorts number of ports queue. Input is always assumed to be right aligned. For example: xvvv, xxvv etc. There should not be any holes like xvxv. For the read operations all output ports has to be ready at the same time.
+  * DCRRQueue is a round robin queue from a single numPorts number of ports input interface to a single numPorts number of ports queue. Input is always assumed to be right aligned. For example: xvvv, xxvv etc. There should not be any holes like xvxv. Independent reads (iread) are disabled by default to sustain ordering.
   *
   * @param numPorts: number of input/output ports
   * @param queueDepth: queue depth
   * @param unique: if true queue will reject consequtive identical inputs
+  * @param iread: if true queue reads can be independent
   *
   * @example{{{
   * 32 deep Round Robin Queue from a single 2 port input interface to 2 port output interface, with 8 bit data size.
   *  new DCRRQueue(UInt(8.W))(2,32)
   * }}}
   */
-class DCRRQueue[T <: Data](gen: T)(numPorts: Int, queueDepth: Int, unique: Boolean = false) extends Module {
+class DCRRQueue[T <: Data](gen: T)(numPorts: Int, queueDepth: Int, unique: Boolean = false, iread: Boolean = false) extends Module {
   val io = IO(new Bundle {
     val in  = Flipped(Vec(numPorts, Decoupled(gen.cloneType)))
     val out = Vec(numPorts, Decoupled(gen.cloneType))
@@ -44,11 +45,19 @@ class DCRRQueue[T <: Data](gen: T)(numPorts: Int, queueDepth: Int, unique: Boole
 
   val out_ready = Wire(Vec(numPorts, Bool()))
   out_ready := io.out.map(_.ready)
-  val ready = out_ready.asUInt.andR // all ports has to be ready at the same time. Otherwise Round Robin is broken.
+
+  if (iread) {
+    (0 until numPorts).foreach(j => {
+      queues(j).io.deq.ready := io.out(j).ready
+    })
+  } else {
+    (0 until numPorts).foreach(j => {
+      queues(j).io.deq.ready := out_ready.asUInt.andR // all ports has to be ready at the same time. Otherwise Round Robin is broken.
+    })
+  }
 
   (0 until numPorts).foreach(j => {
-    queues(j).io.deq.ready := ready
-    io.out(j).valid        := queues(j).io.deq.valid
-    io.out(j).bits         := queues(j).io.deq.bits
+    io.out(j).valid := queues(j).io.deq.valid
+    io.out(j).bits  := queues(j).io.deq.bits
   })
 }

@@ -4,7 +4,7 @@ import chisel3._
 import chisel3.util._
 import wood.WoodConfig
 import wood.fru.MI
-import wood.std.{DCArbiter, DCDemux, DCPipelineRegister}
+import wood.std.{DCArbiter, DCDemux, DCPipelineRegister, DCRRQueue}
 
 class ReadyList(val config: WoodConfig) extends Module {
   val io = IO(new Bundle {
@@ -66,6 +66,7 @@ class ScheduleStage(val config: WoodConfig) extends Module {
     val out = Vec(config.nWide, Decoupled(new MI(config)))
   })
 
+  val scq = Module(new DCRRQueue(new MI(config))(config.nWide, config.scQueueDepth, iread = true))
   val reservationStations = Seq.tabulate(config.nWide) { _ =>
     Module(new ReservationStation(config))
   }
@@ -79,13 +80,14 @@ class ScheduleStage(val config: WoodConfig) extends Module {
   val readyList = Module(new ReadyList(config))
   val pRegs     = Seq.fill(config.nWide)(Module(new DCPipelineRegister(new MI(config))(1)))
 
-  readyList.io.in          <> io.in
+  scq.io.in                <> io.in
+  readyList.io.in          <> scq.io.out
   readyList.io.commitedBus <> io.commitedBus
   readyList.io.wakeupBus   <> io.wakeupBus
   readyList.io.forwardBus  <> io.forwardBus
 
   (0 until config.nWide).foreach(j => {
-    bypassDemuxes(j).io.sel(0) := io.out(j).ready & io.in(j).valid & readyList.io.out(j).bits.rs1TagReady & readyList.io.out(j).bits.rs2TagReady
+    bypassDemuxes(j).io.sel(0) := io.out(j).ready & scq.io.out(j).valid & readyList.io.out(j).bits.rs1TagReady & readyList.io.out(j).bits.rs2TagReady
 
     bypassDemuxes(j).io.in(0)    <> readyList.io.out(j)
     reservationStations(j).io.in <> bypassDemuxes(j).io.out(0)(0)

@@ -17,6 +17,7 @@ case class WoodConfig(
   iCacheDepth:  Int = 1024,
   pcListDepth:  Int = 16,
   miQueueDepth: Int = 16,
+  scQueueDepth: Int = 2,
   //--------------
   // ExUnitConfig
   robDepth: Int = 16,
@@ -40,9 +41,12 @@ case class WoodConfig(
   val pcIndexOffsetWidth: Int = log2Ceil(nWide)
 
   val tagWidth:      Int       = log2Ceil(prfDepth)
-  val listExUnits:   List[Int] = List(nWide)
+  val listExUnits:   List[Int] = List(nWide, 1) // alu,mdu
   val numPortsFloat: Int       = nWide
   val numPortsInt:   Int       = nWide
+
+  val aluCrossbarIndex = 0 // NOTE: ALU has to be 0
+  val imuCrossbarIndex = 1
 }
 
 class Wood(config: WoodConfig) extends Module {

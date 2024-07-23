@@ -4,7 +4,7 @@ SRC_DIR = ./src
 LINKER_SCRIPT ?= link.ld
 BUILD_DIR = ./build
 
-MARCH ?= rv32i
+MARCH ?= rv32im
 MABI ?= ilp32
 FLAGS ?= -nostartfiles -march=${MARCH} -mabi=${MABI} -T $(LINKER_SCRIPT)
 

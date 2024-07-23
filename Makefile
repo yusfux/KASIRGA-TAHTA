@@ -22,6 +22,7 @@ asm_test:
 	+@$(SUBMAKE) src/test/c/
 	grouphex -f src/test/c/build/main.hex -g $(nWide) -o src/test/c/build/
 	python3 src/test/python/cocotb/main.py --test tb_wood --top Wood --waves true --sim questa --dir ./test_run_dir/Wood_should_emit_for_cocotb/
+
 .PHONY: clean
 clean:
 	-+@$(SUBMAKE) src/test/c/ clean

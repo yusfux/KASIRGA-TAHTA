@@ -44,6 +44,6 @@ class DCDemux[T <: Data](gen: T)(numInputs: Int, numInterfaces: Int) extends Mod
       rdys(i)(j) := io.out(j)(i).ready
     }
     // if io.sel == 3 then OH is 1000 so, third bit is set, then choose third bool from rdys(i)
-    io.in(i).ready := MuxCase(0.U, (0 until numInterfaces).map(j => (UIntToOH(io.sel(i))(j), rdys(i)(j))))
+    io.in(i).ready := !io.in(i).valid | MuxCase(0.U, (0 until numInterfaces).map(j => (UIntToOH(io.sel(i))(j), rdys(i)(j))))
   }
 }

@@ -14,11 +14,13 @@ class MIStage(config: WoodConfig) extends Module {
     val out         = Vec(config.numPortsInt, Decoupled(new MI(config)))
   })
 
-  val flist      = Module(new FreeList(config))
-  val miq        = Module(new DCRRQueue(new MI(config))(config.nWide, config.miQueueDepth))
-  val pRegs      = Seq.fill(config.nWide)(Module(new DCPipelineRegister(new MI(config))(3)))
-  val self       = Wire(Vec(config.nWide, Decoupled(new MI(config))))
-  val allInValid = Wire(Vec(config.nWide, Bool())).suggestName("allInValid ")
+  val flist       = Module(new FreeList(config))
+  val miq         = Module(new DCRRQueue(new MI(config))(config.nWide, config.miQueueDepth))
+  val pRegs       = Seq.fill(config.nWide)(Module(new DCPipelineRegister(new MI(config))(3)))
+  val self        = Wire(Vec(config.nWide, Decoupled(new MI(config))))
+  val allInValid  = Wire(Vec(config.nWide, Bool())).suggestName("allInValid")
+  val allOutReady = Wire(Vec(config.nWide, Bool())).suggestName("allOutReady")
+  allOutReady := io.out.map(_.ready)
 
   miq.io.in   <> io.in
   flist.io.in <> io.commitedBus
@@ -38,7 +40,8 @@ class MIStage(config: WoodConfig) extends Module {
     flist.io.out(j).ready := self(j).ready
     miq.io.out(j).ready   := self(j).ready
 
-    pRegs(j).io.in <> self(j)
-    io.out(j)      <> pRegs(j).io.out
+    pRegs(j).io.in        <> self(j)
+    io.out(j)             <> pRegs(j).io.out
+    pRegs(j).io.out.ready := allOutReady.asUInt.andR // all has to be ready, stall otherwise
   }
 }
