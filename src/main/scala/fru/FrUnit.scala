@@ -70,7 +70,7 @@ class FrUnit(config: WoodConfig) extends Module {
   val io = IO(new Bundle {
     val in    = Flipped(Vec(config.nWide, Decoupled(UInt(32.W))))
     val pcIdx = Flipped(Decoupled(UInt(config.pcIndexWidth.W)))
-    val out   = Vec(config.numPortsInt, Decoupled(new MI(config)))
+    val out   = Vec(config.nWide, Decoupled(new MI(config)))
   })
 
   val destage = Module(new DecodeStage(config))

@@ -21,9 +21,24 @@ class IDU(config: WoodConfig) extends Module {
     val in  = Flipped(Decoupled(new MI(config)))
     val out = Decoupled(new MI(config))
   })
-  val divider = Module(new SRT16DividerDataModule(32))
 
-  io.out <> io.in
+  val divider = Module(new SRT16DividerDataModule(32))
+  val mi      = RegInit(0.U.asTypeOf(new MI(config)))
+  val valid   = RegInit(0.B)
+
+  when(io.in.fire & io.out.fire) {
+    mi    := io.in.bits
+    valid := io.in.valid
+  }.elsewhen(io.in.fire) {
+    mi    := io.in.bits
+    valid := io.in.valid
+  }.elsewhen(io.out.fire) {
+    mi    := 0.U.asTypeOf(new MI(config))
+    valid := 0.B
+  }.otherwise {
+    mi    := mi
+    valid := valid
+  }
 
   divider.io.src(0) := io.in.bits.rs1Data
   divider.io.src(1) := io.in.bits.rs2Data
@@ -37,9 +52,12 @@ class IDU(config: WoodConfig) extends Module {
 
   io.in.ready        := divider.io.in_ready
   io.out.valid       := divider.io.out_valid
+  io.out.bits        := mi
   io.out.bits.rdData := divider.io.out_data
 
-  val (control, valid) = IDUOp.safe(io.in.bits.exOp.asTypeOf(IDUOp.div.litValue.U))
+  val rawOp = Wire(UInt(IDUOp.getWidth.W))
+  rawOp := io.in.bits.exOp
+  val (control, v) = IDUOp.safe(rawOp)
 
   divider.io.sign := 0.U
   switch(control) {
@@ -60,5 +78,4 @@ class IDU(config: WoodConfig) extends Module {
       divider.io.isHi := 1.U
     }
   }
-
 }

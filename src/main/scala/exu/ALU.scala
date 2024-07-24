@@ -25,7 +25,10 @@ class ALU(config: WoodConfig) extends Module {
 
   val shamt = if (config.dataWidth > 1) log2Ceil(config.dataWidth) - 1 else 0 // Shift amount.
 
-  val (control, valid) = ALUOp.safe(io.in.bits.exOp)
+  val rawOp = Wire(UInt(ALUOp.getWidth.W))
+  rawOp := io.in.bits.exOp
+  val (control, valid) = ALUOp.safe(rawOp)
+
   // assert(valid, "Enum state must be valid, got %d!", io.mi.bits.exOp) // https://github.com/llvm/circt/issues/6970
 
   val data1 = MuxCase(

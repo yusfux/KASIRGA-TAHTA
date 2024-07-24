@@ -12,7 +12,7 @@ class FreeList(config: WoodConfig) extends Module {
   })
 
   val flistDepth  = config.prfDepth / config.nWide
-  val numWrites   = flistDepth - config.nWide // edge case
+  val numWrites   = config.prfDepth - config.nWide // edge case
   val initializer = Module(new DCQueueInitializer(new Tag(config))(config.nWide, numWrites, "count+1"))
   val q           = Module(new DCRRQueue(new Tag(config))(config.nWide, flistDepth, unique = true))
 

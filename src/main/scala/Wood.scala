@@ -33,21 +33,19 @@ case class WoodConfig(
   val prfDepth = (32 + (rsDepth * nWide) + (8 * nWide) + (robDepth * nWide))
   require(
     (prfDepth % nWide == 0),
-    "prfDepth must be divisible by nWide and smaller than prfDepth"
+    "prfDepth must be divisible by nWide"
   )
 
   // val pcIndexWidth: Int = log2Ceil(pcListDepth)
   val pcIndexWidth:       Int = 32 // TODO: use pc list not pc
   val pcIndexOffsetWidth: Int = log2Ceil(nWide)
 
-  val tagWidth:      Int       = log2Ceil(prfDepth)
-  val listExUnits:   List[Int] = List(nWide, 1, 1) // alu,mdu, idu
-  val numPortsFloat: Int       = nWide
-  val numPortsInt:   Int       = nWide
+  val tagWidth: Int = log2Ceil(prfDepth)
 
   val aluCrossbarIndex = 0 // NOTE: ALU has to be 0
   val imuCrossbarIndex = 1
   val iduCrossbarIndex = 2
+  val listExUnits: List[Int] = List(nWide, 1, 1) // alu,mdu, idu
 }
 
 class Wood(config: WoodConfig) extends Module {

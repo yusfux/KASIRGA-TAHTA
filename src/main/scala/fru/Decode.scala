@@ -12,12 +12,11 @@ class ExpandBits(bitVectors: List[String]) {
   // Calculate the max width
   val maxWidth: Int = bitVectors.map(_.length).max
 
-  // Method to extend a bit vector to the max width
+  // Method to extend a bit vector to the max width by padding on the left
   def e(bitVector: String): String = {
-    bitVector.padTo(maxWidth, '0')
+    "0" * (maxWidth - bitVector.length) + bitVector
   }
 }
-
 // format: off
 object DecodeConfig {
   val typeWidth = 3
@@ -30,7 +29,7 @@ object DecodeConfig {
   val SYS_Type = 6.U(typeWidth.W)
 
   // Use the maximum size of enums as storage size. Store all operations in the same wire.
-  val op = new ExpandBits(List(ALUOp.toString(ALUOp.add),IMUOp.toString(IMUOp.mul)))
+  val op = new ExpandBits(List(ALUOp.toString(ALUOp.add),IMUOp.toString(IMUOp.mul),IDUOp.toString(IDUOp.div)))
 
   val X = "?"
   val N = "0"
@@ -114,6 +113,11 @@ object DecodeConfig {
    SW               -> Seq(op.e(ALUOp.toString(ALUOp.add))    ,ExEngine.toString(ExEngine.alu),WRITE_RF_0,OPERAND1_REG, OPERAND2_IMM  ,WAKEUP_1,TYPE_INT),
    XOR              -> Seq(op.e(ALUOp.toString(ALUOp.xor))    ,ExEngine.toString(ExEngine.alu),WRITE_RF_1,OPERAND1_REG, OPERAND2_REG  ,WAKEUP_1,TYPE_INT),
    XORI             -> Seq(op.e(ALUOp.toString(ALUOp.xor))    ,ExEngine.toString(ExEngine.alu),WRITE_RF_1,OPERAND1_REG, OPERAND2_IMM  ,WAKEUP_1,TYPE_INT),
+
+  // i32
+   SLLI             -> Seq(op.e(ALUOp.toString(ALUOp.sll))    ,ExEngine.toString(ExEngine.alu),WRITE_RF_1,OPERAND1_REG, OPERAND2_IMM  ,WAKEUP_1,TYPE_INT),
+   SRAI             -> Seq(op.e(ALUOp.toString(ALUOp.sra))    ,ExEngine.toString(ExEngine.alu),WRITE_RF_1,OPERAND1_REG, OPERAND2_IMM  ,WAKEUP_1,TYPE_INT),
+   SRLI             -> Seq(op.e(ALUOp.toString(ALUOp.srl))    ,ExEngine.toString(ExEngine.alu),WRITE_RF_1,OPERAND1_REG, OPERAND2_IMM  ,WAKEUP_1,TYPE_INT),
 
    AMOADD_W         -> Seq(op.e(ALUOp.toString(ALUOp.add))    ,ExEngine.toString(ExEngine.alu),WRITE_RF_1,OPERAND1_REG, OPERAND2_IMM  ,WAKEUP_1,TYPE_INT),
    AMOAND_W         -> Seq(op.e(ALUOp.toString(ALUOp.add))    ,ExEngine.toString(ExEngine.alu),WRITE_RF_1,OPERAND1_REG, OPERAND2_IMM  ,WAKEUP_1,TYPE_INT),

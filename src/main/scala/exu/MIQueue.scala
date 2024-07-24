@@ -11,7 +11,7 @@ class MIStage(config: WoodConfig) extends Module {
   val io = IO(new Bundle {
     val in          = Flipped(Vec(config.nWide, Decoupled(new MI(config))))
     val commitedBus = Flipped(Vec(config.nWide, Decoupled(new TagBus(config))))
-    val out         = Vec(config.numPortsInt, Decoupled(new MI(config)))
+    val out         = Vec(config.nWide, Decoupled(new MI(config)))
   })
 
   val flist       = Module(new FreeList(config))

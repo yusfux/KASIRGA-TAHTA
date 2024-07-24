@@ -22,9 +22,9 @@ class IMU(config: WoodConfig) extends Module {
     val out = Decoupled(new MI(config))
   })
 
-  println("size:  ", io.in.bits.exOp)
-  // val (control, valid) = IMUOp.safe(io.in.bits.exOp)
-  val (control, valid) = IMUOp.safe(io.in.bits.exOp.asTypeOf(IMUOp.mul.litValue.U))
+  val rawOp = Wire(UInt(IMUOp.getWidth.W))
+  rawOp := io.in.bits.exOp
+  val (control, valid) = IMUOp.safe(rawOp)
 
   val data1       = Wire(UInt(33.W)) // TODO: hard coded bit lengths
   val data2       = Wire(UInt(33.W))
@@ -64,10 +64,10 @@ class IMU(config: WoodConfig) extends Module {
 
   result0_raw := operand1 * operand2
 
-  result0 := result0_raw(63, 32)
+  result0 := result0_raw(31, 0)
   switch(control) {
-    is(IMUOp.mul) {
-      result0 := result0_raw(31, 0)
+    is(IMUOp.mulh, IMUOp.mulhu, IMUOp.mulhsu) {
+      result0 := result0_raw(63, 32)
     }
   }
 

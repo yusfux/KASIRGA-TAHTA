@@ -10,13 +10,19 @@ pkgs.writers.writePython3Bin "asmgen" { } ''
       def __init__(self, num_registers: int = 32) -> None:
           self.num_registers = num_registers
           self.immediate_instructions = ["addi", "xori", "ori", "andi",
-                                         "slli", "srli", "srai", "slti",
-                                         "sltiu"]
-          self.shift_instructions = ["slli", "srli", "srai"]
+                                         "slli", "srli", "srai",
+                                         "slti", "sltiu"]
+          self.shift_instructions = ["slli", "srli", "srai"]  # 32 bit imm
           self.register_instructions = ["add", "sub", "xor", "or", "and",
                                         "sll", "srl", "sra", "slt", "sltu",
                                         "mul", "mulh", "mulhu", "mulhsu",
                                         "div", "divu", "rem", "remu"]
+
+      def init_regs(self) -> List[str]:
+          asm_code = []
+          for i in range(32):
+              asm_code.append(f"   li x{i}, {random.randint(0, 1023)}")
+          return asm_code
 
       def generate_inst(self, inst_type: str) -> str:
           if inst_type == "li":
@@ -43,7 +49,7 @@ pkgs.writers.writePython3Bin "asmgen" { } ''
           return f"{inst_type} {register2}, {register1}, {immediate}"
 
       def generate_order_test(self, num_insts: int, inst_type: str) -> str:
-          asm_code: List[str] = []
+          asm_code: List[str] = self.init_regs()
           c = 0
           if inst_type == "li":
               for _ in range(num_insts):
@@ -54,22 +60,22 @@ pkgs.writers.writePython3Bin "asmgen" { } ''
               for _ in range(num_insts):
                   for i in range(self.num_registers - 2):
                       asm_code.append(f"   {inst_type} x{i+2}, x{i}, x{i+1}")
+          elif inst_type in self.shift_instructions:
+              for _ in range(num_insts):
+                  for i in range(self.num_registers - 1):
+                      asm_code.append(f"   {inst_type} x{i+1}, x{i}, {c}")
+                      c = (c + 1) % 32  # imm within 5 bits
           elif inst_type in self.immediate_instructions:
               for _ in range(num_insts):
                   for i in range(self.num_registers - 1):
                       asm_code.append(f"   {inst_type} x{i+1}, x{i}, {c}")
                       c = (c + 1) % 2048  # imm within 12-bit signed range
-          elif inst_type in self.immediate_instructions:
-              for _ in range(num_insts):
-                  for i in range(self.num_registers - 1):
-                      asm_code.append(f"   {inst_type} x{i+1}, x{i}, {c}")
-                      c = (c + 1) % 32  # imm within 12-bit signed range
           else:
               raise ValueError(f"Unsupported inst type: {inst_type}")
           return "\n".join(asm_code)
 
       def generate_random_test(self, num_insts: int, inst_type: str) -> str:
-          asm_code = []
+          asm_code = self.init_regs()
           for _ in range(num_insts):
               inst = self.generate_inst(inst_type)
               asm_code.append(inst)
