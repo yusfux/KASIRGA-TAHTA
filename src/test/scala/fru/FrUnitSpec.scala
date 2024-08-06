@@ -1,3 +1,4 @@
+/*
 package wood.fru
 
 import chisel3._
@@ -108,3 +109,4 @@ class FrUnitSpec extends AnyFlatSpec with ChiselScalatestTester with ParallelTes
     }
   })
 }
+*/

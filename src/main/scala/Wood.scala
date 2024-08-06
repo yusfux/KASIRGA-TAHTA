@@ -11,17 +11,22 @@ case class WoodConfig(
   nWide:     Int = 4,
   dataWidth: Int = 32,
   addrWidth: Int = 32,
+  pcWidth:   Int = 32,
   xlen:      Int = 32,
   //--------------
   // FrUnitConfig
-  iCacheDepth:  Int = 1024,
+  pcInitAddr:   String = "h8000_0000",
+  icacheDepth:  Int = 1024,
+  btbdepth:     Int = 32,
+  ghrWidth:     Int = 8,
   pcListDepth:  Int = 16,
-  miQueueDepth: Int = 16,
+  pcQueueDepth: Int = 16,
   scQueueDepth: Int = 2,
   //--------------
   // ExUnitConfig
-  robDepth: Int = 16,
-  rsDepth:  Int = 4 // Reservation station depth
+  miQueueDepth: Int = 16,
+  robDepth:     Int = 16,
+  rsDepth:      Int = 4 // Reservation station depth
   //--------------
 ) {
 
@@ -35,9 +40,11 @@ case class WoodConfig(
     (prfDepth % nWide == 0),
     "prfDepth must be divisible by nWide"
   )
+  val itaglen   = pcWidth - (log2Ceil(icacheDepth) + log2Ceil(pcWidth >> 3))
+  val idatalen  = 32
+  val ivalidlen = 1
 
-  // val pcIndexWidth: Int = log2Ceil(pcListDepth)
-  val pcIndexWidth:       Int = 32 // TODO: use pc list not pc
+  val pcIndexWidth: Int = log2Ceil(pcListDepth)
   val pcIndexOffsetWidth: Int = log2Ceil(nWide)
 
   val tagWidth: Int = log2Ceil(prfDepth)
@@ -59,7 +66,7 @@ class Wood(config: WoodConfig) extends Module {
   val exunit = Module(new ExUnit(config))
 
   frunit.io.in    <> io.in
-  frunit.io.pcIdx <> io.pcIdx
+  //frunit.io.pcIdx <> io.pcIdx
   exunit.io.in    <> frunit.io.out
   io.forwardBus   <> exunit.io.forwardBus
 }

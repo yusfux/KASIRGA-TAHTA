@@ -76,6 +76,6 @@ class FrUnit(config: WoodConfig) extends Module {
   val destage = Module(new DecodeStage(config))
 
   destage.io.in    <> io.in
-  destage.io.pcIdx <> io.pcIdx
+  //destage.io.pcIdx <> io.pcIdx
   io.out           <> destage.io.out
 }

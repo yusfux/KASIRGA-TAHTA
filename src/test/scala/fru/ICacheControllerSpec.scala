@@ -7,43 +7,27 @@ import chiseltest._
 import org.scalatest.flatspec.AnyFlatSpec
 import wood.util.{GenerateVerilog, GetBackendAnnotation}
 import wood.WoodConfig
-import wood.std.DecoupledSyncReadBlockRAM
+import wood.std.{DecoupledSyncReadBlockRAM}
 import wood.std.BlockRAMParams
 import wood.std.{ReadPortI, ReadPortO, WritePortI}
 
-case class ICacheControllerTestParams(
-  coreAddrWidth:  Int,
-  memAddrWidth:   Int,
-  cacheAddrWidth: Int,
-  coreDataWidth:  Int,
-  memDataWidth:   Int,
-  cacheDataWidth: Int,
-
-  cacheDepth:     Int,
-  memDepth:       Int
-)
-
-class ICacheControllerDut(p: ICacheControllerTestParams) extends Module {
-  val cache = Module(new DecoupledSyncReadBlockRAM(UInt((p.cacheDataWidth).W))(new BlockRAMParams(p.cacheDepth, 1, 1)))
-  val mem = Module(new DecoupledSyncReadBlockRAM(UInt((32).W))(new BlockRAMParams(p.memDepth, 1, 1)))
-  val controller = Module(new ICacheController(new WoodConfig(
-    iCacheDepth = p.cacheDepth
-  )))
-
+class ICacheControllerDut(config: WoodConfig, memDepth: Int, cacheDataWidth: Int) extends Module {
   val io = IO(new Bundle() {
     val core = new Bundle() {
-      val req = Flipped(DecoupledIO(new ReadPortI(UInt(p.coreDataWidth.W))(p.coreAddrWidth)))
-      val resp = DecoupledIO(new ReadPortO(UInt(p.coreDataWidth.W))(p.coreAddrWidth))
+      val req = Flipped(DecoupledIO(new ReadPortI(UInt(config.dataWidth.W))(config.addrWidth)))
+      val resp = DecoupledIO(new ReadPortO(UInt(config.dataWidth.W))(config.addrWidth))
     }
 
     val mem = new Bundle {
-      val wp = Flipped(Decoupled(new WritePortI(UInt(p.memDataWidth.W))(p.memAddrWidth)))
+      val wp = Flipped(Decoupled(new WritePortI(UInt(config.dataWidth.W))(config.addrWidth)))
     }
   })
 
-  cache.io.rip(0) <> controller.io.cache.req.read
-  cache.io.rop(0) <> controller.io.cache.resp
-  cache.io.wp(0) <>  controller.io.cache.req.write
+  val cache = SRAM(config.icacheDepth, UInt(cacheDataWidth.W), 0, 0, 1)
+  val mem = Module(new DecoupledSyncReadBlockRAM(UInt(config.dataWidth.W))(new BlockRAMParams(memDepth, 1, 1)))
+  val controller = Module(new ICacheController(config))
+
+  controller.io.cache <> cache
 
   mem.io.rip(0).valid := controller.io.mem.req.valid
   mem.io.rip(0).bits.addr := controller.io.mem.req.bits.addr >> 2
@@ -63,87 +47,134 @@ class ICacheControllerDut(p: ICacheControllerTestParams) extends Module {
 
 class ICacheControllerSpec extends AnyFlatSpec with ChiselScalatestTester {
 
-  val ICACHE_DEPTH = 1024
-  val MEM_DEPTH = 1024
-  val TEST_SIZE = 1024
+  val TEST_SIZE    = 1 << scala.util.Random.nextInt(16)
+  val ICACHE_DEPTH = 1 << scala.util.Random.nextInt(16)
+  val MEM_DEPTH    = 1 << scala.util.Random.nextInt(16)
+  //val TEST_SIZE    = 4096
+  //val ICACHE_DEPTH = 512
+  //val MEM_DEPTH    = 2048
 
-  val wc = new WoodConfig(
-    iCacheDepth = ICACHE_DEPTH
-  )
+  println(s"[LOG] TEST SIZE: ${TEST_SIZE}")
+  println(s"[LOG] CACHE DEPTH: ${ICACHE_DEPTH}")
+  println(s"[LOG] MAIN MEM DEPTH: ${MEM_DEPTH}")
+                 
+  val config = new WoodConfig(icacheDepth = ICACHE_DEPTH)
 
-  val icp = new ICacheControllerTestParams(
-    coreAddrWidth  = wc.addrWidth,
-    memAddrWidth   = wc.addrWidth,
-    cacheAddrWidth = log2Ceil(wc.iCacheDepth),
-    coreDataWidth  = wc.dataWidth,
-    memDataWidth   = wc.dataWidth,
-    cacheDataWidth = 1 + (wc.xlen - log2Ceil(wc.iCacheDepth) - log2Ceil(wc.xlen >> 3)) + wc.dataWidth,
-    cacheDepth     = wc.iCacheDepth,
-    memDepth       = MEM_DEPTH
-  )
+  // TODO: make these parameters parametric on the Wood.scala after discussing with emre
+  val taglen   = 32 - (log2Ceil(ICACHE_DEPTH) + log2Ceil(32 >> 3))
+  val datalen  = 32
+  val validlen = 1
+  val cacheDataWidth =  taglen + datalen + validlen
+  val memDepth = MEM_DEPTH
 
-  "ICacheController" should "work" in {
-    test(new ICacheControllerDut(icp)).withAnnotations(GetBackendAnnotation()) { dut =>
+  val dataseq = Seq.fill(MEM_DEPTH)(scala.util.Random.nextInt(Math.pow(2, 32).toInt))
+  val addrseq = Seq.range(0, TEST_SIZE * 4, 4)
+  val randaddrseq = Seq.fill(TEST_SIZE)(scala.util.Random.nextInt(MEM_DEPTH * 4))
 
-      def initMem(dataseq: Seq[Int]) = {
-        for(i <- 0 until icp.memDepth) {
-          dut.io.mem.wp.valid.poke(true.B)
-          dut.io.mem.wp.bits.addr.poke((i).U)
-          dut.io.mem.wp.bits.data.poke(dataseq(i).U)
-          dut.io.mem.wp.bits.enable.poke(true.B)
-          while(!dut.io.mem.wp.ready.peekBoolean()) {
-            step()
-          }
-          step()
-        }
-        dut.io.mem.wp.valid.poke(false.B)
-        dut.io.mem.wp.bits.addr.poke(0.U)
-        dut.io.mem.wp.bits.data.poke(0.U)
-        dut.io.mem.wp.bits.enable.poke(false.B)
+  def initMem(dut: ICacheControllerDut, seq: Seq[Int]) = {
+    for(i <- 0 until MEM_DEPTH) {
+      dut.io.mem.wp.valid.poke(true.B)
+      dut.io.mem.wp.bits.addr.poke((i).U)
+      dut.io.mem.wp.bits.data.poke(seq(i).U)
+      dut.io.mem.wp.bits.enable.poke(true.B)
+      while(!dut.io.mem.wp.ready.peekBoolean()) {
         step()
-    
       }
-
-      def read(addr: Int, data: Int): UInt = {
-        dut.io.core.req.bits.addr.poke(addr)
-        dut.io.core.req.valid.poke(true.B)
-        while(!dut.io.core.req.ready.peekBoolean()) {
-          step()
-        }
-        step()
-        dut.io.core.req.valid.poke(false.B)
-        dut.io.core.resp.ready.poke(true.B)
-
-        while(!dut.io.core.resp.valid.peekBoolean()) {
-          step()
-        }
-        step()
-        dut.io.core.resp.ready.poke(false.B)
-        dut.io.core.resp.bits.data.expect(data.U)
-        val dataout = dut.io.core.resp.bits.data.peek()
-
-        dataout
-      }
-
-      dut.io.core.req.valid.poke(false.B)
-      dut.io.core.req.bits.addr.poke(0.U)
-      dut.io.core.resp.ready.poke(false.B)
       step()
+    }
 
-      val dataseq = Seq.fill(icp.memDepth)(scala.util.Random.nextInt(Math.pow(2, 32).toInt))
-      val idx = Seq.fill(TEST_SIZE)(scala.util.Random.nextInt(icp.memDepth))
-
-      initMem(dataseq)
-      for(i <- idx) {
-        val expected = dataseq(i % icp.memDepth)
-        val addr = i << 2
-        read(addr, expected)
-      }
+    dut.io.mem.wp.valid.poke(false.B)
+    step()
   }
-}
+
+  def read(dut: ICacheControllerDut, addrseq: Seq[Int], dataseq: Seq[Int], rand: Boolean = false) = {
+    dut.io.core.req.bits.addr.poke(0.U)
+    dut.io.core.req.valid.poke(true.B)
+    dut.io.core.resp.ready.poke(true.B)
+
+    fork.withRegion(Monitor) {
+      for(i <- 0 until addrseq.size) {
+        if(rand) {
+          dut.io.core.req.valid.poke(false.B)
+          step(scala.util.Random.nextInt(4) + 1)
+          dut.io.core.req.valid.poke(true.B)
+        }
+        dut.io.core.req.bits.addr.poke(addrseq(i).U)
+        while(!(dut.io.core.req.ready.peekBoolean() && dut.io.core.req.valid.peekBoolean())) {
+          step()
+        }
+        step()
+      }
+    }.fork {
+      for(i <- 0 until addrseq.size) {
+        if(rand) {
+          dut.io.core.resp.ready.poke(false.B)
+          step(scala.util.Random.nextInt(4) + 1)
+          dut.io.core.resp.ready.poke(true.B)
+        }
+
+        while(!(dut.io.core.resp.ready.peekBoolean() && dut.io.core.resp.valid.peekBoolean())) {
+          step()
+        }
+        dut.io.core.resp.bits.data.expect(dataseq((addrseq(i) / 4) % MEM_DEPTH).U)
+        step()
+      }
+    }.joinAndStep()
+
+  }
+
+
+  "ICacheController" should "work for each word in order" in {
+    test(new ICacheControllerDut(config, memDepth, cacheDataWidth)).withAnnotations(GetBackendAnnotation()) { dut =>
+      initMem(dut, dataseq)
+      read(dut, addrseq, dataseq)
+    }
+  }
+
+  "ICacheController" should "work for each byte in order" in {
+    test(new ICacheControllerDut(config, memDepth, cacheDataWidth)).withAnnotations(GetBackendAnnotation()) { dut =>
+      initMem(dut, dataseq)
+      read(dut, addrseq.map(x => x / 4), dataseq)
+    }
+  }
+
+  "ICacheController" should "work for each word in random" in {
+    test(new ICacheControllerDut(config, memDepth, cacheDataWidth)).withAnnotations(GetBackendAnnotation()) { dut =>
+      initMem(dut, dataseq)
+      read(dut, randaddrseq, dataseq)
+    }
+  }
+
+  "ICacheController" should "work for each byte in random" in {
+    test(new ICacheControllerDut(config, memDepth, cacheDataWidth)).withAnnotations(GetBackendAnnotation()) { dut =>
+      initMem(dut, dataseq)
+      read(dut, randaddrseq.map(x => x / 4), dataseq)
+    }
+  }
+
+  "ICacheController" should "work with random latencies" in {
+    test(new ICacheControllerDut(config, memDepth, cacheDataWidth)).withAnnotations(GetBackendAnnotation()) { dut =>
+      initMem(dut, dataseq)
+      read(dut, addrseq, dataseq, true)
+    }
+
+    test(new ICacheControllerDut(config, memDepth, cacheDataWidth)).withAnnotations(GetBackendAnnotation()) { dut =>
+      initMem(dut, dataseq)
+      read(dut, addrseq.map(x => x / 4), dataseq, true)
+    }
+
+    test(new ICacheControllerDut(config, memDepth, cacheDataWidth)).withAnnotations(GetBackendAnnotation()) { dut =>
+      initMem(dut, dataseq)
+      read(dut, randaddrseq.map(x => x / 4), dataseq, true)
+    }
+
+    test(new ICacheControllerDut(config, memDepth, cacheDataWidth)).withAnnotations(GetBackendAnnotation()) { dut =>
+      initMem(dut, dataseq)
+      read(dut, randaddrseq.map(x => x / 4), dataseq, true)
+    }
+  }
 
   "ICacheController" should "emit Verilog" in {
     GenerateVerilog(new ICacheController(new WoodConfig))
-    
   }
 }
