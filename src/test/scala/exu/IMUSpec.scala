@@ -8,8 +8,6 @@ import org.scalatest.ParallelTestExecution
 import wood.{WoodConfig}
 import wood.util.GenerateVerilog
 import wood.util.GetBackendAnnotation
-import wood.fru.MI
-import wood.fru.DecodeConfig
 
 class IMUSpec extends AnyFlatSpec with ChiselScalatestTester with ParallelTestExecution {
   val config = new WoodConfig(nWide = 1)

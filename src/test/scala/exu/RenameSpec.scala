@@ -6,10 +6,8 @@ import chiseltest._
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.ParallelTestExecution
 
-import wood.fru.MI
 import wood.{TestConfig, WoodConfig}
 import wood.util.{GetBackendAnnotation, TestGenerateVerilog}
-import wood.fru.DecodeConfig
 
 class RenameStageSpec extends AnyFlatSpec with ChiselScalatestTester with ParallelTestExecution {
 

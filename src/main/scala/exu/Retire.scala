@@ -3,7 +3,6 @@ package wood.exu
 import chisel3._
 import chisel3.util._
 import wood.WoodConfig
-import wood.fru.MI
 import wood.std.{DCPipelineRegister, DCRRQueue}
 
 class ROBStage(config: WoodConfig) extends Module {
@@ -138,6 +137,6 @@ class RetireWritebackStage(config: WoodConfig) extends Module {
     io.commitedBus(j).valid    := Mux(arfTagToCommitBus, io.in(j).bits.arfValid, attemptArfWrite & io.in(j).bits.arfValid)
 
     dontTouch(io.in(j).bits.inst) // for testbench only
-    dontTouch(io.in(j).bits.pcIdx) // for testbench only
+    dontTouch(io.in(j).bits.pc) // for testbench only
   })
 }

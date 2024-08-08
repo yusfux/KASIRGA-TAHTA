@@ -1,9 +1,8 @@
 package wood.fru
 
 import chisel3._
-import chisel3.util._
+import chisel3.util.{log2Ceil, _}
 import wood.WoodConfig
-import chisel3.util.log2Ceil
 
 class BranchPredictorIO(config: WoodConfig) extends Bundle {
   val in = Input(new Bundle {

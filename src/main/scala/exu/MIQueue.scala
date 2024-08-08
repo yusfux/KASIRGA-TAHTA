@@ -4,7 +4,6 @@ import chisel3._
 import chisel3.util._
 import wood.WoodConfig
 import wood.exu.{FreeList, TagBus}
-import wood.fru.MI
 import wood.std.{DCPipelineRegister, DCRRQueue}
 
 class MIStage(config: WoodConfig) extends Module {

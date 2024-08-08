@@ -99,33 +99,25 @@ async def diff_traces(dut):
 
         retired = [0 for _ in range(WOOD_NWIDE)]
         for n in range(0, WOOD_NWIDE):
-            arfBus_adr[n] = getattr(
-                dut, f"exunit.rwstage.io_arfBus_{n}_bits_rd"
-            ).value.integer
+            arfBus_adr[n] = getattr(dut, f"rwstage.io_arfBus_{n}_bits_rd").value.integer
             arfBus_tag[n] = getattr(
-                dut, f"exunit.rwstage.io_arfBus_{n}_bits_tag"
+                dut, f"rwstage.io_arfBus_{n}_bits_tag"
             ).value.integer
-            arfBus_valid[n] = getattr(
-                dut, f"exunit.rwstage.io_arfBus_{n}_valid"
-            ).value.integer
+            arfBus_valid[n] = getattr(dut, f"rwstage.io_arfBus_{n}_valid").value.integer
 
             commBus_valid[n] = getattr(
-                dut, f"exunit.rwstage.io_commitedBus_{n}_valid"
+                dut, f"rwstage.io_commitedBus_{n}_valid"
             ).value.integer
             commBus_tag[n] = getattr(
-                dut, f"exunit.rwstage.io_commitedBus_{n}_bits_tag"
+                dut, f"rwstage.io_commitedBus_{n}_bits_tag"
             ).value.integer
 
-            inst[n] = getattr(dut, f"exunit.rwstage.io_in_{n}_bits_inst").value.integer
-            pc[n] = getattr(dut, f"exunit.rwstage.io_in_{n}_bits_pcIdx").value.integer
-            rd_data[n] = getattr(
-                dut, f"exunit.rrstage.prf_{arfBus_tag[n]}"
-            ).value.integer
-            in_valid[n] = getattr(dut, f"exunit.rwstage.io_in_{n}_valid").value.integer
-            in_ready[n] = getattr(dut, f"exunit.rwstage.io_in_{n}_ready").value.integer
-            in_wrf[n] = getattr(
-                dut, f"exunit.rwstage.io_in_{n}_bits_writeRf"
-            ).value.integer
+            inst[n] = getattr(dut, f"rwstage.io_in_{n}_bits_inst").value.integer
+            pc[n] = getattr(dut, f"rwstage.io_in_{n}_bits_pc").value.integer
+            rd_data[n] = getattr(dut, f"rrstage.prf_{arfBus_tag[n]}").value.integer
+            in_valid[n] = getattr(dut, f"rwstage.io_in_{n}_valid").value.integer
+            in_ready[n] = getattr(dut, f"rwstage.io_in_{n}_ready").value.integer
+            in_wrf[n] = getattr(dut, f"rwstage.io_in_{n}_bits_writeRf").value.integer
             retired[n] = (in_wrf[n] or (arfBus_adr[n] == 0)) and (
                 in_ready[n] and in_valid[n]
             )
@@ -228,49 +220,44 @@ async def decode_driver(dut):
 
     in_valid = []
     in_ready = []
-    in_bits = []
-    pc_idx = getattr(dut, "io_pcIdx_bits")
-    pc_idx_valid = getattr(dut, "io_pcIdx_valid")
+    in_inst = []
+    in_pc = []
     for n in range(0, WOOD_NWIDE):
         in_valid.append(getattr(dut, f"io_in_{n}_valid"))
-        in_bits.append(getattr(dut, f"io_in_{n}_bits"))
+        in_inst.append(getattr(dut, f"io_in_{n}_bits_inst"))
+        in_pc.append(getattr(dut, f"io_in_{n}_bits_pc"))
         in_ready.append(getattr(dut, f"io_in_{n}_ready"))
 
-    pc_idx.value = 0
-    pc_idx_valid.value = 0
     for n in range(0, WOOD_NWIDE):
         in_valid[n].value = 0
-        in_bits[n].value = 0
+        in_pc[n].value = 0
+        in_inst[n].value = 0
 
     pi_n = [("", "") for _ in range(WOOD_NWIDE)]
     for n in range(0, WOOD_NWIDE):
         (p, i) = pc_and_insts[n].pop(0)
         pi_n[n] = (p, i)
 
-    pc_idx_valid.value = 1
     (p, i) = pi_n[0]
-    pc_idx.value = int(p, 16)
     for n in range(0, WOOD_NWIDE):
         in_valid[n].value = 1
         (p, i) = pi_n[n]
-        in_bits[n].value = int(i, 16)
+        in_inst[n].value = int(i, 16)
+        in_pc[n].value = int(p, 16)
 
     dut.reset.value = 0  # START
     start.set()
 
     while True:
         (p, i) = pi_n[0]
-        pc_idx_valid.value = 1
-        pc_idx.value = int(p, 16)
         for n in range(0, WOOD_NWIDE):
             in_valid[n].value = 1
             (p, i) = pi_n[n]
-            in_bits[n].value = int(i, 16)
+            in_inst[n].value = int(i, 16)
+            in_pc[n].value = int(p, 16)
 
             if not i:
                 break
-
-        pc_idx_valid.value = 1
 
         await RisingEdge(dut.clock)
 

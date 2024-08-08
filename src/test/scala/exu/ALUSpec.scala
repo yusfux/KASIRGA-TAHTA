@@ -14,7 +14,6 @@ import scala.collection.mutable.Queue
 
 import wood.exu.ALUOp
 import wood.util.{GetBackendAnnotation, TestGenerateVerilog}
-import wood.fru.{DecodeConfig, MI}
 import wood.{TestConfig, WoodConfig}
 
 trait ALUBehavior {

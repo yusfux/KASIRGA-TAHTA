@@ -1,4 +1,4 @@
-package wood.fru
+package wood.exu
 
 import chiseltest._
 
@@ -7,7 +7,6 @@ import org.scalatest.ParallelTestExecution
 
 import wood.{TestConfig, WoodConfig}
 import wood.util.TestGenerateVerilog
-import wood.fru.{DecodeConfig, Decoder}
 
 class DecodeSpec extends AnyFlatSpec with ChiselScalatestTester with ParallelTestExecution {
 

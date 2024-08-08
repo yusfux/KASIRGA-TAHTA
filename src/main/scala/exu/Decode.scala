@@ -1,11 +1,12 @@
-package wood.fru
+package wood.exu
 
 import chisel3._
 import chisel3.util._
 import chisel3.util.experimental.decode.{EspressoMinimizer, TruthTable, decoder}
 import wood.WoodConfig
+import wood.exu.Instructions._
 import wood.exu.{ALUOp, ExEngine, IDUOp, IMUOp}
-import wood.fru.Instructions._
+import wood.fru.PCInst
 import wood.std.DCPipelineRegister
 
 class ExpandBits(bitVectors: List[String]) {
@@ -265,18 +266,17 @@ class Decoder(config: WoodConfig) extends Module {
   io.out.rd       := io.in(11,  7)
   // format: on
 
-  io.out.pcIdx         := DontCare
-  io.out.pcIndexOffset := DontCare
-  io.out.rs1Tag        := DontCare
-  io.out.rs2Tag        := DontCare
-  io.out.rdTag         := DontCare
-  io.out.retired       := DontCare
-  io.out.arfTag        := DontCare
-  io.out.arfValid      := DontCare
-  io.out.rs1Data       := DontCare
-  io.out.rs2Data       := DontCare
-  io.out.rdData        := DontCare
-  io.out.inst          := io.in
+  io.out.pc       := DontCare
+  io.out.rs1Tag   := DontCare
+  io.out.rs2Tag   := DontCare
+  io.out.rdTag    := DontCare
+  io.out.retired  := DontCare
+  io.out.arfTag   := DontCare
+  io.out.arfValid := DontCare
+  io.out.rs1Data  := DontCare
+  io.out.rs2Data  := DontCare
+  io.out.rdData   := DontCare
+  io.out.inst     := io.in
 
   val inst_type = Wire(UInt(DecodeConfig.typeWidth.W))
   inst_type := MuxCase(
@@ -312,9 +312,8 @@ class Decoder(config: WoodConfig) extends Module {
 
 class DecodeStage(config: WoodConfig) extends Module {
   val io = IO(new Bundle {
-    val in    = Flipped(Vec(config.nWide, Decoupled(UInt(32.W))))
-    val pcIdx = Flipped(Decoupled(UInt(config.pcIndexWidth.W)))
-    val out   = Vec(config.nWide, Decoupled(new MI(config)))
+    val in  = Flipped(Vec(config.nWide, Decoupled(new PCInst(config))))
+    val out = Vec(config.nWide, Decoupled(new MI(config)))
   })
 
   val pRegs             = Seq.fill(config.nWide)(Module(new DCPipelineRegister(new MI(config))(2)))
@@ -323,22 +322,21 @@ class DecodeStage(config: WoodConfig) extends Module {
   val atLeastOneIsReady = Wire(Vec(config.nWide, Bool())).suggestName("atLeastOneIsReady")
 
   for (j <- 0 until config.nWide) {
-    decoders(j).io.in := io.in(j).bits
+    decoders(j).io.in := io.in(j).bits.inst
 
-    self(j).bits               := decoders(j).io.out
-    self(j).bits.pcIdx         := io.pcIdx.bits
-    self(j).bits.pcIndexOffset := j.asUInt
+    self(j).bits    := decoders(j).io.out
+    self(j).bits.pc := io.in(j).bits.pc
 
-    self(j).valid := io.in(j).valid & io.pcIdx.valid // output is valid only if all inputs are valid
+    self(j).valid := io.in(j).valid & io.in(j).valid // output is valid only if all inputs are valid
 
     pRegs(j).io.valids(0) := io.in(j).valid
-    pRegs(j).io.valids(1) := io.pcIdx.valid
+    pRegs(j).io.valids(1) := io.in(j).valid
 
     io.in(j).ready       := self(j).ready
     atLeastOneIsReady(j) := self(j).ready
 
     pRegs(j).io.in <> self(j)
     io.out(j)      <> pRegs(j).io.out
+    io.in(j).ready := atLeastOneIsReady.asUInt.orR
   }
-  io.pcIdx.ready := atLeastOneIsReady.asUInt.orR
 }

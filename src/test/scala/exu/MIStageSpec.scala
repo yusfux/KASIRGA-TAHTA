@@ -7,7 +7,6 @@ import org.scalatest.ParallelTestExecution
 
 import wood.{TestConfig, WoodConfig}
 import wood.util.{GetBackendAnnotation, GetGroupedSequences, TestGenerateVerilog}
-import wood.fru.MI
 
 class MIStageSpec extends AnyFlatSpec with ChiselScalatestTester with ParallelTestExecution {
   "MIStage" should "print dummy waveform" in {

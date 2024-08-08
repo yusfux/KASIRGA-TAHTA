@@ -3,7 +3,6 @@ package wood.exu
 import chisel3._
 import chisel3.util._
 import wood.WoodConfig
-import wood.fru.MI
 
 object IMUOp extends ChiselEnum {
   val mul, mulh, mulhsu, mulhu = Value

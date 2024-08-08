@@ -2,7 +2,6 @@ package wood.fru
 
 import chisel3._
 import chisel3.util._
-
 import wood.WoodConfig
 
 class PCQueueIO(config: WoodConfig) extends Bundle {

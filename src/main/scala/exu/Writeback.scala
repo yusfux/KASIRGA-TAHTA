@@ -3,7 +3,6 @@ package wood.exu
 import chisel3._
 import chisel3.util._
 import wood.WoodConfig
-import wood.fru.MI
 
 class WritebackStage(config: WoodConfig) extends Module {
   val io = IO(new Bundle {

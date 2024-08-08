@@ -3,8 +3,7 @@ package wood.exu
 import chisel3._
 import chisel3.util._
 import wood.WoodConfig
-import wood.fru.DecodeConfig.{OPERAND1_PC, OPERAND1_REG, OPERAND2_IMM, OPERAND2_REG}
-import wood.fru.MI
+import wood.exu.DecodeConfig.{OPERAND1_PC, OPERAND1_REG, OPERAND2_IMM, OPERAND2_REG}
 
 object ALUOp extends ChiselEnum {
   val sub, add, xor, or, and, sll, srl, sra, slt, sltu, pass = Value
@@ -35,7 +34,7 @@ class ALU(config: WoodConfig) extends Module {
     io.in.bits.rs1Data,
     Array(
       (io.in.bits.operand1 === Integer.parseInt(OPERAND1_REG, 2).U) -> io.in.bits.rs1Data,
-      (io.in.bits.operand1 === Integer.parseInt(OPERAND1_PC, 2).U)  -> io.in.bits.pcIdx
+      (io.in.bits.operand1 === Integer.parseInt(OPERAND1_PC, 2).U)  -> io.in.bits.pc
     ).toIndexedSeq
   )
   val data2 = MuxCase(
