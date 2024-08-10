@@ -12,11 +12,10 @@ class Fetch1IO(config: WoodConfig) extends Bundle {
     }
 
     val mispred = new Bundle {
-      val fetchpc = UInt(config.pcWidth.W)       // fetchpc of the mispredicted branch
-      val pcidx = UInt(log2Ceil(config.nWide).W) // index of the mispredicted pc in fetchpc (e.g., 0, 1, 2, 3 for 4-wide fetch)
-      val targetpc = UInt(config.pcWidth.W)      // target pc of the mispredicted branch
-      val en = Bool()                            // misprediction happened
-      val taken = Bool()                         // mispredicted branch was taken
+      val pc = UInt(config.pcWidth.W)       // pc of the mispredicted branch
+      val targetpc = UInt(config.pcWidth.W) // target pc of the mispredicted branch
+      val en = Bool()                       // misprediction happened
+      val taken = Bool()                    // mispredicted branch was taken
     }
   })
 
@@ -69,7 +68,11 @@ class Fetch1Stage(config: WoodConfig) extends Module {
   }
 
   bpred.io.in.fetchpc := pc
-  bpred.io.in.mispred := io.in.mispred
+  bpred.io.in.mispred.fetchpc := io.in.mispred.pc(config.pcWidth - 1, config.byteOffset + config.bankOffset)
+  bpred.io.in.mispred.pcidx := io.in.mispred.pc(config.byteOffset + config.bankOffset - 1, config.byteOffset)
+  bpred.io.in.mispred.en := io.in.mispred.en
+  bpred.io.in.mispred.taken := io.in.mispred.taken
+  bpred.io.in.mispred.targetpc := io.in.mispred.targetpc
 
   pcqueue.io.in.bits.fetchpc := pc
   pcqueue.io.in.bits.mask := Mux(bpred.io.out.pred.en, bpred.io.out.pred.mask, VecInit(Seq.fill(config.nWide)(true.B)))

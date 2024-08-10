@@ -26,7 +26,7 @@ class BranchPredictorIO(config: WoodConfig) extends Bundle {
 }
 
 /* 
-  THIS MAY BE VERY PROBLEMATIC, NEED TO CHECK IF IT CREATES A HUGE DESIGN
+  TODO: THIS MAY BE VERY PROBLEMATIC, NEED TO CHECK IF IT CREATES A HUGE DESIGN
   SINCE WE USE CAM FOR BTB
  */
 class BranchPredictor(config: WoodConfig) extends Module {

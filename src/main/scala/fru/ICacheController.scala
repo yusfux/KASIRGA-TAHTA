@@ -5,13 +5,13 @@ import chisel3.util._
 import wood.WoodConfig
 import wood.std.{ReadPortI, ReadPortO}
 
-class ICacheControllerIO(config: WoodConfig, cacheDataWidth: Int) extends Bundle {
+class ICacheControllerIO(config: WoodConfig) extends Bundle {
   val core = new Bundle() {
     val req = Flipped(DecoupledIO(new ReadPortI(UInt(config.dataWidth.W))(config.addrWidth)))
     val resp = DecoupledIO(new ReadPortO(UInt(config.dataWidth.W))(config.addrWidth))
   }
 
-  val cache = Flipped(new SRAMInterface(config.icacheDepth, UInt(cacheDataWidth.W), 0, 0, 1))
+  val cache = Flipped(new SRAMInterface(config.icacheDepth, UInt((config.ivalidlen + config.itaglen + config.idatalen).W), 0, 0, 1))
 
   val mem = new Bundle() {
     val req = DecoupledIO(new ReadPortI(UInt(config.dataWidth.W))(config.addrWidth))
@@ -28,13 +28,13 @@ class ICacheController(config: WoodConfig) extends Module {
   val depth = config.icacheDepth
 
   val depthWidth  = log2Ceil(depth)
-  val offsetWidth = log2Ceil(pcWidth >> 3)
+  val offsetWidth = config.byteOffset + config.bankOffset
 
   val taglen   = config.itaglen
   val datalen  = config.idatalen
   val validlen = config.ivalidlen
 
-  val io = IO(new ICacheControllerIO(config, (validlen + taglen + datalen)))
+  val io = IO(new ICacheControllerIO(config))
 
   // ---------------------------------------------------------------------------
   val corerequest = new Bundle() {
@@ -91,7 +91,7 @@ class ICacheController(config: WoodConfig) extends Module {
 
   io.mem.req.valid     := isRead && !isHit
   io.mem.req.bits.addr := corerequest.addrReg
-  io.mem.resp.ready    := isRefill
+  io.mem.resp.ready    := isRefill && !wack //TODO: i did it while watching dts in the background, it is propably wrong
 
   import CacheState._
   switch(state) {

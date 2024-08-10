@@ -8,11 +8,13 @@ import chisel3.util._
 case class TestConfig(val maxWidth: Int = 2) {}
 
 case class WoodConfig(
-  nWide:     Int = 4,
-  dataWidth: Int = 32,
-  addrWidth: Int = 32,
-  pcWidth:   Int = 32,
-  xlen:      Int = 32,
+  nWide:        Int = 4,
+  dataWidth:    Int = 32,
+  addrWidth:    Int = 32,
+  pcWidth:      Int = 32,
+  xlen:         Int = 32,
+  memDataWidth: Int = 128,
+  memDepth:     Int = 1024,
   //--------------
   // FrUnitConfig
   pcInitAddr:   String = "h8000_0000",
@@ -30,19 +32,21 @@ case class WoodConfig(
   //--------------
 ) {
 
-  require(
-    robDepth % nWide == 0,
-    "RobDepth must be divisible by nWide"
-  )
+  //require(
+    //robDepth % nWide == 0,
+    //"RobDepth must be divisible by nWide"
+  //)
 
   val prfDepth = (32 + (rsDepth * nWide) + (8 * nWide) + (robDepth * nWide))
-  require(
-    (prfDepth % nWide == 0),
-    "prfDepth must be divisible by nWide"
-  )
-  val itaglen   = pcWidth - (log2Ceil(icacheDepth) + log2Ceil(pcWidth >> 3))
-  val idatalen  = 32
-  val ivalidlen = 1
+  //require(
+    //(prfDepth % nWide == 0),
+    //"prfDepth must be divisible by nWide"
+  //)
+  val byteOffset = log2Ceil(pcWidth >> 3)
+  val bankOffset = log2Ceil(nWide)
+  val itaglen    = pcWidth - (log2Ceil(icacheDepth) + byteOffset + bankOffset)
+  val idatalen   = dataWidth
+  val ivalidlen  = 1
 
   val tagWidth: Int = log2Ceil(prfDepth)
 
