@@ -116,6 +116,7 @@ class ARFBus(config: WoodConfig) extends TagBus(config) {
 class ExUnit(config: WoodConfig) extends Module {
   val io = IO(new Bundle {
     val in    = Flipped(Vec(config.nWide, Decoupled(new PCInst(config))))
+    val flush = Output(Bool())
     val bpBus = ValidIO(new BranchPredictorBus(config))
   })
 
@@ -176,6 +177,7 @@ class ExUnit(config: WoodConfig) extends Module {
 
   rsstage.io.firstPC <> rbstage.io.firstPC
 
+  io.flush         <> rsstage.io.flush
   destage.io.flush <> rsstage.io.flush
   restage.io.flush <> rsstage.io.flush
   scstage.io.flush <> rsstage.io.flush

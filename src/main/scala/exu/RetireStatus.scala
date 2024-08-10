@@ -33,7 +33,7 @@ class RetireStatusStage(config: WoodConfig) extends Module {
   val allRetired = Wire(Vec(config.nWide, Bool()))
   val allInValid = Wire(Vec(config.nWide, Bool()))
 
-  val exceptionMispredSet = RegInit(VecInit(Seq.fill(config.nWide)(false.B)))
+  val exceptionMispredSet = VecInit(Seq.fill(config.nWide)(false.B))
   val mispredIndex        = PriorityEncoder(exceptionMispredSet)
 
   allRetired := overridenRetiredStatus.map(_.bits.retired.asBool)
@@ -51,7 +51,7 @@ class RetireStatusStage(config: WoodConfig) extends Module {
   overridenRetiredStatus <> io.in
 
   (0 until config.nWide).foreach(j => {
-    overridenRetiredStatus(j).bits.retired := retireStatusRegisterFile(io.in(j).bits.rdTag) | io.in(j).bits.flushed | flushVector(j)
+    overridenRetiredStatus(j).bits.retired := retireStatusRegisterFile(io.in(j).bits.rdTag) | io.in(j).bits.flushed | flushVector(j) | io.flush
 
     when(io.exceptionBus(j).valid) {
       val tag = io.exceptionBus(j).bits.tag
@@ -71,7 +71,7 @@ class RetireStatusStage(config: WoodConfig) extends Module {
     }
 
     self(j).bits  := overridenRetiredStatus(j).bits
-    self(j).valid := allInValid.asUInt.andR & allRetired.asUInt.andR
+    self(j).valid := (allInValid.asUInt.andR & allRetired.asUInt.andR) | io.in(j).bits.flushed | io.flush
 
     pRegs(j).io.valids(0) := io.in(j).valid
     pRegs(j).io.flush     := io.flush
@@ -104,6 +104,7 @@ class RetireStatusStage(config: WoodConfig) extends Module {
   (0 until config.nWide).foreach(j => {
     when(flushVector(j)) {
       self(j).bits.writeRf := false.B
+      self(j).bits.retired := true.B
       self(j).bits.retired := true.B
     }
   })

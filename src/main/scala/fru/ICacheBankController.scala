@@ -3,8 +3,7 @@ package wood.fru
 import chisel3._
 import chisel3.util._
 import wood.WoodConfig
-import wood.std.{ReadPortI, ReadPortO}
-import wood.std.{DCShifter, DCArbiter}
+import wood.std.{DCArbiter, DCShifter, ReadPortI, ReadPortO}
 
 class ICacheBankControllerIO(config: WoodConfig) extends Bundle {
   val core = Vec(config.nWide, new Bundle() {

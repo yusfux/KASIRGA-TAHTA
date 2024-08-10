@@ -25,7 +25,7 @@ class ROBStage(config: WoodConfig) extends Module {
   }
 
   q.io.in    <> io.in
-  q.io.flush := 0.B
+  q.io.flush := 0.B // must return each tag back to freelist
 
   (0 until config.nWide).foreach(j => {
     pRegs(j).io.valids(0) := io.out(j).valid

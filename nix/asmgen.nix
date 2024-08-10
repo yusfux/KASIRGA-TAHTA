@@ -9,6 +9,7 @@ pkgs.writers.writePython3Bin "asmgen" { } ''
   class RiscVTestGenerator:
       def __init__(self, num_registers: int = 32) -> None:
           self.num_registers = num_registers
+          self.onlyimm_instructions = ["li", "auipc", "lui"]
           self.immediate_instructions = ["addi", "xori", "ori", "andi",
                                          "slli", "srli", "srai",
                                          "slti", "sltiu"]
@@ -17,6 +18,7 @@ pkgs.writers.writePython3Bin "asmgen" { } ''
                                         "sll", "srl", "sra", "slt", "sltu",
                                         "mul", "mulh", "mulhu", "mulhsu",
                                         "div", "divu", "rem", "remu"]
+          self.branch_instructions = ["beq"]
 
       def init_regs(self) -> List[str]:
           asm_code = []
@@ -25,10 +27,16 @@ pkgs.writers.writePython3Bin "asmgen" { } ''
           return asm_code
 
       def generate_inst(self, inst_type: str) -> str:
-          if inst_type == "li":
-              register = f"x{random.randint(0, self.num_registers - 1)}"
-              value = random.randint(0, 65535)  # 16-bit value for li
-              return f"li {register}, {value}"
+          if inst_type in self.onlyimm_instructions:
+              if inst_type == "li":
+                  register = f"x{random.randint(0, self.num_registers - 1)}"
+                  value = random.randint(0, 65535)  # 16-bit value for li
+                  return f"li {register}, {value}"
+              else:
+                  register2 = f"x{random.randint(0, self.num_registers - 1)}"
+                  immediate = random.randint(0, 1048575)
+                  return f"{inst_type} {register2}, {immediate}"
+
           elif inst_type in self.register_instructions:
               register1 = f"x{random.randint(0, self.num_registers - 1)}"
               register2 = f"x{random.randint(0, self.num_registers - 1)}"
@@ -36,6 +44,8 @@ pkgs.writers.writePython3Bin "asmgen" { } ''
               return f"{inst_type} {register3}, {register1}, {register2}"
           elif inst_type in self.immediate_instructions:
               return self.generate_immediate_inst(inst_type)
+          elif inst_type in self.branch_instructions:
+              return self.generate_beq_inst()
           else:
               raise ValueError(f"Unsupported inst type: {inst_type}")
 
@@ -47,6 +57,30 @@ pkgs.writers.writePython3Bin "asmgen" { } ''
           else:
               immediate = random.randint(-2048, 2047)
           return f"{inst_type} {register2}, {register1}, {immediate}"
+
+      def generate_beq_inst(self) -> str:
+          reg1 = f"x{random.randint(0, self.num_registers - 1)}"
+          reg2 = f"x{random.randint(0, self.num_registers - 1)}"
+          imm1 = random.randint(-1000, 1000)
+          imm2 = random.randint(-1000, 1000)
+          equal = random.choice([True, False])
+          if equal:
+              imm2 = imm1
+
+          test_number = random.randint(1, 9999)
+          equal_label = f'equal_{test_number}_{random.randint(1000, 9999)}'
+          done_label = f'done_{test_number}_{random.randint(1000, 9999)}'
+
+          return f"""
+                  li {reg1}, {imm1}
+                  li {reg2}, {imm2}
+                  beq {reg1}, {reg2}, {equal_label}
+                  addi x31, x0, 1
+                  j {done_label}
+              {equal_label}:
+                  addi x31, x0, 2
+              {done_label}:
+          """.strip()
 
       def generate_order_test(self, num_insts: int, inst_type: str) -> str:
           asm_code: List[str] = self.init_regs()
@@ -70,6 +104,8 @@ pkgs.writers.writePython3Bin "asmgen" { } ''
                   for i in range(self.num_registers - 1):
                       asm_code.append(f"   {inst_type} x{i+1}, x{i}, {c}")
                       c = (c + 1) % 2048  # imm within 12-bit signed range
+          elif inst_type in self.branch_instructions:
+              return self.generate_beq_inst()
           else:
               raise ValueError(f"Unsupported inst type: {inst_type}")
           return "\n".join(asm_code)
@@ -87,9 +123,11 @@ pkgs.writers.writePython3Bin "asmgen" { } ''
       parser.add_argument(
           "--inst",
           type=str,
-          choices=["li", "addi", "xori", "ori", "andi", "slli", "srli", "srai",
+          choices=["addi", "xori", "ori", "andi", "slli", "srli", "srai",
                    "slti", "sltiu", "add", "sub", "xor", "or",
                    "and", "sll", "srl", "sra", "slt", "sltu",
+                   "li", "lui", "auipc",
+                   "beq",
                    "mul", "mulh", "mulhu", "mulhsu",
                    "div", "divu", "rem", "remu"],
           required=True,

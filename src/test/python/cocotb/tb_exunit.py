@@ -8,7 +8,7 @@ from typing import Any, List
 import cocotb
 import git
 from cocotb.clock import Clock
-from cocotb.triggers import Event, RisingEdge, Timer
+from cocotb.triggers import Event, RisingEdge, FallingEdge, Timer
 from cocotb.utils import get_sim_time
 
 repo = git.Repo(".", search_parent_directories=True)
@@ -235,25 +235,26 @@ async def decode_driver(dut):
     await RisingEdge(dut.clock)
 
     while True:
-        all_ready = 0
         for n in range(0, WOOD_NWIDE):
-            all_ready += in_ready[n].value.integer
+            in_inst[n].value = int(insts[virtual_pc + n], 16)
+            in_pc[n].value = base_address + (4 * (virtual_pc + n))
+            in_valid[n].value = 1
+            # all_ready += in_ready[n].value.integer
 
-        if all_ready != WOOD_NWIDE:
-            pass
+        await FallingEdge(dut.clock)
+
+        if (
+            bp_taken.value.integer | bp_exception.value.integer
+        ) & bp_valid.value.integer:
+            real_pc = bp_targetPC.value.integer
+            virtual_pc = (real_pc - base_address) // 4
+            print("JUMP!", f"real_pc: {real_pc:0>8X} ", f"virtual_pc: {virtual_pc}")
         else:
+            all_ready = 0
             for n in range(0, WOOD_NWIDE):
-                in_inst[n].value = int(insts[virtual_pc + n], 16)
-                in_pc[n].value = base_address + (4 * (virtual_pc + n))
-                in_valid[n].value = 1
                 all_ready += in_ready[n].value.integer
 
-            if (
-                bp_taken.value.integer | bp_exception.value.integer
-            ) & bp_valid.value.integer:
-                virtual_pc = bp_targetPC
-                print("JUMP!", "{0:#0{1}x}".format(str(bp_targetPC), 10))
-            else:
+            if all_ready == WOOD_NWIDE:
                 virtual_pc += WOOD_NWIDE
 
         await RisingEdge(dut.clock)
