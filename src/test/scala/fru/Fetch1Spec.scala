@@ -15,7 +15,7 @@ class Fetch1Spec extends AnyFlatSpec with ChiselScalatestTester {
   var pc = 268435456
   val q = Queue[Int]()
 
-  "Fetch1Spec" should "work" in {
+  "Fetch1" should "work" in {
     test(new Fetch1Stage(config)).withAnnotations(GetBackendAnnotation()) { dut =>
       fork {
         for(i <- 0 until TEST_SIZE) {
@@ -59,14 +59,13 @@ class Fetch1Spec extends AnyFlatSpec with ChiselScalatestTester {
     it is easier to test this functionality in the waveform directly,
     though it would be easier to test it after the complete frontend is implemented
    */
-  "Fetch1Spec" should "work under misprediction" in {
+  "Fetch1" should "work under misprediction" in {
     test(new Fetch1Stage(config)).withAnnotations(GetBackendAnnotation()) { dut =>
       fork {
         for(i <- 0 until TEST_SIZE) {
           if(i == TEST_SIZE / 2) {
             dut.io.in.mispred.en.poke(true.B)
-            dut.io.in.mispred.fetchpc.poke((pc - (i / 2 * 4 * config.nWide)).U)
-            dut.io.in.mispred.pcidx.poke(0.U)
+            dut.io.in.mispred.pc.poke((pc - (i / 2 * 4 * config.nWide)).U)
             dut.io.in.mispred.targetpc.poke(target_pc.U)
           } else {
             dut.io.in.mispred.en.poke(false.B)
@@ -111,7 +110,7 @@ class Fetch1Spec extends AnyFlatSpec with ChiselScalatestTester {
     }
   }
 
-  "Fetch1Spec" should "emit Verilog" in {
+  "Fetch1" should "emit Verilog" in {
     GenerateVerilog(new Fetch1Stage(new WoodConfig))
   }
 }
