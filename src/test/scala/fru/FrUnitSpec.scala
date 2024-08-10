@@ -1,112 +1,89 @@
-/*
 package wood.fru
 
 import chisel3._
+import chisel3.util._
 import chiseltest._
 import org.scalatest.flatspec.AnyFlatSpec
-import org.scalatest.ParallelTestExecution
-import scala.sys.process._
-import scala.io.Source
-import scala.language.postfixOps
-import scala.collection.mutable.ListBuffer
+import wood.util.{GenerateVerilog, GetBackendAnnotation}
+import wood.WoodConfig
+import wood.std.{DecoupledSyncReadBlockRAM}
+import wood.std.BlockRAMParams
 
-import wood.util.{GetBackendAnnotation, TestGenerateVerilog}
-import wood.{TestConfig, WoodConfig}
-import chiseltest.internal.TesterThreadList
+class FrUnitDut(config: WoodConfig) extends Module {
+  val io = IO(new Bundle() {
+    val instruction = Vec(config.nWide, DecoupledIO(UInt(config.xlen.W)))
 
-class FrUnitSpec extends AnyFlatSpec with ChiselScalatestTester with ParallelTestExecution {
-
-  def generateTestCode(): Unit = {
-    Process("sh -c \"python src/test/python/gen_li.py > src/test/c/src/main.S\"").!
-  }
-
-  def buildTestCode(): Unit = {
-    val process = Process("make -C src/test/c") !
-  }
-
-  def readHexFileToList(filePath: String): List[String] = {
-    val source = Source.fromFile(filePath)
-    val lines  = source.getLines().toList
-    source.close()
-    lines
-  }
-
-  def groupHexLines(hexLines: List[String], numGroups: Int): List[List[String]] = {
-    val groupedLines = Array.fill(numGroups)(List[String]())
-
-    for ((line, index) <- hexLines.zipWithIndex) {
-      groupedLines(index % numGroups) = groupedLines(index % numGroups) :+ line
-    }
-
-    val maxSize = hexLines.size / numGroups
-    groupedLines.map(_.padTo(maxSize, "0")).toList
-  }
-
-  def hexStringToBigInt(hexString: String): BigInt = {
-    val bigIntValue = BigInt(hexString, 16)
-    bigIntValue
-  }
-
-  def hexStringToUInt(hexString: String): UInt = {
-    val bigIntValue = BigInt(hexString, 16)
-    val uintValue   = bigIntValue.U(32.W)
-    uintValue
-  }
-
-  "FrUnit" should "work with li instructions" in {
-    generateTestCode()
-    buildTestCode()
-
-    val nWide        = 1
-    val robDepth     = 32
-    val miQueueDepth = 16
-    val pcListDepth  = 16
-
-    val config =
-      new WoodConfig(nWide = nWide, robDepth = robDepth, miQueueDepth = miQueueDepth, pcListDepth = pcListDepth)
-
-    val cwd = System.getProperty("user.dir")
-    println(s"CWD: $cwd")
-
-    val filePath     = "src/test/c/build/main.hex" // relative to build.sbt
-    val hexLines     = readHexFileToList(filePath)
-    val groupedUInts = groupHexLines(hexLines, nWide).map(_.map(hexStringToUInt))
-    println("groupedUInts(0).length:     \n", groupedUInts(0).length)
-    val pcSeq =
-      Seq.range(0, groupedUInts(0).length, 1).map(i => i % ((1 << config.pcIndexWidth) - 1)).map(i => i.asUInt)
-    println("pcSeq:     \n", pcSeq)
-    test(new FrUnit(config)).withAnnotations(GetBackendAnnotation()) { dut =>
-      val in = dut.io.in.map(_.initSource())
-
-      val forks = ListBuffer[TesterThreadList]()
-      (0 until config.nWide).foreach(j => {
-        forks += fork { in(j).enqueueSeq(groupedUInts(j)) }
-        forks += fork {
-          (0 until config.nWide).foreach(j => {
-            dut.io.out(j).ready.poke(1)
-            step(50)
-            dut.io.out(j).ready.poke(0)
-            step(5)
-            dut.io.out(j).ready.poke(1)
-            step(50)
-            dut.io.out(j).ready.poke(0)
-            step(50)
-            dut.io.out(j).ready.poke(1)
-            step(50)
-          })
-        }
-      })
-      forks += fork { dut.io.pcIdx.enqueueSeq(pcSeq) }
-      forks.map(_.join()).foreach(_ => ())
-    }
-  }
-
-  val tconfig = new TestConfig()
-  (1 to tconfig.maxWidth).foreach(j => {
-    val config = new WoodConfig(nWide = j)
-    "FrUnit" should s"emit Verilog ${j} wide" in {
-      TestGenerateVerilog(new FrUnit(config), testNames.filter(_.contains("emit Verilog")), j)
-    }
+    val data = Input(UInt(config.memDataWidth.W))
+    val addr = Input(UInt(config.addrWidth.W))
+    val valid = Input(Bool())
+    val ready = Output(Bool())
   })
+
+  val frunit = Module(new FrUnit(config))
+  val mem = Module(new DecoupledSyncReadBlockRAM(UInt(config.memDataWidth.W))(new BlockRAMParams(config.memDepth, 1, 1)))
+
+  mem.io.rip(0).valid := frunit.io.mem.req.valid
+  mem.io.rip(0).bits.addr := frunit.io.mem.req.bits.addr >> (2 + log2Ceil(config.memDataWidth / 32))
+  frunit.io.mem.req.ready := mem.io.rip(0).ready
+  mem.io.rop(0) <> frunit.io.mem.resp
+
+  mem.io.wp(0).valid := io.valid
+  mem.io.wp(0).bits.enable := io.valid
+  mem.io.wp(0).bits.addr := io.addr
+  mem.io.wp(0).bits.data := io.data
+  io.ready := mem.io.wp(0).ready
+
+  frunit.io.in.exception.en := false.B
+  frunit.io.in.exception.pc := 0.U
+  frunit.io.in.mispred.en := false.B
+  frunit.io.in.mispred.pc := 0.U
+  frunit.io.in.mispred.targetpc := 0.U
+  frunit.io.in.mispred.taken := false.B
+  frunit.io.in.mispred.en := false.B
+
+  frunit.io.out.instruction <> io.instruction
 }
-*/
+
+class FrUnitSpec extends AnyFlatSpec with ChiselScalatestTester {
+  val config = new WoodConfig
+  val TEST_SIZE = 64
+  val hexArray: Array[String] = (0 until config.memDepth * 4).map { i =>
+    f"${i}%08x"
+  }.toArray
+
+  val scalaMem = (0 until config.memDepth * 4).map { i =>
+    s"h${hexArray(i)}"
+  }.toArray
+
+  "FrUnit" should "work" in {
+    test(new FrUnitDut(config)).withAnnotations(GetBackendAnnotation()) { dut =>
+      dut.clock.setTimeout(3000)
+
+      for(i <- 0 until config.memDepth) {
+        dut.io.data.poke(s"h${hexArray(i * 4 + 3)}_${hexArray(i * 4 + 2)}_${hexArray(i * 4 + 1)}_${hexArray(i * 4 + 0)}".U)
+        dut.io.addr.poke((i).U)
+        dut.io.valid.poke(true.B)
+        while(!dut.io.ready.peekBoolean()) {
+          step()
+        }
+        step()
+      }
+
+      for(i <- 0 until TEST_SIZE) {
+        while(!dut.io.instruction.map(_.valid.peekBoolean()).reduce(_ && _)) {
+          dut.io.instruction.foreach(_.ready.poke(false.B))
+          step()
+        }
+        dut.io.instruction.foreach(_.ready.poke(true.B))
+        (0 until config.nWide).foreach { j =>
+          dut.io.instruction(j).bits.expect(scalaMem(i * config.nWide + j).U)
+        }
+        step()
+      }
+    }
+  }
+
+  "FrUnit" should "emit Verilog" in {
+    GenerateVerilog(new FrUnit(new WoodConfig))
+  }
+}
