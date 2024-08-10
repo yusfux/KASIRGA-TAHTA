@@ -39,6 +39,9 @@ object DecodeConfig {
   val TYPE_INT = "0"
   val TYPE_FLOAT = "1"
 
+  val IS_BRANCH_0 = "0"
+  val IS_BRANCH_1 = "1"
+
   val OPERAND2_IMM   = "00"
   val OPERAND2_REG   = "10"
 
@@ -54,7 +57,7 @@ object DecodeConfig {
   val WAKEUP_0 = "0"
 
   val defaultDecSeq: Seq[String] = Seq(
-                           op.e(ALUOp.toString(ALUOp.add)) ,ExEngine.toString(ExEngine.alu),WRITE_RF_1,OPERAND1_REG, OPERAND2_REG  ,WAKEUP_1,TYPE_INT
+                              op.e(ALUOp.toString(ALUOp.add)) ,ExEngine.toString(ExEngine.alu),WRITE_RF_1,OPERAND1_REG, OPERAND2_REG  ,WAKEUP_1,IS_BRANCH_0,TYPE_INT
   )
   val defaultDec: String = defaultDecSeq.reduce(_ + _)
   val width: Int = defaultDec.length
@@ -73,140 +76,140 @@ object DecodeConfig {
   val bitRanges: Seq[(Int, Int)] =subwidthsToBitranges(subWidths)
 
   val miTable: TruthTable =  TruthTable(Map(
-   ADD              -> Seq(op.e(ALUOp.toString(ALUOp.add))    ,ExEngine.toString(ExEngine.alu),WRITE_RF_1,OPERAND1_REG, OPERAND2_REG  ,WAKEUP_1,TYPE_INT),
-   ADDI             -> Seq(op.e(ALUOp.toString(ALUOp.add))    ,ExEngine.toString(ExEngine.alu),WRITE_RF_1,OPERAND1_REG, OPERAND2_IMM  ,WAKEUP_1,TYPE_INT),
-   AND              -> Seq(op.e(ALUOp.toString(ALUOp.and))    ,ExEngine.toString(ExEngine.alu),WRITE_RF_1,OPERAND1_REG, OPERAND2_REG  ,WAKEUP_1,TYPE_INT),
-   ANDI             -> Seq(op.e(ALUOp.toString(ALUOp.and))    ,ExEngine.toString(ExEngine.alu),WRITE_RF_1,OPERAND1_REG, OPERAND2_IMM  ,WAKEUP_1,TYPE_INT),
-   AUIPC            -> Seq(op.e(ALUOp.toString(ALUOp.add))    ,ExEngine.toString(ExEngine.alu),WRITE_RF_1,OPERAND1_PC,  OPERAND2_IMM  ,WAKEUP_1,TYPE_INT),
-   BEQ              -> Seq(op.e(ALUOp.toString(ALUOp.add))    ,ExEngine.toString(ExEngine.alu),WRITE_RF_0,OPERAND1_PC,  OPERAND2_IMM  ,WAKEUP_1,TYPE_INT),
-   BGE              -> Seq(op.e(ALUOp.toString(ALUOp.add))    ,ExEngine.toString(ExEngine.alu),WRITE_RF_0,OPERAND1_PC,  OPERAND2_IMM  ,WAKEUP_1,TYPE_INT),
-   BGEU             -> Seq(op.e(ALUOp.toString(ALUOp.add))    ,ExEngine.toString(ExEngine.alu),WRITE_RF_0,OPERAND1_PC,  OPERAND2_IMM  ,WAKEUP_1,TYPE_INT),
-   BLT              -> Seq(op.e(ALUOp.toString(ALUOp.add))    ,ExEngine.toString(ExEngine.alu),WRITE_RF_0,OPERAND1_PC,  OPERAND2_IMM  ,WAKEUP_1,TYPE_INT),
-   BLTU             -> Seq(op.e(ALUOp.toString(ALUOp.add))    ,ExEngine.toString(ExEngine.alu),WRITE_RF_0,OPERAND1_PC,  OPERAND2_IMM  ,WAKEUP_1,TYPE_INT),
-   BNE              -> Seq(op.e(ALUOp.toString(ALUOp.add))    ,ExEngine.toString(ExEngine.alu),WRITE_RF_0,OPERAND1_PC,  OPERAND2_IMM  ,WAKEUP_1,TYPE_INT),
-   EBREAK           -> Seq(op.e(ALUOp.toString(ALUOp.add))    ,ExEngine.toString(ExEngine.alu),WRITE_RF_1,OPERAND1_REG, OPERAND2_REG  ,WAKEUP_1,TYPE_INT),
-   ECALL            -> Seq(op.e(ALUOp.toString(ALUOp.add))    ,ExEngine.toString(ExEngine.alu),WRITE_RF_1,OPERAND1_REG, OPERAND2_REG  ,WAKEUP_1,TYPE_INT),
-   FENCE            -> Seq(op.e(ALUOp.toString(ALUOp.add))    ,ExEngine.toString(ExEngine.alu),WRITE_RF_1,OPERAND1_REG, OPERAND2_REG  ,WAKEUP_1,TYPE_INT),
-   FENCE_TSO        -> Seq(op.e(ALUOp.toString(ALUOp.add))    ,ExEngine.toString(ExEngine.alu),WRITE_RF_1,OPERAND1_REG, OPERAND2_REG  ,WAKEUP_1,TYPE_INT),
-   JAL              -> Seq(op.e(ALUOp.toString(ALUOp.add))    ,ExEngine.toString(ExEngine.alu),WRITE_RF_1,OPERAND1_REG, OPERAND2_IMM  ,WAKEUP_1,TYPE_INT),
-   JALR             -> Seq(op.e(ALUOp.toString(ALUOp.add))    ,ExEngine.toString(ExEngine.alu),WRITE_RF_1,OPERAND1_REG, OPERAND2_IMM  ,WAKEUP_1,TYPE_INT),
-   LB               -> Seq(op.e(ALUOp.toString(ALUOp.add))    ,ExEngine.toString(ExEngine.alu),WRITE_RF_1,OPERAND1_REG, OPERAND2_IMM  ,WAKEUP_1,TYPE_INT),
-   LBU              -> Seq(op.e(ALUOp.toString(ALUOp.add))    ,ExEngine.toString(ExEngine.alu),WRITE_RF_1,OPERAND1_REG, OPERAND2_IMM  ,WAKEUP_1,TYPE_INT),
-   LH               -> Seq(op.e(ALUOp.toString(ALUOp.add))    ,ExEngine.toString(ExEngine.alu),WRITE_RF_1,OPERAND1_REG, OPERAND2_IMM  ,WAKEUP_1,TYPE_INT),
-   LHU              -> Seq(op.e(ALUOp.toString(ALUOp.add))    ,ExEngine.toString(ExEngine.alu),WRITE_RF_1,OPERAND1_REG, OPERAND2_IMM  ,WAKEUP_1,TYPE_INT),
-   LUI              -> Seq(op.e(ALUOp.toString(ALUOp.add))    ,ExEngine.toString(ExEngine.alu),WRITE_RF_1,OPERAND1_X0,  OPERAND2_IMM  ,WAKEUP_1,TYPE_INT),
-   LW               -> Seq(op.e(ALUOp.toString(ALUOp.add))    ,ExEngine.toString(ExEngine.alu),WRITE_RF_1,OPERAND1_REG, OPERAND2_IMM  ,WAKEUP_1,TYPE_INT),
-   OR               -> Seq(op.e(ALUOp.toString(ALUOp.or))     ,ExEngine.toString(ExEngine.alu),WRITE_RF_1,OPERAND1_REG, OPERAND2_REG  ,WAKEUP_1,TYPE_INT),
-   ORI              -> Seq(op.e(ALUOp.toString(ALUOp.or))     ,ExEngine.toString(ExEngine.alu),WRITE_RF_1,OPERAND1_REG, OPERAND2_IMM  ,WAKEUP_1,TYPE_INT),
-   PAUSE            -> Seq(op.e(ALUOp.toString(ALUOp.add))    ,ExEngine.toString(ExEngine.alu),WRITE_RF_1,OPERAND1_REG, OPERAND2_IMM  ,WAKEUP_1,TYPE_INT),
-   SB               -> Seq(op.e(ALUOp.toString(ALUOp.add))    ,ExEngine.toString(ExEngine.alu),WRITE_RF_0,OPERAND1_REG, OPERAND2_IMM  ,WAKEUP_1,TYPE_INT),
-   SBREAK           -> Seq(op.e(ALUOp.toString(ALUOp.add))    ,ExEngine.toString(ExEngine.alu),WRITE_RF_1,OPERAND1_REG, OPERAND2_IMM  ,WAKEUP_1,TYPE_INT),
-   SCALL            -> Seq(op.e(ALUOp.toString(ALUOp.add))    ,ExEngine.toString(ExEngine.alu),WRITE_RF_1,OPERAND1_REG, OPERAND2_IMM  ,WAKEUP_1,TYPE_INT),
-   SH               -> Seq(op.e(ALUOp.toString(ALUOp.add))    ,ExEngine.toString(ExEngine.alu),WRITE_RF_0,OPERAND1_REG, OPERAND2_IMM  ,WAKEUP_1,TYPE_INT),
-   SLL              -> Seq(op.e(ALUOp.toString(ALUOp.sll))    ,ExEngine.toString(ExEngine.alu),WRITE_RF_1,OPERAND1_REG, OPERAND2_REG  ,WAKEUP_1,TYPE_INT),
-   SLT              -> Seq(op.e(ALUOp.toString(ALUOp.slt))    ,ExEngine.toString(ExEngine.alu),WRITE_RF_1,OPERAND1_REG, OPERAND2_REG  ,WAKEUP_1,TYPE_INT),
-   SLTI             -> Seq(op.e(ALUOp.toString(ALUOp.slt))    ,ExEngine.toString(ExEngine.alu),WRITE_RF_1,OPERAND1_REG, OPERAND2_IMM  ,WAKEUP_1,TYPE_INT),
-   SLTIU            -> Seq(op.e(ALUOp.toString(ALUOp.sltu))   ,ExEngine.toString(ExEngine.alu),WRITE_RF_1,OPERAND1_REG, OPERAND2_IMM  ,WAKEUP_1,TYPE_INT),
-   SLTU             -> Seq(op.e(ALUOp.toString(ALUOp.sltu))   ,ExEngine.toString(ExEngine.alu),WRITE_RF_1,OPERAND1_REG, OPERAND2_REG  ,WAKEUP_1,TYPE_INT),
-   SRA              -> Seq(op.e(ALUOp.toString(ALUOp.sra))    ,ExEngine.toString(ExEngine.alu),WRITE_RF_1,OPERAND1_REG, OPERAND2_REG  ,WAKEUP_1,TYPE_INT),
-   SRL              -> Seq(op.e(ALUOp.toString(ALUOp.srl))    ,ExEngine.toString(ExEngine.alu),WRITE_RF_1,OPERAND1_REG, OPERAND2_REG  ,WAKEUP_1,TYPE_INT),
-   SUB              -> Seq(op.e(ALUOp.toString(ALUOp.sub))    ,ExEngine.toString(ExEngine.alu),WRITE_RF_1,OPERAND1_REG, OPERAND2_REG  ,WAKEUP_1,TYPE_INT),
-   SW               -> Seq(op.e(ALUOp.toString(ALUOp.add))    ,ExEngine.toString(ExEngine.alu),WRITE_RF_0,OPERAND1_REG, OPERAND2_IMM  ,WAKEUP_1,TYPE_INT),
-   XOR              -> Seq(op.e(ALUOp.toString(ALUOp.xor))    ,ExEngine.toString(ExEngine.alu),WRITE_RF_1,OPERAND1_REG, OPERAND2_REG  ,WAKEUP_1,TYPE_INT),
-   XORI             -> Seq(op.e(ALUOp.toString(ALUOp.xor))    ,ExEngine.toString(ExEngine.alu),WRITE_RF_1,OPERAND1_REG, OPERAND2_IMM  ,WAKEUP_1,TYPE_INT),
+   ADD              -> Seq(op.e(ALUOp.toString(ALUOp.add))    ,ExEngine.toString(ExEngine.alu),WRITE_RF_1,OPERAND1_REG, OPERAND2_REG  ,WAKEUP_1,IS_BRANCH_0,TYPE_INT),
+   ADDI             -> Seq(op.e(ALUOp.toString(ALUOp.add))    ,ExEngine.toString(ExEngine.alu),WRITE_RF_1,OPERAND1_REG, OPERAND2_IMM  ,WAKEUP_1,IS_BRANCH_0,TYPE_INT),
+   AND              -> Seq(op.e(ALUOp.toString(ALUOp.and))    ,ExEngine.toString(ExEngine.alu),WRITE_RF_1,OPERAND1_REG, OPERAND2_REG  ,WAKEUP_1,IS_BRANCH_0,TYPE_INT),
+   ANDI             -> Seq(op.e(ALUOp.toString(ALUOp.and))    ,ExEngine.toString(ExEngine.alu),WRITE_RF_1,OPERAND1_REG, OPERAND2_IMM  ,WAKEUP_1,IS_BRANCH_0,TYPE_INT),
+   AUIPC            -> Seq(op.e(ALUOp.toString(ALUOp.add))    ,ExEngine.toString(ExEngine.alu),WRITE_RF_1,OPERAND1_PC,  OPERAND2_IMM  ,WAKEUP_1,IS_BRANCH_0,TYPE_INT),
+   BEQ              -> Seq(op.e(ALUOp.toString(ALUOp.beq))    ,ExEngine.toString(ExEngine.alu),WRITE_RF_0,OPERAND1_PC,  OPERAND2_IMM  ,WAKEUP_1,IS_BRANCH_1,TYPE_INT),
+   BGE              -> Seq(op.e(ALUOp.toString(ALUOp.bge))    ,ExEngine.toString(ExEngine.alu),WRITE_RF_0,OPERAND1_PC,  OPERAND2_IMM  ,WAKEUP_1,IS_BRANCH_1,TYPE_INT),
+   BGEU             -> Seq(op.e(ALUOp.toString(ALUOp.bgeu))   ,ExEngine.toString(ExEngine.alu),WRITE_RF_0,OPERAND1_PC,  OPERAND2_IMM  ,WAKEUP_1,IS_BRANCH_1,TYPE_INT),
+   BLT              -> Seq(op.e(ALUOp.toString(ALUOp.blt))    ,ExEngine.toString(ExEngine.alu),WRITE_RF_0,OPERAND1_PC,  OPERAND2_IMM  ,WAKEUP_1,IS_BRANCH_1,TYPE_INT),
+   BLTU             -> Seq(op.e(ALUOp.toString(ALUOp.bltu))   ,ExEngine.toString(ExEngine.alu),WRITE_RF_0,OPERAND1_PC,  OPERAND2_IMM  ,WAKEUP_1,IS_BRANCH_1,TYPE_INT),
+   BNE              -> Seq(op.e(ALUOp.toString(ALUOp.bne))    ,ExEngine.toString(ExEngine.alu),WRITE_RF_0,OPERAND1_PC,  OPERAND2_IMM  ,WAKEUP_1,IS_BRANCH_1,TYPE_INT),
+   EBREAK           -> Seq(op.e(ALUOp.toString(ALUOp.add))    ,ExEngine.toString(ExEngine.alu),WRITE_RF_1,OPERAND1_REG, OPERAND2_REG  ,WAKEUP_1,IS_BRANCH_0,TYPE_INT),
+   ECALL            -> Seq(op.e(ALUOp.toString(ALUOp.add))    ,ExEngine.toString(ExEngine.alu),WRITE_RF_1,OPERAND1_REG, OPERAND2_REG  ,WAKEUP_1,IS_BRANCH_0,TYPE_INT),
+   FENCE            -> Seq(op.e(ALUOp.toString(ALUOp.add))    ,ExEngine.toString(ExEngine.alu),WRITE_RF_1,OPERAND1_REG, OPERAND2_REG  ,WAKEUP_1,IS_BRANCH_0,TYPE_INT),
+   FENCE_TSO        -> Seq(op.e(ALUOp.toString(ALUOp.add))    ,ExEngine.toString(ExEngine.alu),WRITE_RF_1,OPERAND1_REG, OPERAND2_REG  ,WAKEUP_1,IS_BRANCH_0,TYPE_INT),
+   JAL              -> Seq(op.e(ALUOp.toString(ALUOp.jal))    ,ExEngine.toString(ExEngine.alu),WRITE_RF_1,OPERAND1_REG, OPERAND2_IMM  ,WAKEUP_1,IS_BRANCH_1,TYPE_INT),
+   JALR             -> Seq(op.e(ALUOp.toString(ALUOp.jalr))   ,ExEngine.toString(ExEngine.alu),WRITE_RF_1,OPERAND1_REG, OPERAND2_IMM  ,WAKEUP_1,IS_BRANCH_1,TYPE_INT),
+   LB               -> Seq(op.e(ALUOp.toString(ALUOp.add))    ,ExEngine.toString(ExEngine.alu),WRITE_RF_1,OPERAND1_REG, OPERAND2_IMM  ,WAKEUP_1,IS_BRANCH_0,TYPE_INT),
+   LBU              -> Seq(op.e(ALUOp.toString(ALUOp.add))    ,ExEngine.toString(ExEngine.alu),WRITE_RF_1,OPERAND1_REG, OPERAND2_IMM  ,WAKEUP_1,IS_BRANCH_0,TYPE_INT),
+   LH               -> Seq(op.e(ALUOp.toString(ALUOp.add))    ,ExEngine.toString(ExEngine.alu),WRITE_RF_1,OPERAND1_REG, OPERAND2_IMM  ,WAKEUP_1,IS_BRANCH_0,TYPE_INT),
+   LHU              -> Seq(op.e(ALUOp.toString(ALUOp.add))    ,ExEngine.toString(ExEngine.alu),WRITE_RF_1,OPERAND1_REG, OPERAND2_IMM  ,WAKEUP_1,IS_BRANCH_0,TYPE_INT),
+   LUI              -> Seq(op.e(ALUOp.toString(ALUOp.add))    ,ExEngine.toString(ExEngine.alu),WRITE_RF_1,OPERAND1_X0,  OPERAND2_IMM  ,WAKEUP_1,IS_BRANCH_0,TYPE_INT),
+   LW               -> Seq(op.e(ALUOp.toString(ALUOp.add))    ,ExEngine.toString(ExEngine.alu),WRITE_RF_1,OPERAND1_REG, OPERAND2_IMM  ,WAKEUP_1,IS_BRANCH_0,TYPE_INT),
+   OR               -> Seq(op.e(ALUOp.toString(ALUOp.or))     ,ExEngine.toString(ExEngine.alu),WRITE_RF_1,OPERAND1_REG, OPERAND2_REG  ,WAKEUP_1,IS_BRANCH_0,TYPE_INT),
+   ORI              -> Seq(op.e(ALUOp.toString(ALUOp.or))     ,ExEngine.toString(ExEngine.alu),WRITE_RF_1,OPERAND1_REG, OPERAND2_IMM  ,WAKEUP_1,IS_BRANCH_0,TYPE_INT),
+   PAUSE            -> Seq(op.e(ALUOp.toString(ALUOp.add))    ,ExEngine.toString(ExEngine.alu),WRITE_RF_1,OPERAND1_REG, OPERAND2_IMM  ,WAKEUP_1,IS_BRANCH_0,TYPE_INT),
+   SB               -> Seq(op.e(ALUOp.toString(ALUOp.add))    ,ExEngine.toString(ExEngine.alu),WRITE_RF_0,OPERAND1_REG, OPERAND2_IMM  ,WAKEUP_1,IS_BRANCH_0,TYPE_INT),
+   SBREAK           -> Seq(op.e(ALUOp.toString(ALUOp.add))    ,ExEngine.toString(ExEngine.alu),WRITE_RF_1,OPERAND1_REG, OPERAND2_IMM  ,WAKEUP_1,IS_BRANCH_0,TYPE_INT),
+   SCALL            -> Seq(op.e(ALUOp.toString(ALUOp.add))    ,ExEngine.toString(ExEngine.alu),WRITE_RF_1,OPERAND1_REG, OPERAND2_IMM  ,WAKEUP_1,IS_BRANCH_0,TYPE_INT),
+   SH               -> Seq(op.e(ALUOp.toString(ALUOp.add))    ,ExEngine.toString(ExEngine.alu),WRITE_RF_0,OPERAND1_REG, OPERAND2_IMM  ,WAKEUP_1,IS_BRANCH_0,TYPE_INT),
+   SLL              -> Seq(op.e(ALUOp.toString(ALUOp.sll))    ,ExEngine.toString(ExEngine.alu),WRITE_RF_1,OPERAND1_REG, OPERAND2_REG  ,WAKEUP_1,IS_BRANCH_0,TYPE_INT),
+   SLT              -> Seq(op.e(ALUOp.toString(ALUOp.slt))    ,ExEngine.toString(ExEngine.alu),WRITE_RF_1,OPERAND1_REG, OPERAND2_REG  ,WAKEUP_1,IS_BRANCH_0,TYPE_INT),
+   SLTI             -> Seq(op.e(ALUOp.toString(ALUOp.slt))    ,ExEngine.toString(ExEngine.alu),WRITE_RF_1,OPERAND1_REG, OPERAND2_IMM  ,WAKEUP_1,IS_BRANCH_0,TYPE_INT),
+   SLTIU            -> Seq(op.e(ALUOp.toString(ALUOp.sltu))   ,ExEngine.toString(ExEngine.alu),WRITE_RF_1,OPERAND1_REG, OPERAND2_IMM  ,WAKEUP_1,IS_BRANCH_0,TYPE_INT),
+   SLTU             -> Seq(op.e(ALUOp.toString(ALUOp.sltu))   ,ExEngine.toString(ExEngine.alu),WRITE_RF_1,OPERAND1_REG, OPERAND2_REG  ,WAKEUP_1,IS_BRANCH_0,TYPE_INT),
+   SRA              -> Seq(op.e(ALUOp.toString(ALUOp.sra))    ,ExEngine.toString(ExEngine.alu),WRITE_RF_1,OPERAND1_REG, OPERAND2_REG  ,WAKEUP_1,IS_BRANCH_0,TYPE_INT),
+   SRL              -> Seq(op.e(ALUOp.toString(ALUOp.srl))    ,ExEngine.toString(ExEngine.alu),WRITE_RF_1,OPERAND1_REG, OPERAND2_REG  ,WAKEUP_1,IS_BRANCH_0,TYPE_INT),
+   SUB              -> Seq(op.e(ALUOp.toString(ALUOp.sub))    ,ExEngine.toString(ExEngine.alu),WRITE_RF_1,OPERAND1_REG, OPERAND2_REG  ,WAKEUP_1,IS_BRANCH_0,TYPE_INT),
+   SW               -> Seq(op.e(ALUOp.toString(ALUOp.add))    ,ExEngine.toString(ExEngine.alu),WRITE_RF_0,OPERAND1_REG, OPERAND2_IMM  ,WAKEUP_1,IS_BRANCH_0,TYPE_INT),
+   XOR              -> Seq(op.e(ALUOp.toString(ALUOp.xor))    ,ExEngine.toString(ExEngine.alu),WRITE_RF_1,OPERAND1_REG, OPERAND2_REG  ,WAKEUP_1,IS_BRANCH_0,TYPE_INT),
+   XORI             -> Seq(op.e(ALUOp.toString(ALUOp.xor))    ,ExEngine.toString(ExEngine.alu),WRITE_RF_1,OPERAND1_REG, OPERAND2_IMM  ,WAKEUP_1,IS_BRANCH_0,TYPE_INT),
 
   // i32
-   SLLI             -> Seq(op.e(ALUOp.toString(ALUOp.sll))    ,ExEngine.toString(ExEngine.alu),WRITE_RF_1,OPERAND1_REG, OPERAND2_IMM  ,WAKEUP_1,TYPE_INT),
-   SRAI             -> Seq(op.e(ALUOp.toString(ALUOp.sra))    ,ExEngine.toString(ExEngine.alu),WRITE_RF_1,OPERAND1_REG, OPERAND2_IMM  ,WAKEUP_1,TYPE_INT),
-   SRLI             -> Seq(op.e(ALUOp.toString(ALUOp.srl))    ,ExEngine.toString(ExEngine.alu),WRITE_RF_1,OPERAND1_REG, OPERAND2_IMM  ,WAKEUP_1,TYPE_INT),
+   SLLI             -> Seq(op.e(ALUOp.toString(ALUOp.sll))    ,ExEngine.toString(ExEngine.alu),WRITE_RF_1,OPERAND1_REG, OPERAND2_IMM  ,WAKEUP_1,IS_BRANCH_0,TYPE_INT),
+   SRAI             -> Seq(op.e(ALUOp.toString(ALUOp.sra))    ,ExEngine.toString(ExEngine.alu),WRITE_RF_1,OPERAND1_REG, OPERAND2_IMM  ,WAKEUP_1,IS_BRANCH_0,TYPE_INT),
+   SRLI             -> Seq(op.e(ALUOp.toString(ALUOp.srl))    ,ExEngine.toString(ExEngine.alu),WRITE_RF_1,OPERAND1_REG, OPERAND2_IMM  ,WAKEUP_1,IS_BRANCH_0,TYPE_INT),
 
-   AMOADD_W         -> Seq(op.e(ALUOp.toString(ALUOp.add))    ,ExEngine.toString(ExEngine.alu),WRITE_RF_1,OPERAND1_REG, OPERAND2_IMM  ,WAKEUP_1,TYPE_INT),
-   AMOAND_W         -> Seq(op.e(ALUOp.toString(ALUOp.add))    ,ExEngine.toString(ExEngine.alu),WRITE_RF_1,OPERAND1_REG, OPERAND2_IMM  ,WAKEUP_1,TYPE_INT),
-   AMOMAX_W         -> Seq(op.e(ALUOp.toString(ALUOp.add))    ,ExEngine.toString(ExEngine.alu),WRITE_RF_1,OPERAND1_REG, OPERAND2_IMM  ,WAKEUP_1,TYPE_INT),
-   AMOMAXU_W        -> Seq(op.e(ALUOp.toString(ALUOp.add))    ,ExEngine.toString(ExEngine.alu),WRITE_RF_1,OPERAND1_REG, OPERAND2_IMM  ,WAKEUP_1,TYPE_INT),
-   AMOMIN_W         -> Seq(op.e(ALUOp.toString(ALUOp.add))    ,ExEngine.toString(ExEngine.alu),WRITE_RF_1,OPERAND1_REG, OPERAND2_IMM  ,WAKEUP_1,TYPE_INT),
-   AMOMINU_W        -> Seq(op.e(ALUOp.toString(ALUOp.add))    ,ExEngine.toString(ExEngine.alu),WRITE_RF_1,OPERAND1_REG, OPERAND2_IMM  ,WAKEUP_1,TYPE_INT),
-   AMOOR_W          -> Seq(op.e(ALUOp.toString(ALUOp.add))    ,ExEngine.toString(ExEngine.alu),WRITE_RF_1,OPERAND1_REG, OPERAND2_IMM  ,WAKEUP_1,TYPE_INT),
-   AMOSWAP_W        -> Seq(op.e(ALUOp.toString(ALUOp.add))    ,ExEngine.toString(ExEngine.alu),WRITE_RF_1,OPERAND1_REG, OPERAND2_IMM  ,WAKEUP_1,TYPE_INT),
-   AMOXOR_W         -> Seq(op.e(ALUOp.toString(ALUOp.add))    ,ExEngine.toString(ExEngine.alu),WRITE_RF_1,OPERAND1_REG, OPERAND2_IMM  ,WAKEUP_1,TYPE_INT),
-   LR_W             -> Seq(op.e(ALUOp.toString(ALUOp.add))    ,ExEngine.toString(ExEngine.alu),WRITE_RF_1,OPERAND1_REG, OPERAND2_IMM  ,WAKEUP_1,TYPE_INT),
-   SC_W             -> Seq(op.e(ALUOp.toString(ALUOp.add))    ,ExEngine.toString(ExEngine.alu),WRITE_RF_1,OPERAND1_REG, OPERAND2_IMM  ,WAKEUP_1,TYPE_INT),
+   AMOADD_W         -> Seq(op.e(ALUOp.toString(ALUOp.add))    ,ExEngine.toString(ExEngine.alu),WRITE_RF_1,OPERAND1_REG, OPERAND2_IMM  ,WAKEUP_1,IS_BRANCH_0,TYPE_INT),
+   AMOAND_W         -> Seq(op.e(ALUOp.toString(ALUOp.add))    ,ExEngine.toString(ExEngine.alu),WRITE_RF_1,OPERAND1_REG, OPERAND2_IMM  ,WAKEUP_1,IS_BRANCH_0,TYPE_INT),
+   AMOMAX_W         -> Seq(op.e(ALUOp.toString(ALUOp.add))    ,ExEngine.toString(ExEngine.alu),WRITE_RF_1,OPERAND1_REG, OPERAND2_IMM  ,WAKEUP_1,IS_BRANCH_0,TYPE_INT),
+   AMOMAXU_W        -> Seq(op.e(ALUOp.toString(ALUOp.add))    ,ExEngine.toString(ExEngine.alu),WRITE_RF_1,OPERAND1_REG, OPERAND2_IMM  ,WAKEUP_1,IS_BRANCH_0,TYPE_INT),
+   AMOMIN_W         -> Seq(op.e(ALUOp.toString(ALUOp.add))    ,ExEngine.toString(ExEngine.alu),WRITE_RF_1,OPERAND1_REG, OPERAND2_IMM  ,WAKEUP_1,IS_BRANCH_0,TYPE_INT),
+   AMOMINU_W        -> Seq(op.e(ALUOp.toString(ALUOp.add))    ,ExEngine.toString(ExEngine.alu),WRITE_RF_1,OPERAND1_REG, OPERAND2_IMM  ,WAKEUP_1,IS_BRANCH_0,TYPE_INT),
+   AMOOR_W          -> Seq(op.e(ALUOp.toString(ALUOp.add))    ,ExEngine.toString(ExEngine.alu),WRITE_RF_1,OPERAND1_REG, OPERAND2_IMM  ,WAKEUP_1,IS_BRANCH_0,TYPE_INT),
+   AMOSWAP_W        -> Seq(op.e(ALUOp.toString(ALUOp.add))    ,ExEngine.toString(ExEngine.alu),WRITE_RF_1,OPERAND1_REG, OPERAND2_IMM  ,WAKEUP_1,IS_BRANCH_0,TYPE_INT),
+   AMOXOR_W         -> Seq(op.e(ALUOp.toString(ALUOp.add))    ,ExEngine.toString(ExEngine.alu),WRITE_RF_1,OPERAND1_REG, OPERAND2_IMM  ,WAKEUP_1,IS_BRANCH_0,TYPE_INT),
+   LR_W             -> Seq(op.e(ALUOp.toString(ALUOp.add))    ,ExEngine.toString(ExEngine.alu),WRITE_RF_1,OPERAND1_REG, OPERAND2_IMM  ,WAKEUP_1,IS_BRANCH_0,TYPE_INT),
+   SC_W             -> Seq(op.e(ALUOp.toString(ALUOp.add))    ,ExEngine.toString(ExEngine.alu),WRITE_RF_1,OPERAND1_REG, OPERAND2_IMM  ,WAKEUP_1,IS_BRANCH_0,TYPE_INT),
 
-   ANDN             -> Seq(op.e(ALUOp.toString(ALUOp.add))    ,ExEngine.toString(ExEngine.alu),WRITE_RF_1,OPERAND1_REG, OPERAND2_IMM  ,WAKEUP_1,TYPE_INT),
-   CLZ              -> Seq(op.e(ALUOp.toString(ALUOp.add))    ,ExEngine.toString(ExEngine.alu),WRITE_RF_1,OPERAND1_REG, OPERAND2_IMM  ,WAKEUP_1,TYPE_INT),
-   CPOP             -> Seq(op.e(ALUOp.toString(ALUOp.add))    ,ExEngine.toString(ExEngine.alu),WRITE_RF_1,OPERAND1_REG, OPERAND2_IMM  ,WAKEUP_1,TYPE_INT),
-   CTZ              -> Seq(op.e(ALUOp.toString(ALUOp.add))    ,ExEngine.toString(ExEngine.alu),WRITE_RF_1,OPERAND1_REG, OPERAND2_IMM  ,WAKEUP_1,TYPE_INT),
-   MAX              -> Seq(op.e(ALUOp.toString(ALUOp.add))    ,ExEngine.toString(ExEngine.alu),WRITE_RF_1,OPERAND1_REG, OPERAND2_IMM  ,WAKEUP_1,TYPE_INT),
-   MAXU             -> Seq(op.e(ALUOp.toString(ALUOp.add))    ,ExEngine.toString(ExEngine.alu),WRITE_RF_1,OPERAND1_REG, OPERAND2_IMM  ,WAKEUP_1,TYPE_INT),
-   MIN              -> Seq(op.e(ALUOp.toString(ALUOp.add))    ,ExEngine.toString(ExEngine.alu),WRITE_RF_1,OPERAND1_REG, OPERAND2_IMM  ,WAKEUP_1,TYPE_INT),
-   MINU             -> Seq(op.e(ALUOp.toString(ALUOp.add))    ,ExEngine.toString(ExEngine.alu),WRITE_RF_1,OPERAND1_REG, OPERAND2_IMM  ,WAKEUP_1,TYPE_INT),
-   ORC_B            -> Seq(op.e(ALUOp.toString(ALUOp.add))    ,ExEngine.toString(ExEngine.alu),WRITE_RF_1,OPERAND1_REG, OPERAND2_IMM  ,WAKEUP_1,TYPE_INT),
-   ORN              -> Seq(op.e(ALUOp.toString(ALUOp.add))    ,ExEngine.toString(ExEngine.alu),WRITE_RF_1,OPERAND1_REG, OPERAND2_IMM  ,WAKEUP_1,TYPE_INT),
-   ROL              -> Seq(op.e(ALUOp.toString(ALUOp.add))    ,ExEngine.toString(ExEngine.alu),WRITE_RF_1,OPERAND1_REG, OPERAND2_IMM  ,WAKEUP_1,TYPE_INT),
-   ROR              -> Seq(op.e(ALUOp.toString(ALUOp.add))    ,ExEngine.toString(ExEngine.alu),WRITE_RF_1,OPERAND1_REG, OPERAND2_IMM  ,WAKEUP_1,TYPE_INT),
-   SEXT_B           -> Seq(op.e(ALUOp.toString(ALUOp.add))    ,ExEngine.toString(ExEngine.alu),WRITE_RF_1,OPERAND1_REG, OPERAND2_IMM  ,WAKEUP_1,TYPE_INT),
-   SEXT_H           -> Seq(op.e(ALUOp.toString(ALUOp.add))    ,ExEngine.toString(ExEngine.alu),WRITE_RF_1,OPERAND1_REG, OPERAND2_IMM  ,WAKEUP_1,TYPE_INT),
-   XNOR             -> Seq(op.e(ALUOp.toString(ALUOp.add))    ,ExEngine.toString(ExEngine.alu),WRITE_RF_1,OPERAND1_REG, OPERAND2_IMM  ,WAKEUP_1,TYPE_INT),
+   ANDN             -> Seq(op.e(ALUOp.toString(ALUOp.add))    ,ExEngine.toString(ExEngine.alu),WRITE_RF_1,OPERAND1_REG, OPERAND2_IMM  ,WAKEUP_1,IS_BRANCH_0,TYPE_INT),
+   CLZ              -> Seq(op.e(ALUOp.toString(ALUOp.add))    ,ExEngine.toString(ExEngine.alu),WRITE_RF_1,OPERAND1_REG, OPERAND2_IMM  ,WAKEUP_1,IS_BRANCH_0,TYPE_INT),
+   CPOP             -> Seq(op.e(ALUOp.toString(ALUOp.add))    ,ExEngine.toString(ExEngine.alu),WRITE_RF_1,OPERAND1_REG, OPERAND2_IMM  ,WAKEUP_1,IS_BRANCH_0,TYPE_INT),
+   CTZ              -> Seq(op.e(ALUOp.toString(ALUOp.add))    ,ExEngine.toString(ExEngine.alu),WRITE_RF_1,OPERAND1_REG, OPERAND2_IMM  ,WAKEUP_1,IS_BRANCH_0,TYPE_INT),
+   MAX              -> Seq(op.e(ALUOp.toString(ALUOp.add))    ,ExEngine.toString(ExEngine.alu),WRITE_RF_1,OPERAND1_REG, OPERAND2_IMM  ,WAKEUP_1,IS_BRANCH_0,TYPE_INT),
+   MAXU             -> Seq(op.e(ALUOp.toString(ALUOp.add))    ,ExEngine.toString(ExEngine.alu),WRITE_RF_1,OPERAND1_REG, OPERAND2_IMM  ,WAKEUP_1,IS_BRANCH_0,TYPE_INT),
+   MIN              -> Seq(op.e(ALUOp.toString(ALUOp.add))    ,ExEngine.toString(ExEngine.alu),WRITE_RF_1,OPERAND1_REG, OPERAND2_IMM  ,WAKEUP_1,IS_BRANCH_0,TYPE_INT),
+   MINU             -> Seq(op.e(ALUOp.toString(ALUOp.add))    ,ExEngine.toString(ExEngine.alu),WRITE_RF_1,OPERAND1_REG, OPERAND2_IMM  ,WAKEUP_1,IS_BRANCH_0,TYPE_INT),
+   ORC_B            -> Seq(op.e(ALUOp.toString(ALUOp.add))    ,ExEngine.toString(ExEngine.alu),WRITE_RF_1,OPERAND1_REG, OPERAND2_IMM  ,WAKEUP_1,IS_BRANCH_0,TYPE_INT),
+   ORN              -> Seq(op.e(ALUOp.toString(ALUOp.add))    ,ExEngine.toString(ExEngine.alu),WRITE_RF_1,OPERAND1_REG, OPERAND2_IMM  ,WAKEUP_1,IS_BRANCH_0,TYPE_INT),
+   ROL              -> Seq(op.e(ALUOp.toString(ALUOp.add))    ,ExEngine.toString(ExEngine.alu),WRITE_RF_1,OPERAND1_REG, OPERAND2_IMM  ,WAKEUP_1,IS_BRANCH_0,TYPE_INT),
+   ROR              -> Seq(op.e(ALUOp.toString(ALUOp.add))    ,ExEngine.toString(ExEngine.alu),WRITE_RF_1,OPERAND1_REG, OPERAND2_IMM  ,WAKEUP_1,IS_BRANCH_0,TYPE_INT),
+   SEXT_B           -> Seq(op.e(ALUOp.toString(ALUOp.add))    ,ExEngine.toString(ExEngine.alu),WRITE_RF_1,OPERAND1_REG, OPERAND2_IMM  ,WAKEUP_1,IS_BRANCH_0,TYPE_INT),
+   SEXT_H           -> Seq(op.e(ALUOp.toString(ALUOp.add))    ,ExEngine.toString(ExEngine.alu),WRITE_RF_1,OPERAND1_REG, OPERAND2_IMM  ,WAKEUP_1,IS_BRANCH_0,TYPE_INT),
+   XNOR             -> Seq(op.e(ALUOp.toString(ALUOp.add))    ,ExEngine.toString(ExEngine.alu),WRITE_RF_1,OPERAND1_REG, OPERAND2_IMM  ,WAKEUP_1,IS_BRANCH_0,TYPE_INT),
 
-   REV8_RV32        -> Seq(op.e(ALUOp.toString(ALUOp.add))    ,ExEngine.toString(ExEngine.alu),WRITE_RF_1,OPERAND1_REG, OPERAND2_IMM  ,WAKEUP_1,TYPE_INT),
-   RORI_RV32        -> Seq(op.e(ALUOp.toString(ALUOp.add))    ,ExEngine.toString(ExEngine.alu),WRITE_RF_1,OPERAND1_REG, OPERAND2_IMM  ,WAKEUP_1,TYPE_INT),
-   ZEXT_H_RV32      -> Seq(op.e(ALUOp.toString(ALUOp.add))    ,ExEngine.toString(ExEngine.alu),WRITE_RF_1,OPERAND1_REG, OPERAND2_IMM  ,WAKEUP_1,TYPE_INT),
+   REV8_RV32        -> Seq(op.e(ALUOp.toString(ALUOp.add))    ,ExEngine.toString(ExEngine.alu),WRITE_RF_1,OPERAND1_REG, OPERAND2_IMM  ,WAKEUP_1,IS_BRANCH_0,TYPE_INT),
+   RORI_RV32        -> Seq(op.e(ALUOp.toString(ALUOp.add))    ,ExEngine.toString(ExEngine.alu),WRITE_RF_1,OPERAND1_REG, OPERAND2_IMM  ,WAKEUP_1,IS_BRANCH_0,TYPE_INT),
+   ZEXT_H_RV32      -> Seq(op.e(ALUOp.toString(ALUOp.add))    ,ExEngine.toString(ExEngine.alu),WRITE_RF_1,OPERAND1_REG, OPERAND2_IMM  ,WAKEUP_1,IS_BRANCH_0,TYPE_INT),
 
-   BCLR             -> Seq(op.e(ALUOp.toString(ALUOp.add))    ,ExEngine.toString(ExEngine.alu),WRITE_RF_1,OPERAND1_REG, OPERAND2_IMM  ,WAKEUP_1,TYPE_INT),
-   BEXT             -> Seq(op.e(ALUOp.toString(ALUOp.add))    ,ExEngine.toString(ExEngine.alu),WRITE_RF_1,OPERAND1_REG, OPERAND2_IMM  ,WAKEUP_1,TYPE_INT),
-   BINV             -> Seq(op.e(ALUOp.toString(ALUOp.add))    ,ExEngine.toString(ExEngine.alu),WRITE_RF_1,OPERAND1_REG, OPERAND2_IMM  ,WAKEUP_1,TYPE_INT),
-   BSET             -> Seq(op.e(ALUOp.toString(ALUOp.add))    ,ExEngine.toString(ExEngine.alu),WRITE_RF_1,OPERAND1_REG, OPERAND2_IMM  ,WAKEUP_1,TYPE_INT),
+   BCLR             -> Seq(op.e(ALUOp.toString(ALUOp.add))    ,ExEngine.toString(ExEngine.alu),WRITE_RF_1,OPERAND1_REG, OPERAND2_IMM  ,WAKEUP_1,IS_BRANCH_0,TYPE_INT),
+   BEXT             -> Seq(op.e(ALUOp.toString(ALUOp.add))    ,ExEngine.toString(ExEngine.alu),WRITE_RF_1,OPERAND1_REG, OPERAND2_IMM  ,WAKEUP_1,IS_BRANCH_0,TYPE_INT),
+   BINV             -> Seq(op.e(ALUOp.toString(ALUOp.add))    ,ExEngine.toString(ExEngine.alu),WRITE_RF_1,OPERAND1_REG, OPERAND2_IMM  ,WAKEUP_1,IS_BRANCH_0,TYPE_INT),
+   BSET             -> Seq(op.e(ALUOp.toString(ALUOp.add))    ,ExEngine.toString(ExEngine.alu),WRITE_RF_1,OPERAND1_REG, OPERAND2_IMM  ,WAKEUP_1,IS_BRANCH_0,TYPE_INT),
 
-   BCLRI_RV32       -> Seq(op.e(ALUOp.toString(ALUOp.add))    ,ExEngine.toString(ExEngine.alu),WRITE_RF_1,OPERAND1_REG, OPERAND2_IMM  ,WAKEUP_1,TYPE_INT),
-   BEXTI_RV32       -> Seq(op.e(ALUOp.toString(ALUOp.add))    ,ExEngine.toString(ExEngine.alu),WRITE_RF_1,OPERAND1_REG, OPERAND2_IMM  ,WAKEUP_1,TYPE_INT),
-   BINVI_RV32       -> Seq(op.e(ALUOp.toString(ALUOp.add))    ,ExEngine.toString(ExEngine.alu),WRITE_RF_1,OPERAND1_REG, OPERAND2_IMM  ,WAKEUP_1,TYPE_INT),
-   BSETI_RV32       -> Seq(op.e(ALUOp.toString(ALUOp.add))    ,ExEngine.toString(ExEngine.alu),WRITE_RF_1,OPERAND1_REG, OPERAND2_IMM  ,WAKEUP_1,TYPE_INT),
+   BCLRI_RV32       -> Seq(op.e(ALUOp.toString(ALUOp.add))    ,ExEngine.toString(ExEngine.alu),WRITE_RF_1,OPERAND1_REG, OPERAND2_IMM  ,WAKEUP_1,IS_BRANCH_0,TYPE_INT),
+   BEXTI_RV32       -> Seq(op.e(ALUOp.toString(ALUOp.add))    ,ExEngine.toString(ExEngine.alu),WRITE_RF_1,OPERAND1_REG, OPERAND2_IMM  ,WAKEUP_1,IS_BRANCH_0,TYPE_INT),
+   BINVI_RV32       -> Seq(op.e(ALUOp.toString(ALUOp.add))    ,ExEngine.toString(ExEngine.alu),WRITE_RF_1,OPERAND1_REG, OPERAND2_IMM  ,WAKEUP_1,IS_BRANCH_0,TYPE_INT),
+   BSETI_RV32       -> Seq(op.e(ALUOp.toString(ALUOp.add))    ,ExEngine.toString(ExEngine.alu),WRITE_RF_1,OPERAND1_REG, OPERAND2_IMM  ,WAKEUP_1,IS_BRANCH_0,TYPE_INT),
 
-   CLMUL            -> Seq(op.e(ALUOp.toString(ALUOp.add))    ,ExEngine.toString(ExEngine.alu),WRITE_RF_1,OPERAND1_REG, OPERAND2_IMM  ,WAKEUP_0,TYPE_INT),
-   CLMULH           -> Seq(op.e(ALUOp.toString(ALUOp.add))    ,ExEngine.toString(ExEngine.alu),WRITE_RF_1,OPERAND1_REG, OPERAND2_IMM  ,WAKEUP_0,TYPE_INT),
-   CLMULR           -> Seq(op.e(ALUOp.toString(ALUOp.add))    ,ExEngine.toString(ExEngine.alu),WRITE_RF_1,OPERAND1_REG, OPERAND2_IMM  ,WAKEUP_0,TYPE_INT),
+   CLMUL            -> Seq(op.e(ALUOp.toString(ALUOp.add))    ,ExEngine.toString(ExEngine.alu),WRITE_RF_1,OPERAND1_REG, OPERAND2_IMM  ,WAKEUP_0,IS_BRANCH_0,TYPE_INT),
+   CLMULH           -> Seq(op.e(ALUOp.toString(ALUOp.add))    ,ExEngine.toString(ExEngine.alu),WRITE_RF_1,OPERAND1_REG, OPERAND2_IMM  ,WAKEUP_0,IS_BRANCH_0,TYPE_INT),
+   CLMULR           -> Seq(op.e(ALUOp.toString(ALUOp.add))    ,ExEngine.toString(ExEngine.alu),WRITE_RF_1,OPERAND1_REG, OPERAND2_IMM  ,WAKEUP_0,IS_BRANCH_0,TYPE_INT),
    
-   DIV              -> Seq(op.e(IDUOp.toString(IDUOp.div))    ,ExEngine.toString(ExEngine.idu),WRITE_RF_1,OPERAND1_REG, OPERAND2_REG  ,WAKEUP_0,TYPE_INT),
-   DIVU             -> Seq(op.e(IDUOp.toString(IDUOp.divu))   ,ExEngine.toString(ExEngine.idu),WRITE_RF_1,OPERAND1_REG, OPERAND2_REG  ,WAKEUP_0,TYPE_INT),
-   MUL              -> Seq(op.e(IMUOp.toString(IMUOp.mul))    ,ExEngine.toString(ExEngine.imu),WRITE_RF_1,OPERAND1_REG, OPERAND2_REG  ,WAKEUP_0,TYPE_INT),
-   MULH             -> Seq(op.e(IMUOp.toString(IMUOp.mulh))   ,ExEngine.toString(ExEngine.imu),WRITE_RF_1,OPERAND1_REG, OPERAND2_REG  ,WAKEUP_0,TYPE_INT),
-   MULHSU           -> Seq(op.e(IMUOp.toString(IMUOp.mulhsu)) ,ExEngine.toString(ExEngine.imu),WRITE_RF_1,OPERAND1_REG, OPERAND2_REG  ,WAKEUP_0,TYPE_INT),
-   MULHU            -> Seq(op.e(IMUOp.toString(IMUOp.mulhu))  ,ExEngine.toString(ExEngine.imu),WRITE_RF_1,OPERAND1_REG, OPERAND2_REG  ,WAKEUP_0,TYPE_INT),
-   REM              -> Seq(op.e(IDUOp.toString(IDUOp.rem))    ,ExEngine.toString(ExEngine.idu),WRITE_RF_1,OPERAND1_REG, OPERAND1_REG  ,WAKEUP_0,TYPE_INT),
-   REMU             -> Seq(op.e(IDUOp.toString(IDUOp.remu))   ,ExEngine.toString(ExEngine.idu),WRITE_RF_1,OPERAND1_REG, OPERAND1_REG  ,WAKEUP_0,TYPE_INT),
+   DIV              -> Seq(op.e(IDUOp.toString(IDUOp.div))    ,ExEngine.toString(ExEngine.idu),WRITE_RF_1,OPERAND1_REG, OPERAND2_REG  ,WAKEUP_0,IS_BRANCH_0,TYPE_INT),
+   DIVU             -> Seq(op.e(IDUOp.toString(IDUOp.divu))   ,ExEngine.toString(ExEngine.idu),WRITE_RF_1,OPERAND1_REG, OPERAND2_REG  ,WAKEUP_0,IS_BRANCH_0,TYPE_INT),
+   MUL              -> Seq(op.e(IMUOp.toString(IMUOp.mul))    ,ExEngine.toString(ExEngine.imu),WRITE_RF_1,OPERAND1_REG, OPERAND2_REG  ,WAKEUP_0,IS_BRANCH_0,TYPE_INT),
+   MULH             -> Seq(op.e(IMUOp.toString(IMUOp.mulh))   ,ExEngine.toString(ExEngine.imu),WRITE_RF_1,OPERAND1_REG, OPERAND2_REG  ,WAKEUP_0,IS_BRANCH_0,TYPE_INT),
+   MULHSU           -> Seq(op.e(IMUOp.toString(IMUOp.mulhsu)) ,ExEngine.toString(ExEngine.imu),WRITE_RF_1,OPERAND1_REG, OPERAND2_REG  ,WAKEUP_0,IS_BRANCH_0,TYPE_INT),
+   MULHU            -> Seq(op.e(IMUOp.toString(IMUOp.mulhu))  ,ExEngine.toString(ExEngine.imu),WRITE_RF_1,OPERAND1_REG, OPERAND2_REG  ,WAKEUP_0,IS_BRANCH_0,TYPE_INT),
+   REM              -> Seq(op.e(IDUOp.toString(IDUOp.rem))    ,ExEngine.toString(ExEngine.idu),WRITE_RF_1,OPERAND1_REG, OPERAND1_REG  ,WAKEUP_0,IS_BRANCH_0,TYPE_INT),
+   REMU             -> Seq(op.e(IDUOp.toString(IDUOp.remu))   ,ExEngine.toString(ExEngine.idu),WRITE_RF_1,OPERAND1_REG, OPERAND1_REG  ,WAKEUP_0,IS_BRANCH_0,TYPE_INT),
 
-   FADD_S           -> Seq(op.e(ALUOp.toString(ALUOp.add))    ,ExEngine.toString(ExEngine.alu),WRITE_RF_1,OPERAND1_REG, OPERAND2_IMM  ,WAKEUP_0,TYPE_FLOAT),
-   FCLASS_S         -> Seq(op.e(ALUOp.toString(ALUOp.add))    ,ExEngine.toString(ExEngine.alu),WRITE_RF_1,OPERAND1_REG, OPERAND2_IMM  ,WAKEUP_0,TYPE_FLOAT),
-   FCVT_S_W         -> Seq(op.e(ALUOp.toString(ALUOp.add))    ,ExEngine.toString(ExEngine.alu),WRITE_RF_1,OPERAND1_REG, OPERAND2_IMM  ,WAKEUP_0,TYPE_FLOAT),
-   FCVT_S_WU        -> Seq(op.e(ALUOp.toString(ALUOp.add))    ,ExEngine.toString(ExEngine.alu),WRITE_RF_1,OPERAND1_REG, OPERAND2_IMM  ,WAKEUP_0,TYPE_FLOAT),
-   FCVT_W_S         -> Seq(op.e(ALUOp.toString(ALUOp.add))    ,ExEngine.toString(ExEngine.alu),WRITE_RF_1,OPERAND1_REG, OPERAND2_IMM  ,WAKEUP_0,TYPE_FLOAT),
-   FCVT_WU_S        -> Seq(op.e(ALUOp.toString(ALUOp.add))    ,ExEngine.toString(ExEngine.alu),WRITE_RF_1,OPERAND1_REG, OPERAND2_IMM  ,WAKEUP_0,TYPE_FLOAT),
-   FDIV_S           -> Seq(op.e(ALUOp.toString(ALUOp.add))    ,ExEngine.toString(ExEngine.alu),WRITE_RF_1,OPERAND1_REG, OPERAND2_IMM  ,WAKEUP_0,TYPE_FLOAT),
-   FEQ_S            -> Seq(op.e(ALUOp.toString(ALUOp.add))    ,ExEngine.toString(ExEngine.alu),WRITE_RF_1,OPERAND1_REG, OPERAND2_IMM  ,WAKEUP_0,TYPE_FLOAT),
-   FLE_S            -> Seq(op.e(ALUOp.toString(ALUOp.add))    ,ExEngine.toString(ExEngine.alu),WRITE_RF_1,OPERAND1_REG, OPERAND2_IMM  ,WAKEUP_0,TYPE_FLOAT),
-   FLT_S            -> Seq(op.e(ALUOp.toString(ALUOp.add))    ,ExEngine.toString(ExEngine.alu),WRITE_RF_1,OPERAND1_REG, OPERAND2_IMM  ,WAKEUP_0,TYPE_FLOAT),
-   FLW              -> Seq(op.e(ALUOp.toString(ALUOp.add))    ,ExEngine.toString(ExEngine.alu),WRITE_RF_1,OPERAND1_REG, OPERAND2_IMM  ,WAKEUP_0,TYPE_FLOAT),
-   FMADD_S          -> Seq(op.e(ALUOp.toString(ALUOp.add))    ,ExEngine.toString(ExEngine.alu),WRITE_RF_1,OPERAND1_REG, OPERAND2_IMM  ,WAKEUP_0,TYPE_FLOAT),
-   FMAX_S           -> Seq(op.e(ALUOp.toString(ALUOp.add))    ,ExEngine.toString(ExEngine.alu),WRITE_RF_1,OPERAND1_REG, OPERAND2_IMM  ,WAKEUP_0,TYPE_FLOAT),
-   FMIN_S           -> Seq(op.e(ALUOp.toString(ALUOp.add))    ,ExEngine.toString(ExEngine.alu),WRITE_RF_1,OPERAND1_REG, OPERAND2_IMM  ,WAKEUP_0,TYPE_FLOAT),
-   FMSUB_S          -> Seq(op.e(ALUOp.toString(ALUOp.add))    ,ExEngine.toString(ExEngine.alu),WRITE_RF_1,OPERAND1_REG, OPERAND2_IMM  ,WAKEUP_0,TYPE_FLOAT),
-   FMUL_S           -> Seq(op.e(ALUOp.toString(ALUOp.add))    ,ExEngine.toString(ExEngine.alu),WRITE_RF_1,OPERAND1_REG, OPERAND2_IMM  ,WAKEUP_0,TYPE_FLOAT),
-   FMV_S_X          -> Seq(op.e(ALUOp.toString(ALUOp.add))    ,ExEngine.toString(ExEngine.alu),WRITE_RF_1,OPERAND1_REG, OPERAND2_IMM  ,WAKEUP_0,TYPE_FLOAT),
-   FMV_W_X          -> Seq(op.e(ALUOp.toString(ALUOp.add))    ,ExEngine.toString(ExEngine.alu),WRITE_RF_1,OPERAND1_REG, OPERAND2_IMM  ,WAKEUP_0,TYPE_FLOAT),
-   FMV_X_S          -> Seq(op.e(ALUOp.toString(ALUOp.add))    ,ExEngine.toString(ExEngine.alu),WRITE_RF_1,OPERAND1_REG, OPERAND2_IMM  ,WAKEUP_0,TYPE_FLOAT),
-   FMV_X_W          -> Seq(op.e(ALUOp.toString(ALUOp.add))    ,ExEngine.toString(ExEngine.alu),WRITE_RF_1,OPERAND1_REG, OPERAND2_IMM  ,WAKEUP_0,TYPE_FLOAT),
-   FNMADD_S         -> Seq(op.e(ALUOp.toString(ALUOp.add))    ,ExEngine.toString(ExEngine.alu),WRITE_RF_1,OPERAND1_REG, OPERAND2_IMM  ,WAKEUP_0,TYPE_FLOAT),
-   FNMSUB_S         -> Seq(op.e(ALUOp.toString(ALUOp.add))    ,ExEngine.toString(ExEngine.alu),WRITE_RF_1,OPERAND1_REG, OPERAND2_IMM  ,WAKEUP_0,TYPE_FLOAT),
-   FSGNJ_S          -> Seq(op.e(ALUOp.toString(ALUOp.add))    ,ExEngine.toString(ExEngine.alu),WRITE_RF_1,OPERAND1_REG, OPERAND2_IMM  ,WAKEUP_0,TYPE_FLOAT),
-   FSGNJN_S         -> Seq(op.e(ALUOp.toString(ALUOp.add))    ,ExEngine.toString(ExEngine.alu),WRITE_RF_1,OPERAND1_REG, OPERAND2_IMM  ,WAKEUP_0,TYPE_FLOAT),
-   FSGNJX_S         -> Seq(op.e(ALUOp.toString(ALUOp.add))    ,ExEngine.toString(ExEngine.alu),WRITE_RF_1,OPERAND1_REG, OPERAND2_IMM  ,WAKEUP_0,TYPE_FLOAT),
-   FSQRT_S          -> Seq(op.e(ALUOp.toString(ALUOp.add))    ,ExEngine.toString(ExEngine.alu),WRITE_RF_1,OPERAND1_REG, OPERAND2_IMM  ,WAKEUP_0,TYPE_FLOAT),
-   FSUB_S           -> Seq(op.e(ALUOp.toString(ALUOp.add))    ,ExEngine.toString(ExEngine.alu),WRITE_RF_1,OPERAND1_REG, OPERAND2_IMM  ,WAKEUP_0,TYPE_FLOAT),
-   FSW              -> Seq(op.e(ALUOp.toString(ALUOp.add))    ,ExEngine.toString(ExEngine.alu),WRITE_RF_1,OPERAND1_REG, OPERAND2_IMM  ,WAKEUP_0,TYPE_FLOAT),
+   FADD_S           -> Seq(op.e(ALUOp.toString(ALUOp.add))    ,ExEngine.toString(ExEngine.alu),WRITE_RF_1,OPERAND1_REG, OPERAND2_IMM  ,WAKEUP_0,IS_BRANCH_0,TYPE_FLOAT),
+   FCLASS_S         -> Seq(op.e(ALUOp.toString(ALUOp.add))    ,ExEngine.toString(ExEngine.alu),WRITE_RF_1,OPERAND1_REG, OPERAND2_IMM  ,WAKEUP_0,IS_BRANCH_0,TYPE_FLOAT),
+   FCVT_S_W         -> Seq(op.e(ALUOp.toString(ALUOp.add))    ,ExEngine.toString(ExEngine.alu),WRITE_RF_1,OPERAND1_REG, OPERAND2_IMM  ,WAKEUP_0,IS_BRANCH_0,TYPE_FLOAT),
+   FCVT_S_WU        -> Seq(op.e(ALUOp.toString(ALUOp.add))    ,ExEngine.toString(ExEngine.alu),WRITE_RF_1,OPERAND1_REG, OPERAND2_IMM  ,WAKEUP_0,IS_BRANCH_0,TYPE_FLOAT),
+   FCVT_W_S         -> Seq(op.e(ALUOp.toString(ALUOp.add))    ,ExEngine.toString(ExEngine.alu),WRITE_RF_1,OPERAND1_REG, OPERAND2_IMM  ,WAKEUP_0,IS_BRANCH_0,TYPE_FLOAT),
+   FCVT_WU_S        -> Seq(op.e(ALUOp.toString(ALUOp.add))    ,ExEngine.toString(ExEngine.alu),WRITE_RF_1,OPERAND1_REG, OPERAND2_IMM  ,WAKEUP_0,IS_BRANCH_0,TYPE_FLOAT),
+   FDIV_S           -> Seq(op.e(ALUOp.toString(ALUOp.add))    ,ExEngine.toString(ExEngine.alu),WRITE_RF_1,OPERAND1_REG, OPERAND2_IMM  ,WAKEUP_0,IS_BRANCH_0,TYPE_FLOAT),
+   FEQ_S            -> Seq(op.e(ALUOp.toString(ALUOp.add))    ,ExEngine.toString(ExEngine.alu),WRITE_RF_1,OPERAND1_REG, OPERAND2_IMM  ,WAKEUP_0,IS_BRANCH_0,TYPE_FLOAT),
+   FLE_S            -> Seq(op.e(ALUOp.toString(ALUOp.add))    ,ExEngine.toString(ExEngine.alu),WRITE_RF_1,OPERAND1_REG, OPERAND2_IMM  ,WAKEUP_0,IS_BRANCH_0,TYPE_FLOAT),
+   FLT_S            -> Seq(op.e(ALUOp.toString(ALUOp.add))    ,ExEngine.toString(ExEngine.alu),WRITE_RF_1,OPERAND1_REG, OPERAND2_IMM  ,WAKEUP_0,IS_BRANCH_0,TYPE_FLOAT),
+   FLW              -> Seq(op.e(ALUOp.toString(ALUOp.add))    ,ExEngine.toString(ExEngine.alu),WRITE_RF_1,OPERAND1_REG, OPERAND2_IMM  ,WAKEUP_0,IS_BRANCH_0,TYPE_FLOAT),
+   FMADD_S          -> Seq(op.e(ALUOp.toString(ALUOp.add))    ,ExEngine.toString(ExEngine.alu),WRITE_RF_1,OPERAND1_REG, OPERAND2_IMM  ,WAKEUP_0,IS_BRANCH_0,TYPE_FLOAT),
+   FMAX_S           -> Seq(op.e(ALUOp.toString(ALUOp.add))    ,ExEngine.toString(ExEngine.alu),WRITE_RF_1,OPERAND1_REG, OPERAND2_IMM  ,WAKEUP_0,IS_BRANCH_0,TYPE_FLOAT),
+   FMIN_S           -> Seq(op.e(ALUOp.toString(ALUOp.add))    ,ExEngine.toString(ExEngine.alu),WRITE_RF_1,OPERAND1_REG, OPERAND2_IMM  ,WAKEUP_0,IS_BRANCH_0,TYPE_FLOAT),
+   FMSUB_S          -> Seq(op.e(ALUOp.toString(ALUOp.add))    ,ExEngine.toString(ExEngine.alu),WRITE_RF_1,OPERAND1_REG, OPERAND2_IMM  ,WAKEUP_0,IS_BRANCH_0,TYPE_FLOAT),
+   FMUL_S           -> Seq(op.e(ALUOp.toString(ALUOp.add))    ,ExEngine.toString(ExEngine.alu),WRITE_RF_1,OPERAND1_REG, OPERAND2_IMM  ,WAKEUP_0,IS_BRANCH_0,TYPE_FLOAT),
+   FMV_S_X          -> Seq(op.e(ALUOp.toString(ALUOp.add))    ,ExEngine.toString(ExEngine.alu),WRITE_RF_1,OPERAND1_REG, OPERAND2_IMM  ,WAKEUP_0,IS_BRANCH_0,TYPE_FLOAT),
+   FMV_W_X          -> Seq(op.e(ALUOp.toString(ALUOp.add))    ,ExEngine.toString(ExEngine.alu),WRITE_RF_1,OPERAND1_REG, OPERAND2_IMM  ,WAKEUP_0,IS_BRANCH_0,TYPE_FLOAT),
+   FMV_X_S          -> Seq(op.e(ALUOp.toString(ALUOp.add))    ,ExEngine.toString(ExEngine.alu),WRITE_RF_1,OPERAND1_REG, OPERAND2_IMM  ,WAKEUP_0,IS_BRANCH_0,TYPE_FLOAT),
+   FMV_X_W          -> Seq(op.e(ALUOp.toString(ALUOp.add))    ,ExEngine.toString(ExEngine.alu),WRITE_RF_1,OPERAND1_REG, OPERAND2_IMM  ,WAKEUP_0,IS_BRANCH_0,TYPE_FLOAT),
+   FNMADD_S         -> Seq(op.e(ALUOp.toString(ALUOp.add))    ,ExEngine.toString(ExEngine.alu),WRITE_RF_1,OPERAND1_REG, OPERAND2_IMM  ,WAKEUP_0,IS_BRANCH_0,TYPE_FLOAT),
+   FNMSUB_S         -> Seq(op.e(ALUOp.toString(ALUOp.add))    ,ExEngine.toString(ExEngine.alu),WRITE_RF_1,OPERAND1_REG, OPERAND2_IMM  ,WAKEUP_0,IS_BRANCH_0,TYPE_FLOAT),
+   FSGNJ_S          -> Seq(op.e(ALUOp.toString(ALUOp.add))    ,ExEngine.toString(ExEngine.alu),WRITE_RF_1,OPERAND1_REG, OPERAND2_IMM  ,WAKEUP_0,IS_BRANCH_0,TYPE_FLOAT),
+   FSGNJN_S         -> Seq(op.e(ALUOp.toString(ALUOp.add))    ,ExEngine.toString(ExEngine.alu),WRITE_RF_1,OPERAND1_REG, OPERAND2_IMM  ,WAKEUP_0,IS_BRANCH_0,TYPE_FLOAT),
+   FSGNJX_S         -> Seq(op.e(ALUOp.toString(ALUOp.add))    ,ExEngine.toString(ExEngine.alu),WRITE_RF_1,OPERAND1_REG, OPERAND2_IMM  ,WAKEUP_0,IS_BRANCH_0,TYPE_FLOAT),
+   FSQRT_S          -> Seq(op.e(ALUOp.toString(ALUOp.add))    ,ExEngine.toString(ExEngine.alu),WRITE_RF_1,OPERAND1_REG, OPERAND2_IMM  ,WAKEUP_0,IS_BRANCH_0,TYPE_FLOAT),
+   FSUB_S           -> Seq(op.e(ALUOp.toString(ALUOp.add))    ,ExEngine.toString(ExEngine.alu),WRITE_RF_1,OPERAND1_REG, OPERAND2_IMM  ,WAKEUP_0,IS_BRANCH_0,TYPE_FLOAT),
+   FSW              -> Seq(op.e(ALUOp.toString(ALUOp.add))    ,ExEngine.toString(ExEngine.alu),WRITE_RF_1,OPERAND1_REG, OPERAND2_IMM  ,WAKEUP_0,IS_BRANCH_0,TYPE_FLOAT),
 
-   SH1ADD           -> Seq(op.e(ALUOp.toString(ALUOp.add))    ,ExEngine.toString(ExEngine.alu),WRITE_RF_1,OPERAND1_REG, OPERAND2_IMM  ,WAKEUP_1,TYPE_INT),
-   SH2ADD           -> Seq(op.e(ALUOp.toString(ALUOp.add))    ,ExEngine.toString(ExEngine.alu),WRITE_RF_1,OPERAND1_REG, OPERAND2_IMM  ,WAKEUP_1,TYPE_INT),
-   SH3ADD           -> Seq(op.e(ALUOp.toString(ALUOp.add))    ,ExEngine.toString(ExEngine.alu),WRITE_RF_1,OPERAND1_REG, OPERAND2_IMM  ,WAKEUP_1,TYPE_INT),
+   SH1ADD           -> Seq(op.e(ALUOp.toString(ALUOp.add))    ,ExEngine.toString(ExEngine.alu),WRITE_RF_1,OPERAND1_REG, OPERAND2_IMM  ,WAKEUP_1,IS_BRANCH_0,TYPE_INT),
+   SH2ADD           -> Seq(op.e(ALUOp.toString(ALUOp.add))    ,ExEngine.toString(ExEngine.alu),WRITE_RF_1,OPERAND1_REG, OPERAND2_IMM  ,WAKEUP_1,IS_BRANCH_0,TYPE_INT),
+   SH3ADD           -> Seq(op.e(ALUOp.toString(ALUOp.add))    ,ExEngine.toString(ExEngine.alu),WRITE_RF_1,OPERAND1_REG, OPERAND2_IMM  ,WAKEUP_1,IS_BRANCH_0,TYPE_INT),
   ).map({case (k, v) => k -> BitPat(s"b${v.reduce(_ + _)}")}), BitPat(s"b$defaultDec"))
   // format: on
 }
@@ -221,19 +224,20 @@ class Decoder(config: WoodConfig) extends Module {
 
   Seq( // indexing is from right to left in the TruthTable
     io.out.isFloat  -> DecodeConfig.bitRanges(0),
-    io.out.wakeup   -> DecodeConfig.bitRanges(1),
-    io.out.operand2 -> DecodeConfig.bitRanges(2),
-    io.out.operand1 -> DecodeConfig.bitRanges(3),
-    io.out.writeRf  -> DecodeConfig.bitRanges(4),
-    io.out.exEngine -> DecodeConfig.bitRanges(5),
-    io.out.exOp     -> DecodeConfig.bitRanges(6)
+    io.out.isBranch -> DecodeConfig.bitRanges(1),
+    io.out.wakeup   -> DecodeConfig.bitRanges(2),
+    io.out.operand2 -> DecodeConfig.bitRanges(3),
+    io.out.operand1 -> DecodeConfig.bitRanges(4),
+    io.out.writeRf  -> DecodeConfig.bitRanges(5), // WARNING: Also change the index below
+    io.out.exEngine -> DecodeConfig.bitRanges(6),
+    io.out.exOp     -> DecodeConfig.bitRanges(7)
   ).foreach {
     case (outField, (msbIndex, lsbIndex)) =>
       outField := instDecoder(msbIndex, lsbIndex)
   }
 
   Seq( // Override if rd is 0
-    io.out.writeRf -> DecodeConfig.bitRanges(4)
+    io.out.writeRf -> DecodeConfig.bitRanges(5)
   ).foreach {
     case (outField, (msbIndex, lsbIndex)) =>
       outField := Mux(
@@ -266,11 +270,16 @@ class Decoder(config: WoodConfig) extends Module {
   io.out.rd       := io.in(11,  7)
   // format: on
 
+  io.out.exception := 0.B
+  io.out.taken     := 0.B
+
+  io.out.targetPC := DontCare
   io.out.pc       := DontCare
   io.out.rs1Tag   := DontCare
   io.out.rs2Tag   := DontCare
   io.out.rdTag    := DontCare
   io.out.retired  := DontCare
+  io.out.flushed  := DontCare
   io.out.arfTag   := DontCare
   io.out.arfValid := DontCare
   io.out.rs1Data  := DontCare
@@ -312,8 +321,9 @@ class Decoder(config: WoodConfig) extends Module {
 
 class DecodeStage(config: WoodConfig) extends Module {
   val io = IO(new Bundle {
-    val in  = Flipped(Vec(config.nWide, Decoupled(new PCInst(config))))
-    val out = Vec(config.nWide, Decoupled(new MI(config)))
+    val in    = Flipped(Vec(config.nWide, Decoupled(new PCInst(config))))
+    val flush = Input(Bool())
+    val out   = Vec(config.nWide, Decoupled(new MI(config)))
   })
 
   val pRegs             = Seq.fill(config.nWide)(Module(new DCPipelineRegister(new MI(config))(2)))
@@ -334,6 +344,8 @@ class DecodeStage(config: WoodConfig) extends Module {
 
     io.in(j).ready       := self(j).ready
     atLeastOneIsReady(j) := self(j).ready
+
+    pRegs(j).io.flush := io.flush
 
     pRegs(j).io.in <> self(j)
     io.out(j)      <> pRegs(j).io.out

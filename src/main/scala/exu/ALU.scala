@@ -6,8 +6,8 @@ import wood.WoodConfig
 import wood.exu.DecodeConfig.{OPERAND1_PC, OPERAND1_REG, OPERAND2_IMM, OPERAND2_REG}
 
 object ALUOp extends ChiselEnum {
-  val sub, add, xor, or, and, sll, srl, sra, slt, sltu, pass = Value
-  val values                                                 = IndexedSeq(sub, add, xor, or, and, sll, srl, sra, slt, sltu, pass)
+  val sub, add, xor, or, and, sll, srl, sra, slt, sltu, pass, beq, bne, blt, bge, bltu, bgeu, jal, jalr = Value
+  val values                                                                                            = IndexedSeq(sub, add, xor, or, and, sll, srl, sra, slt, sltu, pass, beq, bne, blt, bge, bltu, bgeu, jal, jalr)
 
   def toBitpat(op: ALUOp.Type): BitPat =
     BitPat(op.litValue.U(getWidth.W))
@@ -50,22 +50,51 @@ class ALU(config: WoodConfig) extends Module {
   val resultAdd       = arithmeticData1 + arithmeticData2
 
   val result = Wire(UInt(config.dataWidth.W))
+  val pc     = Wire(UInt(config.dataWidth.W))
+
+  // format: off
   result := 0.U
   switch(control) {
-    is(ALUOp.sub, ALUOp.add) { result := resultAdd(config.dataWidth, 1) }
-    is(ALUOp.xor) { result := data1 ^ data2 }
-    is(ALUOp.or) { result := data1 | data2 }
-    is(ALUOp.and) { result := data1 & data2 }
-    is(ALUOp.sll) { result := data1 << data2(shamt, 0) }
-    is(ALUOp.srl) { result := data1 >> data2(shamt, 0) }
-    is(ALUOp.sra) { result := (data1.asSInt >> data2(shamt, 0)).asUInt }
-    is(ALUOp.slt) { result := (data1.asSInt < data2.asSInt) }
-    is(ALUOp.sltu) { result := (data1 < data2).asUInt }
-    is(ALUOp.pass) { result := data2 }
+    is(ALUOp.sub, ALUOp.add)  { result := resultAdd(config.dataWidth, 1) }
+    is(ALUOp.jal, ALUOp.jalr) { result := io.in.bits.pc + 4.U }
+    is(ALUOp.xor)             { result := data1 ^ data2 }
+    is(ALUOp.or)              { result := data1 | data2 }
+    is(ALUOp.and)             { result := data1 & data2 }
+    is(ALUOp.sll)             { result := data1 << data2(shamt, 0) }
+    is(ALUOp.srl)             { result := data1 >> data2(shamt, 0) }
+    is(ALUOp.sra)             { result := (data1.asSInt >> data2(shamt, 0)).asUInt }
+    is(ALUOp.slt)             { result := (data1.asSInt < data2.asSInt) }
+    is(ALUOp.sltu)            { result := (data1 < data2).asUInt }
+    is(ALUOp.pass)            { result := data2 }
   }
 
-  io.out.bits        := io.in.bits
-  io.out.bits.rdData := result
-  io.out.valid       := io.in.valid
-  io.in.ready        := io.out.ready
+  pc := 0.U
+  switch(control) {
+    is(ALUOp.beq)  { pc := io.in.bits.pc + io.in.bits.imm }
+    is(ALUOp.bne)  { pc := io.in.bits.pc + io.in.bits.imm }
+    is(ALUOp.blt)  { pc := io.in.bits.pc + io.in.bits.imm }
+    is(ALUOp.bge)  { pc := io.in.bits.pc + io.in.bits.imm }
+    is(ALUOp.bltu) { pc := io.in.bits.pc + io.in.bits.imm }
+    is(ALUOp.bgeu) { pc := io.in.bits.pc + io.in.bits.imm }
+    is(ALUOp.jal)  { pc := io.in.bits.pc + io.in.bits.imm }
+    is(ALUOp.jalr) { pc := io.in.bits.rs1Data + io.in.bits.imm }
+  }
+
+  io.out.bits          := io.in.bits
+  io.out.bits.rdData   := result
+  io.out.bits.targetPC := pc
+  io.out.valid         := io.in.valid
+  io.in.ready          := io.out.ready
+
+  switch(control) {
+    is(ALUOp.beq)  { io.out.bits.taken := io.in.bits.rs1Data        === io.in.bits.rs2Data }
+    is(ALUOp.bne)  { io.out.bits.taken := io.in.bits.rs1Data        =/= io.in.bits.rs2Data }
+    is(ALUOp.blt)  { io.out.bits.taken := io.in.bits.rs1Data.asSInt <   io.in.bits.rs2Data.asSInt }
+    is(ALUOp.bge)  { io.out.bits.taken := io.in.bits.rs1Data.asSInt >=  io.in.bits.rs2Data.asSInt }
+    is(ALUOp.bltu) { io.out.bits.taken := io.in.bits.rs1Data        <   io.in.bits.rs2Data }
+    is(ALUOp.bgeu) { io.out.bits.taken := io.in.bits.rs1Data        >=  io.in.bits.rs2Data }
+    is(ALUOp.jal)  { io.out.bits.taken := 1.U }
+    is(ALUOp.jalr) { io.out.bits.taken := 1.U }
+  }
+// format: on
 }

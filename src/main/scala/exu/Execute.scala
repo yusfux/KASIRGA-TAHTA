@@ -13,6 +13,7 @@ class ExecuteStage(config: WoodConfig) extends Module {
 
   val io = IO(new Bundle {
     val aluIn      = Flipped(Vec(numALUs, Decoupled(new MI(config))))
+    val flush      = Input(Bool())
     val imuIn      = Flipped(Vec(numIMUs, Decoupled(new MI(config))))
     val iduIn      = Flipped(Vec(numIMUs, Decoupled(new MI(config))))
     val forwardBus = Vec(config.nWide, ValidIO(new DataBus(config)))
@@ -50,6 +51,10 @@ class ExecuteStage(config: WoodConfig) extends Module {
   imuInputs <> io.imuIn
   iduInputs <> io.iduIn
 
+  // alu.foreach(_.io.flush := io.flush)
+  imus.foreach(_.io.flush := io.flush)
+  idus.foreach(_.io.flush := io.flush)
+
   val aluRange = (0 until numALUs)
   val imuRange = (numALUs until numALUs + numIMUs)
   val iduRange = (numALUs + numIMUs until totalNumPorts)
@@ -69,6 +74,8 @@ class ExecuteStage(config: WoodConfig) extends Module {
     io.forwardBus(j).valid     := arbiter.io.out(j).valid
 
     pRegs(j).io.valids(0) := io.aluIn(j).valid // TODO: BUG: BUG: BUG:
+
+    pRegs(j).io.flush := io.flush
 
     pRegs(j).io.in <> arbiter.io.out(j)
     io.out(j)      <> pRegs(j).io.out

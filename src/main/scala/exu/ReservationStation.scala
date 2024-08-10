@@ -85,6 +85,7 @@ class ReservationStationRow(config: WoodConfig) extends Module {
 class ReservationStation(config: WoodConfig) extends Module {
   val io = IO(new Bundle {
     val in         = Flipped(Decoupled(new MI(config)))
+    val flush      = Input(Bool())
     val forwardBus = Input(Vec(config.nWide, ValidIO(new TagBus(config))))
     val wakeupBus  = Input(Vec(config.nWide, ValidIO(new TagBus(config))))
     val out        = Decoupled(new MI(config))
@@ -100,6 +101,8 @@ class ReservationStation(config: WoodConfig) extends Module {
   demux.io.sel(0) := PriorityEncoder(rowReady)
 
   (0 until config.rsDepth).foreach(j => {
+    rows(j).reset := (this.reset.asBool | io.flush).asBool
+
     rowReady(j) := rows(j).io.in.ready
 
     rows(j).io.forwardBus <> io.forwardBus
@@ -111,3 +114,11 @@ class ReservationStation(config: WoodConfig) extends Module {
 
   arbiter.io.out(0) <> io.out
 }
+
+// overloaded method apply with alternatives:
+// (x: BigInt,y: BigInt)chisel3.UInt <and>
+// (x: Int,y: Int)chisel3.UInt <and>
+// (x: chisel3.UInt)chisel3.Bool <and>
+// (x: Int)chisel3.Bool <and>
+// (x: BigInt)chisel3.Bool
+// cannot be applied to ()

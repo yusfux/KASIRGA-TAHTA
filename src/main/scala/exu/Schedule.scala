@@ -58,6 +58,7 @@ class ReadyList(val config: WoodConfig) extends Module {
 class ScheduleStage(val config: WoodConfig) extends Module {
   val io = IO(new Bundle {
     val in          = Flipped(Vec(config.nWide, Decoupled(new MI(config))))
+    val flush       = Input(Bool())
     val forwardBus  = Input(Vec(config.nWide, ValidIO(new TagBus(config))))
     val wakeupBus   = Input(Vec(config.nWide, ValidIO(new TagBus(config))))
     val commitedBus = Input(Vec(config.nWide, ValidIO(new TagBus(config))))
@@ -97,6 +98,10 @@ class ScheduleStage(val config: WoodConfig) extends Module {
     reservationStations(j).io.wakeupBus  <> io.wakeupBus
 
     pRegs(j).io.valids(0) := bypassArbiters(j).io.out(0).valid
+
+    reservationStations(j).io.flush := io.flush
+    pRegs(j).io.flush               := io.flush
+    scq.io.flush                    := io.flush
 
     pRegs(j).io.in <> bypassArbiters(j).io.out(0)
     io.out(j)      <> pRegs(j).io.out

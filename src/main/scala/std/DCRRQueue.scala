@@ -19,28 +19,35 @@ import wood.std.DCRRShifter
   */
 class DCRRQueue[T <: Data](gen: T)(numPorts: Int, queueDepth: Int, unique: Boolean = false, iread: Boolean = false) extends Module {
   val io = IO(new Bundle {
-    val in  = Flipped(Vec(numPorts, Decoupled(gen.cloneType)))
-    val out = Vec(numPorts, Decoupled(gen.cloneType))
+    val in    = Flipped(Vec(numPorts, Decoupled(gen.cloneType)))
+    val flush = Input(Bool())
+    val count = Vec(numPorts, UInt(log2Ceil(queueDepth + 1).W))
+    val out   = Vec(numPorts, Decoupled(gen.cloneType))
   })
 
   val previousIn   = RegInit(VecInit(Seq.fill(numPorts)(0.U.asTypeOf(gen.cloneType))))
   val is_duplicate = io.in.zip(previousIn).map { case (in, reg) => in.valid && (in.bits === reg) }
-  previousIn := io.in.zipWithIndex.map { case (in, i) => Mux(in.valid && !is_duplicate(i), in.bits, previousIn(i)) }
-
   val queues = Seq.tabulate(numPorts) { _ =>
-    Module(new Queue(gen.cloneType, queueDepth, flow = true))
+    Module(new Queue(gen.cloneType, queueDepth, flow = true, hasFlush = true))
   }
 
-  val rrshifter = Module(new DCRRShifter(gen.cloneType)(numPorts))
+  // Reset the previousIn register when the flush signal is asserted
+  when(io.flush) {
+    previousIn := VecInit(Seq.fill(numPorts)(0.U.asTypeOf(gen.cloneType)))
+  }.otherwise {
+    previousIn := io.in.zipWithIndex.map { case (in, i) => Mux(in.valid && !is_duplicate(i), in.bits, previousIn(i)) }
+  }
 
+  queues.foreach(_.io.flush.get := io.flush)
+
+  val rrshifter = Module(new DCRRShifter(gen.cloneType)(numPorts))
+  rrshifter.io.flush := io.flush
   if (unique)
     (0 until numPorts).foreach(j => rrshifter.io.in(j).valid := io.in(j).valid && !is_duplicate(j))
   else
     (0 until numPorts).foreach(j => rrshifter.io.in(j).valid := io.in(j).valid)
-
   rrshifter.io.in.zip(io.in).foreach { case (rrshift_in, in) => rrshift_in.bits := in.bits }
   rrshifter.io.in.zip(io.in).foreach { case (rrshift_in, in) => in.ready := rrshift_in.ready }
-
   (0 until numPorts).foreach(j => queues(j).io.enq <> rrshifter.io.out(j))
 
   val out_ready = Wire(Vec(numPorts, Bool()))
@@ -59,5 +66,6 @@ class DCRRQueue[T <: Data](gen: T)(numPorts: Int, queueDepth: Int, unique: Boole
   (0 until numPorts).foreach(j => {
     io.out(j).valid := queues(j).io.deq.valid
     io.out(j).bits  := queues(j).io.deq.bits
+    io.count(j)     := queues(j).io.count
   })
 }

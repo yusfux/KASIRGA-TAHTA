@@ -16,6 +16,8 @@ class FreeList(config: WoodConfig) extends Module {
   val initializer = Module(new DCQueueInitializer(new Tag(config))(config.nWide, numWrites, "count+1"))
   val q           = Module(new DCRRQueue(new Tag(config))(config.nWide, flistDepth, unique = true))
 
+  q.io.flush := 0.B
+
   initializer.io.in <> io.in
   q.io.in           <> initializer.io.out
   io.out            <> q.io.out

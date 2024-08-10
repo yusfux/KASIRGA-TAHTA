@@ -9,6 +9,7 @@ import wood.std.{DCPipelineRegister, DCRRQueue}
 class MIStage(config: WoodConfig) extends Module {
   val io = IO(new Bundle {
     val in          = Flipped(Vec(config.nWide, Decoupled(new MI(config))))
+    val flush       = Input(Bool())
     val commitedBus = Flipped(Vec(config.nWide, Decoupled(new TagBus(config))))
     val out         = Vec(config.nWide, Decoupled(new MI(config)))
   })
@@ -38,6 +39,9 @@ class MIStage(config: WoodConfig) extends Module {
     // io.in(j).ready        := self(j).ready // Decoupled from the rest via miqueue
     flist.io.out(j).ready := self(j).ready
     miq.io.out(j).ready   := self(j).ready
+
+    pRegs(j).io.flush := io.flush
+    miq.io.flush      := io.flush
 
     pRegs(j).io.in        <> self(j)
     io.out(j)             <> pRegs(j).io.out

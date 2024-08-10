@@ -17,15 +17,21 @@ object IDUOp extends ChiselEnum {
 
 class IDU(config: WoodConfig) extends Module {
   val io = IO(new Bundle {
-    val in  = Flipped(Decoupled(new MI(config)))
-    val out = Decoupled(new MI(config))
+    val in    = Flipped(Decoupled(new MI(config)))
+    val flush = Input(Bool())
+    val out   = Decoupled(new MI(config))
   })
 
   val divider = Module(new SRT16DividerDataModule(32))
   val mi      = RegInit(0.U.asTypeOf(new MI(config)))
   val valid   = RegInit(0.B)
 
-  when(io.in.fire & io.out.fire) {
+  divider.reset := (this.reset.asBool | io.flush).asBool
+
+  when(io.flush) {
+    mi    := 0.U.asTypeOf(new MI(config))
+    valid := 0.B
+  }.elsewhen(io.in.fire & io.out.fire) {
     mi    := io.in.bits
     valid := io.in.valid
   }.elsewhen(io.in.fire) {

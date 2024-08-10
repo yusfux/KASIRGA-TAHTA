@@ -8,6 +8,7 @@ import wood.std.{DCCrossbar, DCPipelineRegister}
 class RegisterReadStage(config: WoodConfig) extends Module {
   val io = IO(new Bundle {
     val in           = Flipped(Vec(config.nWide, Decoupled(new MI(config))))
+    val flush        = Input(Bool())
     val writebackBus = Flipped(Vec(config.nWide, ValidIO(new DataBus(config))))
     val forwardBus   = Flipped(Vec(config.nWide, ValidIO(new DataBus(config))))
     val wakeupBus    = Vec(config.nWide, ValidIO(new TagBus(config)))
@@ -53,18 +54,21 @@ class RegisterReadStage(config: WoodConfig) extends Module {
     aluPRegs(j).io.in        <> crossbar.io.out(config.aluCrossbarIndex)(j)
     aluPRegs(j).io.valids(0) := io.in(j).valid
     io.aluOut(j)             <> aluPRegs(j).io.out
+    aluPRegs(j).io.flush     := io.flush
   })
 
   (0 until config.listExUnits(config.imuCrossbarIndex)).foreach(j => {
     imuPRegs(j).io.in        <> crossbar.io.out(config.imuCrossbarIndex)(j)
     imuPRegs(j).io.valids(0) := io.in(j).valid
     io.imuOut(j)             <> imuPRegs(j).io.out
+    imuPRegs(j).io.flush     := io.flush
   })
 
   (0 until config.listExUnits(config.iduCrossbarIndex)).foreach(j => {
     iduPRegs(j).io.in        <> crossbar.io.out(config.iduCrossbarIndex)(j)
     iduPRegs(j).io.valids(0) := io.in(j).valid
     io.iduOut(j)             <> iduPRegs(j).io.out
+    iduPRegs(j).io.flush     := io.flush
   })
 
   overrideForward.io.inBus   <> io.forwardBus

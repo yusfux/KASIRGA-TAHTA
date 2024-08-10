@@ -49,10 +49,11 @@ index 576e184..2e3d6fb 100644
          do_script = ""
          if self.waves:
              do_script += "log -recursive /*;"
-@@ -612,6 +624,7 @@ class Questa(Simulator):
+@@ -612,6 +624,8 @@ class Questa(Simulator):
              + [as_tcl_value(v) for v in self._get_parameter_options(self.parameters)]
              + [as_tcl_value(f"{self.hdl_toplevel_library}.{self.sim_hdl_toplevel}")]
              + [as_tcl_value(v) for v in self.plusargs]
++            + ["-debugdb", "-postsimdataflow", "-coverage"]
 +            + self.pre_cmd
              + ["-do", do_script]
          )

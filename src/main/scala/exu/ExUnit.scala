@@ -9,17 +9,21 @@ import wood.fru.PCInst
 
 case class MI(config: WoodConfig) extends Bundle {
   val isFloat     = UInt(DecodeConfig.subWidths(0).W)
-  val wakeup      = UInt(DecodeConfig.subWidths(1).W)
-  val operand1    = UInt(DecodeConfig.subWidths(2).W)
-  val operand2    = UInt(DecodeConfig.subWidths(3).W)
-  val writeRf     = UInt(DecodeConfig.subWidths(4).W)
-  val exEngine    = UInt(DecodeConfig.subWidths(5).W)
-  val exOp        = UInt(DecodeConfig.subWidths(6).W)
+  val isBranch    = UInt(DecodeConfig.subWidths(1).W)
+  val wakeup      = UInt(DecodeConfig.subWidths(2).W)
+  val operand1    = UInt(DecodeConfig.subWidths(3).W)
+  val operand2    = UInt(DecodeConfig.subWidths(4).W)
+  val writeRf     = UInt(DecodeConfig.subWidths(5).W)
+  val exEngine    = UInt(DecodeConfig.subWidths(6).W)
+  val exOp        = UInt(DecodeConfig.subWidths(7).W)
+  val exception   = Bool()
+  val taken       = Bool()
   val imm         = UInt(32.W) // TODO
   val rs1         = UInt(5.W)
   val rs2         = UInt(5.W)
   val rd          = UInt(5.W)
   val pc          = UInt(config.pcWidth.W)
+  val targetPC    = UInt(config.pcWidth.W)
   val rs1Tag      = UInt(config.tagWidth.W)
   val rs1TagReady = Bool()
   val rs2Tag      = UInt(config.tagWidth.W)
@@ -29,6 +33,7 @@ case class MI(config: WoodConfig) extends Bundle {
   val rs2Data     = UInt(config.dataWidth.W)
   val rdData      = UInt(config.dataWidth.W)
   val retired     = Bool()
+  val flushed     = Bool()
   val arfTag      = UInt(config.tagWidth.W)
   val arfValid    = Bool()
   val inst        = UInt(32.W) // for testbench only
@@ -38,12 +43,15 @@ object MI { // for testbench only, set all to value except overrides
   def apply(config: WoodConfig, value: UInt, overrides: Map[String, UInt] = Map.empty): MI = {
     val mi = new MI(config).Lit(
       _.isFloat     -> overrides.getOrElse("isFloat", value),
+      _.isBranch    -> overrides.getOrElse("isBranch", value),
       _.wakeup      -> overrides.getOrElse("wakeup", value),
       _.operand2    -> overrides.getOrElse("operand2", value),
       _.operand1    -> overrides.getOrElse("operand1", value),
       _.writeRf     -> overrides.getOrElse("writeRf", value),
       _.exEngine    -> overrides.getOrElse("exEngine", value),
       _.exOp        -> overrides.getOrElse("exOp", value),
+      _.exception   -> overrides.getOrElse("exception", value),
+      _.taken       -> overrides.getOrElse("taken", value),
       _.imm         -> overrides.getOrElse("imm", value),
       _.rs1         -> overrides.getOrElse("rs1", value),
       _.rs2         -> overrides.getOrElse("rs2", value),
@@ -58,6 +66,7 @@ object MI { // for testbench only, set all to value except overrides
       _.rs2Data     -> overrides.getOrElse("rs2Data", value),
       _.rdData      -> overrides.getOrElse("rdData", value),
       _.retired     -> overrides.getOrElse("retired", value),
+      _.flushed     -> overrides.getOrElse("flushed", value),
       _.arfTag      -> overrides.getOrElse("arfTag", value),
       _.arfValid    -> overrides.getOrElse("arfValid", value),
       _.inst        -> overrides.getOrElse("inst", value)
@@ -87,14 +96,27 @@ class DataBus(config: WoodConfig) extends TagBus(config) {
   val data = UInt(config.dataWidth.W)
 }
 
+class ExceptionBus(config: WoodConfig) extends TagBus(config) {
+  val pc        = UInt(config.pcWidth.W)
+  val taken     = Bool()
+  val exception = Bool()
+}
+
+class BranchPredictorBus(config: WoodConfig) extends Bundle {
+  val pc        = UInt(config.pcWidth.W)
+  val taken     = Bool()
+  val exception = Bool()
+  val targetPC  = UInt(config.pcWidth.W)
+}
+
 class ARFBus(config: WoodConfig) extends TagBus(config) {
   val rd = UInt(5.W)
 }
 
 class ExUnit(config: WoodConfig) extends Module {
   val io = IO(new Bundle {
-    val in         = Flipped(Vec(config.nWide, Decoupled(new PCInst(config))))
-    val forwardBus = Vec(config.nWide, ValidIO(new DataBus(config)))
+    val in    = Flipped(Vec(config.nWide, Decoupled(new PCInst(config))))
+    val bpBus = ValidIO(new BranchPredictorBus(config))
   })
 
   val destage = Module(new DecodeStage(config))
@@ -107,13 +129,15 @@ class ExUnit(config: WoodConfig) extends Module {
   val wbstage = Module(new WritebackStage(config))
 
   val rbstage = Module(new ROBStage(config))
-  val rsstage = Module(new RetiredStatusStage(config))
+  val rsstage = Module(new RetireStatusStage(config))
   val arstage = Module(new ArchRegisterFileStage(config))
   val rwstage = Module(new RetireWritebackStage(config))
 
   destage.io.in <> io.in
   mistage.io.in <> destage.io.out
   restage.io.in <> mistage.io.out
+
+  restage.io.archRF <> arstage.io.archRF
 
   val restageFires = Wire(Vec(config.nWide, Bool()))
   restageFires := restage.io.out.map(_.fire)
@@ -134,6 +158,8 @@ class ExUnit(config: WoodConfig) extends Module {
   exstage.io.iduIn <> rrstage.io.iduOut
   wbstage.io.in    <> exstage.io.out
 
+  rsstage.io.exceptionBus <> wbstage.io.exceptionBus
+
   rrstage.io.writebackBus <> wbstage.io.writebackBus
   rsstage.io.writebackBus <> wbstage.io.writebackBus.map { bus =>
     val tBus = Wire(ValidIO(new TagBus(config)))
@@ -148,6 +174,16 @@ class ExUnit(config: WoodConfig) extends Module {
 
   arstage.io.arfBus <> rwstage.io.arfBus
 
+  rsstage.io.firstPC <> rbstage.io.firstPC
+
+  destage.io.flush <> rsstage.io.flush
+  restage.io.flush <> rsstage.io.flush
+  scstage.io.flush <> rsstage.io.flush
+  rrstage.io.flush <> rsstage.io.flush
+  exstage.io.flush <> rsstage.io.flush
+  mistage.io.flush <> rsstage.io.flush
+  rbstage.io.flush <> rsstage.io.flush
+
   mistage.io.commitedBus <> rwstage.io.commitedBus
   (0 until config.nWide).foreach(j => {
     scstage.io.commitedBus(j).bits.tag := rwstage.io.commitedBus(j).bits.tag
@@ -158,7 +194,6 @@ class ExUnit(config: WoodConfig) extends Module {
   })
 
   rrstage.io.forwardBus <> exstage.io.forwardBus
-  io.forwardBus         <> exstage.io.forwardBus
   scstage.io.forwardBus <> exstage.io.forwardBus.map { bus =>
     val tBus = Wire(ValidIO(new TagBus(config)))
     tBus.bits.tag := bus.bits.tag
@@ -167,4 +202,6 @@ class ExUnit(config: WoodConfig) extends Module {
   }
 
   scstage.io.wakeupBus <> rrstage.io.wakeupBus
+
+  io.bpBus <> rsstage.io.bpBus
 }

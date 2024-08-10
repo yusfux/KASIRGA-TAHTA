@@ -7,10 +7,12 @@ import wood.std.DCPipelineRegister
 
 class RenameStage(config: WoodConfig) extends Module {
   val io = IO(new Bundle {
-    val in  = Flipped(Vec(config.nWide, Decoupled(new MI(config))))
+    val in     = Flipped(Vec(config.nWide, Decoupled(new MI(config))))
+    val flush  = Input(Bool())
+    val archRF = Input(Vec(32, UInt(config.tagWidth.W)))
+
     val out = Vec(config.nWide, Decoupled(new MI(config)))
   })
-
   val pRegs                = Seq.fill(config.nWide)(Module(new DCPipelineRegister(new MI(config))(1)))
   val frontEndRegisterFile = RegInit(VecInit(Seq.fill(32)(0.U(config.tagWidth.W))))
   val self                 = Wire(Vec(config.nWide, Decoupled(new MI(config))))
@@ -69,8 +71,16 @@ class RenameStage(config: WoodConfig) extends Module {
 
     io.in(j).ready := selfReady.asUInt.andR
 
+    pRegs(j).io.flush := io.flush
+
     pRegs(j).io.in        <> self(j)
     io.out(j)             <> pRegs(j).io.out
     pRegs(j).io.out.ready := outReady.asUInt.andR // always fire together
+  })
+
+  (0 until 32).foreach(j => {
+    when(io.flush) {
+      frontEndRegisterFile(j) := io.archRF(j)
+    }
   })
 }
