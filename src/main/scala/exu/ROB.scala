@@ -20,7 +20,7 @@ class ROBStage(config: WoodConfig) extends Module {
 
   when(io.flush) {
     (0 until config.nWide).foreach(j => {
-      savedCounts(j) := q.io.count(j)
+      savedCounts(j) := q.io.count(j) + io.in(j).valid
     })
   }
 
@@ -28,7 +28,7 @@ class ROBStage(config: WoodConfig) extends Module {
   q.io.flush := 0.B // must return each tag back to freelist
 
   (0 until config.nWide).foreach(j => {
-    pRegs(j).io.valids(0) := io.out(j).valid
+    pRegs(j).io.valids(0) := q.io.out(j).valid
     pRegs(j).io.flush     := io.flush
     pRegs(j).io.in        <> q.io.out(j)
 
@@ -45,6 +45,6 @@ class ROBStage(config: WoodConfig) extends Module {
     }
   })
 
-  io.firstPC.bits  := q.io.out(config.nWide - 1).bits.pc
-  io.firstPC.valid := q.io.out(config.nWide - 1).valid
+  io.firstPC.bits  := q.io.out(0).bits.pc
+  io.firstPC.valid := q.io.out(0).valid
 }

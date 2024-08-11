@@ -17,7 +17,8 @@ import wood.std.DCRRShifter
   *  new DCRRQueue(UInt(8.W))(2,32)
   * }}}
   */
-class DCRRQueue[T <: Data](gen: T)(numPorts: Int, queueDepth: Int, unique: Boolean = false, iread: Boolean = false) extends Module {
+class DCRRQueue[T <: Data](gen: T)(numPorts: Int, queueDepth: Int, unique: Boolean = false, iread: Boolean = false, flow: Boolean = true)
+    extends Module {
   val io = IO(new Bundle {
     val in    = Flipped(Vec(numPorts, Decoupled(gen.cloneType)))
     val flush = Input(Bool())

@@ -51,7 +51,7 @@ class RetireStatusStage(config: WoodConfig) extends Module {
   overridenRetiredStatus <> io.in
 
   (0 until config.nWide).foreach(j => {
-    overridenRetiredStatus(j).bits.retired := retireStatusRegisterFile(io.in(j).bits.rdTag) | io.in(j).bits.flushed | flushVector(j) | io.flush
+    overridenRetiredStatus(j).bits.retired := retireStatusRegisterFile(io.in(j).bits.rdTag) | io.in(j).bits.flushed | flushVector(j)
 
     when(io.exceptionBus(j).valid) {
       val tag = io.exceptionBus(j).bits.tag
@@ -71,10 +71,10 @@ class RetireStatusStage(config: WoodConfig) extends Module {
     }
 
     self(j).bits  := overridenRetiredStatus(j).bits
-    self(j).valid := (allInValid.asUInt.andR & allRetired.asUInt.andR) | io.in(j).bits.flushed | io.flush
+    self(j).valid := (allInValid.asUInt.andR & allRetired.asUInt.andR) | (io.in(j).bits.flushed & io.in(j).valid)
 
     pRegs(j).io.valids(0) := io.in(j).valid
-    pRegs(j).io.flush     := io.flush
+    pRegs(j).io.flush     := flushVector(j)
 
     overridenRetiredStatus(j).ready := self(j).ready
 

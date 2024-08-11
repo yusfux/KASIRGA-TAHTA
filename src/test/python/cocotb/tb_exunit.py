@@ -73,6 +73,48 @@ async def get_spike_trace():
 
 
 @cocotb.coroutine
+async def flist_monitor(dut):
+    start.wait()
+    await RisingEdge(dut.clock)
+    await RisingEdge(dut.clock)
+
+    flist = {}
+
+    while True:
+        in_valid = [0 for _ in range(WOOD_NWIDE)]
+        in_ready = [0 for _ in range(WOOD_NWIDE)]
+        in_tag = [0 for _ in range(WOOD_NWIDE)]
+        for n in range(0, WOOD_NWIDE):
+            in_valid[n] = getattr(dut, f"mistage.flist.io_in_{n}_valid").value.integer
+            in_ready[n] = getattr(dut, f"mistage.flist.io_in_{n}_ready").value.integer
+            in_tag[n] = getattr(dut, f"mistage.flist.io_in_{n}_bits_tag").value.integer
+
+        for n in range(0, WOOD_NWIDE):
+            if in_ready[n] & in_valid[n]:
+                if in_tag[n] in flist:
+                    assert 0, f"Flist tag inserted twice! tag_{n} {color(in_tag[n], Color.GREEN)} at {get_sim_time(units=TIME_UNIT)}{TIME_UNIT}"
+                else:
+                    flist[in_tag[n]] = in_tag[n]
+
+        out_valid = [0 for _ in range(WOOD_NWIDE)]
+        out_ready = [0 for _ in range(WOOD_NWIDE)]
+        out_tag = [0 for _ in range(WOOD_NWIDE)]
+        for n in range(0, WOOD_NWIDE):
+            out_valid[n] = getattr(dut, f"mistage.flist.io_out_{n}_valid").value.integer
+            out_ready[n] = getattr(dut, f"mistage.flist.io_out_{n}_ready").value.integer
+            out_tag[n] = getattr(
+                dut, f"mistage.flist.io_out_{n}_bits_tag"
+            ).value.integer
+
+        for n in range(0, WOOD_NWIDE):
+            if out_ready[n] & out_valid[n]:
+                if out_tag[n] in flist:
+                    del flist[out_tag[n]]
+
+        await RisingEdge(dut.clock)
+
+
+@cocotb.coroutine
 async def diff_traces(dut):
     spike_trace = await get_spike_trace()
 
@@ -118,9 +160,7 @@ async def diff_traces(dut):
             in_ready[n] = getattr(dut, f"rwstage.io_in_{n}_ready").value.integer
             in_wrf[n] = getattr(dut, f"rwstage.io_in_{n}_bits_writeRf").value.integer
             flushed[n] = getattr(dut, f"rwstage.io_in_{n}_bits_flushed").value.integer
-            retired[n] = (in_wrf[n] or (arfBus_adr[n] == 0)) and (
-                in_ready[n] and in_valid[n]
-            )
+            retired[n] = in_ready[n] and in_valid[n]
 
         golden_reference = [{} for _ in range(WOOD_NWIDE)]
         inst_p = ["" for _ in range(WOOD_NWIDE)]
@@ -157,6 +197,10 @@ async def diff_traces(dut):
                     golden_result = "x 0 0x00000000"
                 if "x 0" in rd_data_p[n]:
                     rd_data_p[n] = "x 0 0x00000000"
+
+                if not (in_wrf[n] or (arfBus_adr[n] == 0)):
+                    rd_data_p[n] = "x 0 0x00000000"  # branch
+
                 assert (
                     rd_data_p[n] == golden_result
                 ), f"Result is {color(rd_data_p[n], Color.GREEN)} at tag {color(arfBus_tag[n], Color.GREEN)} but it should be {color(golden_reference[n]['result'], Color.YELLOW)} at {get_sim_time(units=TIME_UNIT)}{TIME_UNIT}"
@@ -166,9 +210,32 @@ async def diff_traces(dut):
                 if arfBus_valid[n] and commBus_valid[n]:
                     assert (
                         arfBus_tag[n] != commBus_tag[n]
-                    ), f"Tag duplication! tag_{n} {color(arfBus_tag[n], Color.GREEN)} is also commited at {get_sim_time(units=TIME_UNIT)}{TIME_UNIT}"
+                    ), f"Tag duplicated! tag_{n} {color(arfBus_tag[n], Color.GREEN)} is also commited at {get_sim_time(units=TIME_UNIT)}{TIME_UNIT}"
+                if not arfBus_valid[n] and not commBus_valid[n]:
+                    assert 0, f"Tag lost! tag_{n} {color(arfBus_tag[n], Color.GREEN)}, pc: {pc_p[n]}, {get_sim_time(units=TIME_UNIT)}{TIME_UNIT}"
 
                 timeout.set()
+
+        # Check for cloned tags in commBus
+        valid_commBus_tags = [
+            tag for tag, valid in zip(commBus_tag, commBus_valid) if valid
+        ]
+        commBus_clones = [
+            tag for tag in set(valid_commBus_tags) if valid_commBus_tags.count(tag) > 1
+        ]
+        if commBus_clones:
+            assert 0, f"Tag(s) cloned in commBus: {color(', '.join(map(str, commBus_clones)), Color.GREEN)} at {get_sim_time(units=TIME_UNIT)}{TIME_UNIT}"
+
+        # Check for cloned tags in arfBus
+        valid_arfBus_tags = [
+            tag for tag, valid in zip(arfBus_tag, arfBus_valid) if valid
+        ]
+        arfBus_clones = [
+            tag for tag in set(valid_arfBus_tags) if valid_arfBus_tags.count(tag) > 1
+        ]
+        if arfBus_clones:
+            assert 0, f"Tag(s) cloned in arfBus: {color(', '.join(map(str, arfBus_clones)), Color.GREEN)} at {get_sim_time(units=TIME_UNIT)}{TIME_UNIT}"
+
         await RisingEdge(dut.clock)
 
 
@@ -270,5 +337,6 @@ async def test_wood(dut):
     await RisingEdge(dut.clock)
 
     cocotb.start_soon(watchdog_timer())
+    cocotb.start_soon(flist_monitor(dut))
     cocotb.start_soon(decode_driver(dut))
     await cocotb.start_soon(diff_traces(dut))
