@@ -7,25 +7,25 @@ import wood.std.DCPipelineRegister
 
 class RetireStatusStage(config: WoodConfig) extends Module {
   val io = IO(new Bundle {
-    val in           = Flipped(Vec(config.nWide, Decoupled(new MI(config))))
+    val in           = Flipped(Vec(config.nWide, Decoupled(new RetireMI(config))))
     val firstPC      = Flipped(Valid(UInt(config.pcWidth.W)))
     val writebackBus = Flipped(Vec(config.nWide, ValidIO(new TagBus(config))))
     val exceptionBus = Flipped(Vec(config.nWide, ValidIO(new ExceptionBus(config))))
     val commitedBus  = Flipped(Vec(config.nWide, ValidIO(new TagBus(config))))
-    val out          = Vec(config.nWide, Decoupled(new MI(config)))
-    val bpBus        = ValidIO(new BranchPredictorBus(config))
+    val out          = Vec(config.nWide, Decoupled(new RetireMI(config)))
+    val bpBus        = Vec(config.nWide, ValidIO(new BranchPredictorBus(config)))
     val flush        = Output(Bool())
   })
 
-  val pRegs                       = Seq.fill(config.nWide)(Module(new DCPipelineRegister(new MI(config))(1)))
+  val pRegs                       = Seq.fill(config.nWide)(Module(new DCPipelineRegister(new RetireMI(config))(1)))
   val retireStatusRegisterFile    = RegInit(VecInit(Seq.fill(config.prfDepth)(0.U(1.W))))
   val takenStatusRegisterFile     = RegInit(VecInit(Seq.fill(config.prfDepth)(0.U(1.W))))
   val exceptionStatusRegisterFile = RegInit(VecInit(Seq.fill(config.prfDepth)(0.U(1.W))))
   val pcRegisterFile              = RegInit(VecInit(Seq.fill(config.prfDepth)(0.U(config.dataWidth.W)))) // TODO: remove reset
 
   val predictedPCs           = VecInit(io.in.tail.map(_.bits.pc) :+ io.firstPC.bits)
-  val self                   = Wire(Vec(config.nWide, Decoupled(new MI(config))))
-  val overridenRetiredStatus = Wire(Vec(config.nWide, Decoupled(new MI(config))))
+  val self                   = Wire(Vec(config.nWide, Decoupled(new RetireMI(config))))
+  val overridenRetiredStatus = Wire(Vec(config.nWide, Decoupled(new RetireMI(config))))
 
   val flushVector  = Wire(UInt(config.nWide.W))
   val flushVectors = Wire(Vec(config.nWide, UInt(config.nWide.W)))
@@ -39,11 +39,13 @@ class RetireStatusStage(config: WoodConfig) extends Module {
   allRetired := overridenRetiredStatus.map(_.bits.retired.asBool)
   allInValid := io.in.map(_.valid)
 
-  io.bpBus.bits.exception := exceptionStatusRegisterFile(io.in(mispredIndex).bits.rdTag)
-  io.bpBus.bits.pc        := io.in(mispredIndex).bits.pc
-  io.bpBus.bits.taken     := takenStatusRegisterFile(io.in(mispredIndex).bits.rdTag)
-  io.bpBus.bits.targetPC  := pcRegisterFile(io.in(mispredIndex).bits.rdTag)
-  io.bpBus.valid          := io.in(mispredIndex).valid
+  (0 until config.nWide).foreach(j => {
+    io.bpBus(j).bits.exception := exceptionStatusRegisterFile(io.in(j).bits.rdTag)
+    io.bpBus(j).bits.pc        := io.in(j).bits.pc
+    io.bpBus(j).bits.taken     := takenStatusRegisterFile(io.in(j).bits.rdTag) & !io.in(j).bits.flushed
+    io.bpBus(j).bits.targetPC  := pcRegisterFile(io.in(j).bits.rdTag)
+    io.bpBus(j).valid          := io.in(j).fire & !io.in(j).bits.flushed & (io.in(j).bits.isJAL | io.in(j).bits.isBranch)
+  })
 
   io.flush    := exceptionMispredSet.reduce(_ || _)
   flushVector := flushVectors.reduce(_ | _)

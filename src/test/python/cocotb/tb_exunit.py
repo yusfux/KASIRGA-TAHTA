@@ -24,8 +24,10 @@ tb_wood is a generic N wide testbench
 """
 CLOCK_PERIOD = 10
 TIME_UNIT = "ns"
-TIMEOUT = 800  # watchdog timer, resets itself
+TIMEOUT = 400  # watchdog timer, resets itself
 WOOD_NWIDE = 2
+BASE_ADDRESS = 0x80000000
+
 WOOD_INSTRUCTION_PATH = Path(f"{build_dir}/main.hex")
 print(WOOD_INSTRUCTION_PATH)
 
@@ -91,7 +93,9 @@ async def flist_monitor(dut):
 
         for n in range(0, WOOD_NWIDE):
             if in_ready[n] & in_valid[n]:
-                if in_tag[n] in flist:
+                if 0 in flist:
+                    assert 0, f"Zero inserted! tag_{n} {color(in_tag[n], Color.GREEN)} at {get_sim_time(units=TIME_UNIT)}{TIME_UNIT}"
+                elif in_tag[n] in flist:
                     assert 0, f"Flist tag inserted twice! tag_{n} {color(in_tag[n], Color.GREEN)} at {get_sim_time(units=TIME_UNIT)}{TIME_UNIT}"
                 else:
                     flist[in_tag[n]] = in_tag[n]
@@ -110,6 +114,96 @@ async def flist_monitor(dut):
             if out_ready[n] & out_valid[n]:
                 if out_tag[n] in flist:
                     del flist[out_tag[n]]
+
+        await RisingEdge(dut.clock)
+
+
+@cocotb.coroutine
+async def get_branch_trace():
+    spike_trace = await get_spike_trace()
+
+    branches_and_jumps = []
+    branch_instructions = [
+        "beq",
+        "bne",
+        "blt",
+        "bge",
+        "bltu",
+        "bgeu",
+        "jal",
+        "jalr",
+        "j  ",
+    ]
+
+    for i, instr in enumerate(spike_trace):
+        if any(
+            instr["alias_numeric"].startswith(branch) for branch in branch_instructions
+        ):
+            entry = {"pc": instr["pc"], "alias_numeric": instr["alias_numeric"]}
+
+            # Check if it's a taken branch/jump
+            if i < len(spike_trace) - 1:
+                current_pc = int(instr["pc"], 16)
+                next_pc = int(spike_trace[i + 1]["pc"], 16)
+                entry["targetPC"] = spike_trace[i + 1]["pc"]
+                if next_pc != current_pc + 4:
+                    entry["taken"] = 1
+                else:
+                    entry["taken"] = 0
+            else:
+                entry["taken"] = "Unknown (last instruction)"
+
+            branches_and_jumps.append(entry)
+
+    return branches_and_jumps
+
+
+@cocotb.coroutine
+async def branch_monitor(dut):
+    branch_trace = await get_branch_trace()
+
+    start.wait()
+    await RisingEdge(dut.clock)
+    await RisingEdge(dut.clock)
+
+    while True:
+        bp_pc = [0 for _ in range(WOOD_NWIDE)]
+        bp_taken = [0 for _ in range(WOOD_NWIDE)]
+        bp_targetPC = [0 for _ in range(WOOD_NWIDE)]
+        bp_valid = [0 for _ in range(WOOD_NWIDE)]
+        bp_taken = [0 for _ in range(WOOD_NWIDE)]
+        for n in range(0, WOOD_NWIDE):
+            bp_pc[n] = getattr(dut, f"rsstage.io_bpBus_{n}_bits_pc").value.integer
+            bp_taken[n] = getattr(dut, f"rsstage.io_bpBus_{n}_bits_taken").value.integer
+            bp_targetPC[n] = getattr(
+                dut, f"rsstage.io_bpBus_{n}_bits_targetPC"
+            ).value.integer
+            bp_valid[n] = getattr(dut, f"rsstage.io_bpBus_{n}_valid").value.integer
+
+        for n in range(0, WOOD_NWIDE):
+            if bp_valid[n]:
+                current_trace = branch_trace.pop(0)
+                targetPC = "{0:#0{1}x}".format(bp_targetPC[n], 10)
+                pc = "{0:#0{1}x}".format(bp_pc[n], 10)
+                golden_taken = current_trace["taken"]
+                golden_targetPC = current_trace["targetPC"]
+                golden_pc = current_trace["pc"]
+
+                if (targetPC == golden_targetPC) and (bp_pc[n] + 4 == bp_targetPC[n]):
+                    pass
+                else:
+                    if bp_taken[n] == 0:
+                        targetPC = "{0:#0{1}x}".format(bp_pc[n] + 4, 10)
+
+                    assert (
+                        (targetPC == golden_targetPC)
+                        and (pc == golden_pc)
+                        and (bp_taken[n] == golden_taken)
+                    ), f"                                                                                \n \
+                         TargetPC: {color(targetPC, Color.GREEN)} {color(golden_targetPC, Color.YELLOW)} \n \
+                         PC:       {color(pc, Color.GREEN)} {color(golden_pc, Color.YELLOW)}             \n \
+                         Taken:    {color(bp_taken[n], Color.GREEN)} {color(golden_taken, Color.YELLOW)} at {get_sim_time(units=TIME_UNIT)}{TIME_UNIT}\n \
+                    "
 
         await RisingEdge(dut.clock)
 
@@ -271,13 +365,6 @@ async def decode_driver(dut):
     insts.append("0" * 1024)
 
     virtual_pc = 0  # raw, requires (* 4) + base
-    base_address = 0x80000000
-
-    # bp_pc = getattr(dut, "rsstage.io_bpBus_bits_pc")
-    bp_taken = getattr(dut, "rsstage.io_bpBus_bits_taken")
-    bp_exception = getattr(dut, "rsstage.io_bpBus_bits_exception")
-    bp_targetPC = getattr(dut, "rsstage.io_bpBus_bits_targetPC")
-    bp_valid = getattr(dut, "rsstage.io_bpBus_valid")
 
     in_valid = []
     in_ready = []
@@ -294,7 +381,7 @@ async def decode_driver(dut):
 
     for n in range(0, WOOD_NWIDE):
         in_inst[n].value = int(insts[virtual_pc + n], 16)
-        in_pc[n].value = base_address + (4 * (virtual_pc + n))
+        in_pc[n].value = BASE_ADDRESS + (4 * (virtual_pc + n))
         in_valid[n].value = 1
 
     virtual_pc += WOOD_NWIDE
@@ -302,21 +389,40 @@ async def decode_driver(dut):
     await RisingEdge(dut.clock)
 
     while True:
+        jumped = 0
         for n in range(0, WOOD_NWIDE):
             in_inst[n].value = int(insts[virtual_pc + n], 16)
-            in_pc[n].value = base_address + (4 * (virtual_pc + n))
+            in_pc[n].value = BASE_ADDRESS + (4 * (virtual_pc + n))
             in_valid[n].value = 1
             # all_ready += in_ready[n].value.integer
 
         await FallingEdge(dut.clock)
 
-        if (
-            bp_taken.value.integer | bp_exception.value.integer
-        ) & bp_valid.value.integer:
-            real_pc = bp_targetPC.value.integer
-            virtual_pc = (real_pc - base_address) // 4
-            print("JUMP!", f"real_pc: {real_pc:0>8X} ", f"virtual_pc: {virtual_pc}")
-        else:
+        bp_pc = [0 for _ in range(WOOD_NWIDE)]
+        bp_taken = [0 for _ in range(WOOD_NWIDE)]
+        bp_targetPC = [0 for _ in range(WOOD_NWIDE)]
+        bp_valid = [0 for _ in range(WOOD_NWIDE)]
+        bp_taken = [0 for _ in range(WOOD_NWIDE)]
+        bp_exception = [0 for _ in range(WOOD_NWIDE)]
+        for n in range(0, WOOD_NWIDE):
+            bp_pc[n] = getattr(dut, f"rsstage.io_bpBus_{n}_bits_pc").value.integer
+            bp_taken[n] = getattr(dut, f"rsstage.io_bpBus_{n}_bits_taken").value.integer
+            bp_targetPC[n] = getattr(
+                dut, f"rsstage.io_bpBus_{n}_bits_targetPC"
+            ).value.integer
+            bp_exception[n] = getattr(
+                dut, f"rsstage.io_bpBus_{n}_bits_exception"
+            ).value.integer
+            bp_valid[n] = getattr(dut, f"rsstage.io_bpBus_{n}_valid").value.integer
+
+            if (bp_taken[n] | bp_exception[n]) & bp_valid[n]:
+                real_pc = bp_targetPC[n]
+                virtual_pc = (real_pc - BASE_ADDRESS) // 4
+                print("JUMP!", f"real_pc: {real_pc:0>8X} ", f"virtual_pc: {virtual_pc}")
+                jumped = 1
+                break
+
+        if not jumped:
             all_ready = 0
             for n in range(0, WOOD_NWIDE):
                 all_ready += in_ready[n].value.integer
@@ -337,6 +443,8 @@ async def test_wood(dut):
     await RisingEdge(dut.clock)
 
     cocotb.start_soon(watchdog_timer())
+
+    cocotb.start_soon(branch_monitor(dut))
     cocotb.start_soon(flist_monitor(dut))
     cocotb.start_soon(decode_driver(dut))
     await cocotb.start_soon(diff_traces(dut))

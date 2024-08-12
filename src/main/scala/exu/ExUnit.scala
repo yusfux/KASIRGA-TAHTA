@@ -10,12 +10,13 @@ import wood.fru.PCInst
 case class MI(config: WoodConfig) extends Bundle {
   val isFloat     = UInt(DecodeConfig.subWidths(0).W)
   val isBranch    = UInt(DecodeConfig.subWidths(1).W)
-  val wakeup      = UInt(DecodeConfig.subWidths(2).W)
-  val operand1    = UInt(DecodeConfig.subWidths(3).W)
-  val operand2    = UInt(DecodeConfig.subWidths(4).W)
-  val writeRf     = UInt(DecodeConfig.subWidths(5).W)
-  val exEngine    = UInt(DecodeConfig.subWidths(6).W)
-  val exOp        = UInt(DecodeConfig.subWidths(7).W)
+  val isJAL       = UInt(DecodeConfig.subWidths(2).W)
+  val wakeup      = UInt(DecodeConfig.subWidths(3).W)
+  val operand1    = UInt(DecodeConfig.subWidths(4).W)
+  val operand2    = UInt(DecodeConfig.subWidths(5).W)
+  val writeRf     = UInt(DecodeConfig.subWidths(6).W)
+  val exEngine    = UInt(DecodeConfig.subWidths(7).W)
+  val exOp        = UInt(DecodeConfig.subWidths(8).W)
   val exception   = Bool()
   val taken       = Bool()
   val imm         = UInt(32.W) // TODO
@@ -39,11 +40,27 @@ case class MI(config: WoodConfig) extends Bundle {
   val inst        = UInt(32.W) // for testbench only
 }
 
+case class RetireMI(config: WoodConfig) extends Bundle {
+  val isBranch = UInt(DecodeConfig.subWidths(1).W)
+  val isJAL    = UInt(DecodeConfig.subWidths(2).W)
+  val writeRf  = UInt(DecodeConfig.subWidths(6).W)
+  val rd       = UInt(5.W)
+  val pc       = UInt(config.pcWidth.W)
+  val targetPC = UInt(config.pcWidth.W)
+  val rdTag    = UInt(config.tagWidth.W)
+  val retired  = Bool()
+  val flushed  = Bool()
+  val arfTag   = UInt(config.tagWidth.W)
+  val arfValid = Bool()
+  val inst     = UInt(32.W) // for testbench only
+}
+
 object MI { // for testbench only, set all to value except overrides
   def apply(config: WoodConfig, value: UInt, overrides: Map[String, UInt] = Map.empty): MI = {
     val mi = new MI(config).Lit(
       _.isFloat     -> overrides.getOrElse("isFloat", value),
       _.isBranch    -> overrides.getOrElse("isBranch", value),
+      _.isJAL       -> overrides.getOrElse("isJAL", value),
       _.wakeup      -> overrides.getOrElse("wakeup", value),
       _.operand2    -> overrides.getOrElse("operand2", value),
       _.operand1    -> overrides.getOrElse("operand1", value),
@@ -117,7 +134,8 @@ class ExUnit(config: WoodConfig) extends Module {
   val io = IO(new Bundle {
     val in    = Flipped(Vec(config.nWide, Decoupled(new PCInst(config))))
     val flush = Output(Bool())
-    val bpBus = ValidIO(new BranchPredictorBus(config))
+    val bpBus = Vec(config.nWide, ValidIO(new BranchPredictorBus(config)))
+
   })
 
   val destage = Module(new DecodeStage(config))

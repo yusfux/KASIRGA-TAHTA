@@ -7,18 +7,18 @@ import wood.std.DCPipelineRegister
 
 class ArchRegisterFileStage(config: WoodConfig) extends Module {
   val io = IO(new Bundle {
-    val in     = Flipped(Vec(config.nWide, Decoupled(new MI(config))))
+    val in     = Flipped(Vec(config.nWide, Decoupled(new RetireMI(config))))
     val arfBus = Input(Vec(config.nWide, ValidIO(new ARFBus(config))))
     val archRF = Output(Vec(32, UInt(config.tagWidth.W)))
-    val out    = Vec(config.nWide, Decoupled(new MI(config)))
+    val out    = Vec(config.nWide, Decoupled(new RetireMI(config)))
   })
 
   val archRegisterFile      = RegInit(VecInit(Seq.fill(32)(0.U(config.tagWidth.W))))
   val archRegisterFileValid = RegInit(VecInit(Seq.fill(32)(0.U(1.W))))
   val arfOverriders         = Seq.fill(config.nWide)(Module(new OverrideArfTagFromBus(config)))
-  val pRegs                 = Seq.fill(config.nWide)(Module(new DCPipelineRegister(new MI(config))(1)))
+  val pRegs                 = Seq.fill(config.nWide)(Module(new DCPipelineRegister(new RetireMI(config))(1)))
 
-  val overridenRF = Wire(Vec(config.nWide, Decoupled(new MI(config))))
+  val overridenRF = Wire(Vec(config.nWide, Decoupled(new RetireMI(config))))
 
   (0 until config.nWide).foreach(j => {
     overridenRF(j)               <> io.in(j)
@@ -32,6 +32,7 @@ class ArchRegisterFileStage(config: WoodConfig) extends Module {
     when(io.arfBus(j).valid) {
       archRegisterFile(io.arfBus(j).bits.rd)      := io.arfBus(j).bits.tag
       archRegisterFileValid(io.arfBus(j).bits.rd) := 1.U
+      archRegisterFileValid(0.U)                  := 1.U
     }
 
     pRegs(j).io.valids(0) := io.in(j).valid // READ ARCH RF VALID

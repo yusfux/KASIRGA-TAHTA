@@ -9,12 +9,12 @@ class ROBStage(config: WoodConfig) extends Module {
   val io = IO(new Bundle {
     val in      = Flipped(Vec(config.nWide, Decoupled(new MI(config))))
     val flush   = Input(Bool())
-    val out     = Vec(config.nWide, Decoupled(new MI(config)))
+    val out     = Vec(config.nWide, Decoupled(new RetireMI(config)))
     val firstPC = Valid(UInt(config.pcWidth.W))
   })
 
-  val q     = Module(new DCRRQueue(new MI(config))(config.nWide, config.robDepth))
-  val pRegs = Seq.fill(config.nWide)(Module(new DCPipelineRegister(new MI(config))(1)))
+  val q     = Module(new DCRRQueue(new RetireMI(config))(config.nWide, config.robDepth))
+  val pRegs = Seq.fill(config.nWide)(Module(new DCPipelineRegister(new RetireMI(config))(1)))
 
   val savedCounts = RegInit(VecInit(Seq.fill(config.nWide)(0.U(log2Ceil(config.robDepth).W))))
 
@@ -24,7 +24,26 @@ class ROBStage(config: WoodConfig) extends Module {
     })
   }
 
-  q.io.in    <> io.in
+  q.io.in <> io.in.map { mi =>
+    val remi = Wire(DecoupledIO(new RetireMI(config)))
+    remi.valid := mi.valid
+    mi.ready   := remi.ready
+
+    remi.bits.isBranch := mi.bits.isBranch
+    remi.bits.isJAL    := mi.bits.isJAL
+    remi.bits.writeRf  := mi.bits.writeRf
+    remi.bits.rd       := mi.bits.rd
+    remi.bits.pc       := mi.bits.pc
+    remi.bits.targetPC := mi.bits.targetPC
+    remi.bits.rdTag    := mi.bits.rdTag
+    remi.bits.retired  := mi.bits.retired
+    remi.bits.flushed  := mi.bits.flushed
+    remi.bits.arfTag   := mi.bits.arfTag
+    remi.bits.arfValid := mi.bits.arfValid
+    remi.bits.inst     := mi.bits.inst
+    remi
+  }
+
   q.io.flush := 0.B // must return each tag back to freelist
 
   (0 until config.nWide).foreach(j => {

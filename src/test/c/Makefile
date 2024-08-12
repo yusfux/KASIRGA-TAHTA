@@ -17,7 +17,7 @@ OBJDUMP = $(RISCV_PREFIX)objdump
 
 .PHONY: all clean test
 
-all: dump2 trace
+all: dump2 trace inject_questa_radix
 
 .PHONY: build_dir
 build_dir:
@@ -39,6 +39,11 @@ dump2: compile
 trace: compile
 		spike -m0x80000000:0x200000  --log-commits --isa=rv32gc -l $(BUILD_DIR)/main.elf &> $(BUILD_DIR)/spike.trace
 		spiketrace2json -f $(BUILD_DIR)/spike.trace -o $(BUILD_DIR)/spike_trace.json
+
+.PHONY: inject_questa_radix
+inject_questa_radix: dump2
+		cp  $(SRC_DIR)/wave.do $(BUILD_DIR)/wave.do
+		sed -i '1r $(BUILD_DIR)/main.vsim.map' $(BUILD_DIR)/wave.do
 
 
 clean:
