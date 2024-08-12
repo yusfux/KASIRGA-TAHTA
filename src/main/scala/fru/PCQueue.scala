@@ -29,11 +29,10 @@ class PCQueue(config: WoodConfig) extends Module {
   queue.io.flush.get := io.flush
 
   // queue.io.enq <> io.in will not work since we do not want to enqueue in with the flush signal
-  //queue.io.enq.bits := io.in.bits
-  //queue.io.enq.valid := io.in.valid && ~io.flush
-  //io.in.ready := queue.io.enq.ready
-
   queue.io.enq <> io.in
+  queue.io.enq.valid := io.in.valid && !io.flush
+
   io.out <> queue.io.deq
+  io.out.valid := queue.io.deq.valid && !io.flush
 }
 

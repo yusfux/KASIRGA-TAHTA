@@ -7,22 +7,22 @@ import wood.std.{ReadPortI, ReadPortO}
 
 case class PCInst(config: WoodConfig) extends Bundle {
   val pc   = UInt(config.pcWidth.W)
-  val inst = UInt(config.xlen.W) // TODO
+  val inst = UInt(config.xlen.W)
 }
 
 class FrUnit(config: WoodConfig) extends Module {
   val io = IO(new Bundle {
     val in = Input(new Bundle {
       val exception = new Bundle {
-        val en = Bool()                 // exception happened
-        val pc = UInt(config.pcWidth.W) // new pc to fetch after the exception (i.e., exception handler pc from mepc)
+        val en = Bool()
+        val pc = UInt(config.pcWidth.W)
       }
 
       val mispred = new Bundle {
-        val pc = UInt(config.pcWidth.W)       // pc of the mispredicted branch
-        val targetpc = UInt(config.pcWidth.W) // target pc of the mispredicted branch
-        val en = Bool()                       // misprediction happened
-        val taken = Bool()                    // mispredicted branch was taken
+        val pc = UInt(config.pcWidth.W)
+        val targetpc = UInt(config.pcWidth.W)
+        val en = Bool()
+        val taken = Bool()
       }
     })
 
@@ -33,15 +33,21 @@ class FrUnit(config: WoodConfig) extends Module {
 
     val out = new Bundle {
       val instruction = Vec(config.nWide, DecoupledIO(UInt(config.xlen.W)))
+      val pc = Vec(config.nWide, UInt(config.pcWidth.W))
     }
   })
 
   val f1stage = Module(new Fetch1Stage(config))
   val f2stage = Module(new Fetch2Stage(config))
+  val flush = io.in.exception.en || io.in.mispred.en
 
   f1stage.io.in <> io.in
   f2stage.io.in <> f1stage.io.out
   io.out <> f2stage.io.out
+
+  f2stage.io.in.valid := RegNext(f1stage.io.out.valid) && ~flush
+  f2stage.io.in.bits.controller := RegNext(f1stage.io.out.bits.controller)
+  f1stage.io.out.ready := RegNext(f2stage.io.in.ready) && ~flush
 
   f2stage.io.mem <> io.mem
 }

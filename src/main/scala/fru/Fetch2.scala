@@ -21,6 +21,7 @@ class Fetch2IO(config: WoodConfig) extends Bundle {
 
   val out = new Bundle {
     val instruction = Vec(config.nWide, DecoupledIO(UInt(config.xlen.W)))
+    val pc = Vec(config.nWide, UInt(config.pcWidth.W))
   }
 }
 
@@ -37,7 +38,20 @@ class Fetch2Stage(config: WoodConfig) extends Module {
     core.resp.ready := io.out.instruction(i).ready
     io.out.instruction(i).bits := core.resp.bits.data
   }
-  io.out.instruction.map(_.valid := icachebankcont.io.core.map(_.resp.valid).reduce(_ & _))
   io.in.ready := icachebankcont.io.core.map(_.req.ready).reduce(_ & _)
+
+  val allValid = icachebankcont.io.core.zipWithIndex.map { case (core, i) => core.resp.valid || ~io.in.bits.controller(i).mask }.reduce(_ & _)
+  when(allValid) {
+    io.out.instruction.zipWithIndex.map { case (instruction, i) => instruction.valid :=  icachebankcont.io.core(i).resp.valid }
+  }.otherwise {
+    io.out.instruction.map(_.valid := false.B)
+  }
+
+  val pcouts = RegInit(VecInit(Seq.fill(config.nWide)(0.U(config.pcWidth.W))))
+  when(io.in.fire) {
+    pcouts.zipWithIndex.foreach { case (pc, i) => pc := io.in.bits.controller(i).pc }
+  }
+
+  io.out.pc.zipWithIndex.foreach { case (pc, i) => pc := pcouts(i) }
 }
 

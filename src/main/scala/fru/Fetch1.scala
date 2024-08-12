@@ -19,11 +19,6 @@ class Fetch1IO(config: WoodConfig) extends Bundle {
     }
   })
 
-  /* 
-    TODO: FIND A BETTER NOTATION ASAP OR MAKE EVERY OTHER MODULE CONSISTENT
-    i hate this fucking notation but it seems like it is the conventionally
-    right one,
-  */
   val out = DecoupledIO(new Bundle {
     val controller = Vec(config.nWide, new Bundle() {
       val pc = UInt(config.pcWidth.W)
@@ -40,13 +35,10 @@ class Fetch1IO(config: WoodConfig) extends Bundle {
 /* 
   when the PCQueue is full, we do not write the program coutner to the queue obviously
   but we also do NOT register the current program counter, so any new pc coming from
-  exu will be accepted and we will lose the curernt program counter.
+  misprediction or exception will be accepted and we will lose the current program counter.
 
   it may be problematic even though i can't think of any reason because we will abort the
-  program counters in the queues anyway if we get an exception don't we?
-
-  TODO: we will need *valid* bits for each program counter individually to mask out the
-  not valid program counters since not every N=wide program counter will be valid in each group
+  program counters in the queues anyway if we get an exception, don't we?
  */
 class Fetch1Stage(config: WoodConfig) extends Module {
   val io = IO(new Fetch1IO(config))
