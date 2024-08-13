@@ -32,16 +32,16 @@ case class WoodConfig(
   //--------------
 ) {
 
-  //require(
-    //robDepth % nWide == 0,
-    //"RobDepth must be divisible by nWide"
-  //)
+  require(
+    robDepth % nWide == 0,
+    "RobDepth must be divisible by nWide"
+  )
 
   val prfDepth = (32 + (rsDepth * nWide) + (8 * nWide) + (robDepth * nWide))
-  //require(
-    //(prfDepth % nWide == 0),
-    //"prfDepth must be divisible by nWide"
-  //)
+  require(
+    (prfDepth % nWide == 0),
+    "prfDepth must be divisible by nWide"
+  )
   val byteOffset = log2Ceil(pcWidth >> 3)
   val bankOffset = log2Ceil(nWide)
   val itaglen    = pcWidth - (log2Ceil(icacheDepth) + byteOffset + bankOffset)

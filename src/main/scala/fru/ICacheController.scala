@@ -3,44 +3,23 @@ package wood.fru
 import chisel3._
 import chisel3.util._
 import wood.WoodConfig
-import wood.std.{ReadPortI, ReadPortO}
-
-class ICacheControllerIO(config: WoodConfig) extends Bundle {
-  val core = new Bundle() {
-    val req = Flipped(DecoupledIO(new ReadPortI(UInt(config.dataWidth.W))(config.addrWidth)))
-    val resp = DecoupledIO(new ReadPortO(UInt(config.dataWidth.W))(config.addrWidth))
-  }
-
-  val cache = Flipped(new SRAMInterface(config.icacheDepth, UInt((config.ivalidlen + config.itaglen + config.idatalen).W), 0, 0, 1))
-
-  val mem = new Bundle() {
-    val req = DecoupledIO(new ReadPortI(UInt(config.dataWidth.W))(config.addrWidth))
-    val resp = Flipped(DecoupledIO(new ReadPortO(UInt(config.dataWidth.W))(config.addrWidth)))
-  }
-}
 
 object CacheState extends ChiselEnum {
   val init, idle, read, refill = Value
 }
 
 class ICacheController(config: WoodConfig) extends Module {
-  val pcWidth = config.pcWidth
-  val depth = config.icacheDepth
-
-  val depthWidth  = log2Ceil(depth)
-  val offsetWidth = config.byteOffset + config.bankOffset
-
-  val taglen   = config.itaglen
-  val datalen  = config.idatalen
-  val validlen = config.ivalidlen
-
-  val io = IO(new ICacheControllerIO(config))
+  val io = IO(new Bundle {
+    val core  = new CorePort(config)
+    val cache = Flipped(new SRAMInterface(config.icacheDepth, UInt((config.ivalidlen + config.itaglen + config.idatalen).W), 0, 0, 1))
+    val mem   = new MemPort(config.copy(memDataWidth = config.dataWidth))
+  })
 
   // ---------------------------------------------------------------------------
   val corerequest = new Bundle() {
     val addr = io.core.req.bits.addr
-    val idx  = addr(offsetWidth + depthWidth - 1, offsetWidth)
-    val tag  = addr(pcWidth - 1, offsetWidth + depthWidth)
+    val idx  = addr(config.byteOffset + config.bankOffset + log2Ceil(config.icacheDepth) - 1, config.byteOffset + config.bankOffset)
+    val tag  = addr(config.pcWidth - 1, config.byteOffset + config.bankOffset + log2Ceil(config.icacheDepth))
 
     val addrReg = RegEnable(addr, io.core.req.fire)
     val idxReg  = RegEnable(idx, io.core.req.fire)
@@ -50,9 +29,9 @@ class ICacheController(config: WoodConfig) extends Module {
   val cacheresponse = new Bundle() {
     val cacheline = io.cache.readwritePorts(0).readData
 
-    val valid = cacheline(taglen + datalen + validlen - 1)
-    val tag = cacheline(taglen + datalen - 1, datalen)
-    val data = cacheline(datalen - 1, 0)
+    val valid = cacheline(config.itaglen + config.idatalen + config.ivalidlen - 1)
+    val tag = cacheline(config.itaglen + config.idatalen - 1, config.idatalen)
+    val data = cacheline(config.idatalen - 1, 0)
   }
 
   val state = RegInit(CacheState.init)
@@ -63,7 +42,7 @@ class ICacheController(config: WoodConfig) extends Module {
 
   // ---------------------------------------------------------------------------
 
-  val (initIdx, initCompleted) = Counter(true.B, depth)
+  val (initIdx, initCompleted) = Counter(true.B, config.icacheDepth)
 
   val isHit = cacheresponse.valid && (cacheresponse.tag === corerequest.tagReg)
 

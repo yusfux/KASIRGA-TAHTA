@@ -3,51 +3,50 @@ package wood.fru
 import chisel3._
 import chisel3.util._
 import wood.WoodConfig
+import wood.exu.BranchPredictorBus
 import wood.std.{ReadPortI, ReadPortO}
 
-case class PCInst(config: WoodConfig) extends Bundle {
+//TODO: make this competiable with other io interfaces, remove hardware generation (i.e., DecoupledIO)
+class MemPort(config: WoodConfig) extends Bundle {
+  val req  = DecoupledIO(new ReadPortI(UInt(config.dataWidth.W))(config.addrWidth))
+  val resp = Flipped(DecoupledIO(new ReadPortO(UInt(config.memDataWidth.W))(config.addrWidth)))
+}
+
+//TODO: make this competiable with other io interfaces, remove hardware generation (i.e., DecoupledIO)
+class CorePort(config: WoodConfig) extends Bundle {
+  val req = Flipped(DecoupledIO(new ReadPortI(UInt(config.dataWidth.W))(config.addrWidth)))
+  val resp = DecoupledIO(new ReadPortO(UInt(config.dataWidth.W))(config.addrWidth))
+}
+
+class PCQueueEntry(config: WoodConfig) extends Bundle {
+  val fetchpc = UInt(config.pcWidth.W)
+  val mask    = Vec(config.nWide, Bool())
+}
+
+class PCInst(config: WoodConfig) extends Bundle {
   val pc   = UInt(config.pcWidth.W)
   val inst = UInt(config.xlen.W)
 }
 
 class FrUnit(config: WoodConfig) extends Module {
   val io = IO(new Bundle {
-    val in = Input(new Bundle {
-      val exception = new Bundle {
-        val en = Bool()
-        val pc = UInt(config.pcWidth.W)
-      }
-
-      val mispred = new Bundle {
-        val pc = UInt(config.pcWidth.W)
-        val targetpc = UInt(config.pcWidth.W)
-        val en = Bool()
-        val taken = Bool()
-      }
-    })
-
-    val mem = new Bundle() {
-      val req = DecoupledIO(new ReadPortI(UInt(config.dataWidth.W))(config.addrWidth))
-      val resp = Flipped(DecoupledIO(new ReadPortO(UInt(config.memDataWidth.W))(config.addrWidth)))
-    }
-
-    val out = new Bundle {
-      val instruction = Vec(config.nWide, DecoupledIO(UInt(config.xlen.W)))
-      val pc = Vec(config.nWide, UInt(config.pcWidth.W))
-    }
+    val bpBus        = Vec(config.nWide, Flipped(ValidIO(new BranchPredictorBus(config))))
+    val mem          = new MemPort(config)
+    val instPacket   = Vec(config.nWide, Decoupled(new PCInst(config)))
   })
 
   val f1stage = Module(new Fetch1Stage(config))
   val f2stage = Module(new Fetch2Stage(config))
-  val flush = io.in.exception.en || io.in.mispred.en
+  val flush   = io.bpBus.map(_.valid).reduce(_ | _)
 
-  f1stage.io.in <> io.in
-  f2stage.io.in <> f1stage.io.out
-  io.out <> f2stage.io.out
+  f1stage.io.bpBus <> io.bpBus
+  f2stage.io.pc    <> f1stage.io.pc
+  f2stage.io.mem   <> io.mem
+  io.instPacket    <> f2stage.io.instPacket
 
-  f2stage.io.in.valid := RegNext(f1stage.io.out.valid) && ~flush
-  f2stage.io.in.bits.controller := RegNext(f1stage.io.out.bits.controller)
-  f1stage.io.out.ready := RegNext(f2stage.io.in.ready) && ~flush
-
-  f2stage.io.mem <> io.mem
+  (0 until config.nWide) foreach { i =>
+    f2stage.io.pc(i).valid := RegNext(f1stage.io.pc(i).valid) && ~flush
+    f2stage.io.pc(i).bits  := RegNext(f1stage.io.pc(i).bits)
+    f1stage.io.pc(i).ready := RegNext(f2stage.io.pc(i).ready) && ~flush
+  }
 }

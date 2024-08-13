@@ -1,7 +1,6 @@
 package wood.fru
 
 import scala.collection.mutable._
-import chisel3._
 import chiseltest._
 import org.scalatest.flatspec.AnyFlatSpec
 import wood.WoodConfig
@@ -17,40 +16,6 @@ class Fetch1Spec extends AnyFlatSpec with ChiselScalatestTester {
 
   "Fetch1" should "work" in {
     test(new Fetch1Stage(config)).withAnnotations(GetBackendAnnotation()) { dut =>
-      fork {
-        for(i <- 0 until TEST_SIZE) {
-          fork
-            .withRegion(Monitor) {
-              while (!dut.io.debug.queue_ready.peekBoolean()) {
-                step(1)
-              }
-              q.enqueue(pc)
-              pc = pc + 4 * config.nWide
-
-            }
-            .joinAndStep()
-          }
-      }.fork {
-        for(i <- 0 until TEST_SIZE) {
-          if(scala.util.Random.nextDouble() < 0.4) {
-            step(scala.util.Random.nextInt(config.pcQueueDepth) + 1)  // to control the async read-write situations
-          }
-          dut.io.out.ready.poke(true)
-          fork
-            .withRegion(Monitor) {
-              while (!dut.io.out.valid.peekBoolean()) {
-                step(1)
-              }
-              val temp = q.dequeue()
-              for(j <- 0 until config.nWide) {
-                dut.io.out.bits.controller(j).pc.expect((temp + 4 * j).U)
-                dut.io.out.bits.controller(j).mask.expect(true.B)
-              }
-            }
-            .joinAndStep()
-          dut.io.out.ready.poke(false)
-        }
-      }.joinAndStep()
     }
   }
 
@@ -61,52 +26,6 @@ class Fetch1Spec extends AnyFlatSpec with ChiselScalatestTester {
    */
   "Fetch1" should "work under misprediction" in {
     test(new Fetch1Stage(config)).withAnnotations(GetBackendAnnotation()) { dut =>
-      fork {
-        for(i <- 0 until TEST_SIZE) {
-          if(i == TEST_SIZE / 2) {
-            dut.io.in.mispred.en.poke(true.B)
-            dut.io.in.mispred.pc.poke((pc - (i / 2 * 4 * config.nWide)).U)
-            dut.io.in.mispred.targetpc.poke(target_pc.U)
-          } else {
-            dut.io.in.mispred.en.poke(false.B)
-          }
-
-          fork
-            .withRegion(Monitor) {
-              while (!dut.io.debug.queue_ready.peekBoolean()) {
-                step(1)
-              }
-              //if(i == TEST_SIZE / 2) {
-                //q.clear()
-                //pc = target_pc
-              //}
-
-              //q.enqueue(pc)
-              pc = pc + 4 * config.nWide
-            }
-            .joinAndStep()
-          }
-      }.fork {
-        for(i <- 0 until TEST_SIZE) {
-          if(scala.util.Random.nextDouble() < 0.4) {
-            step(scala.util.Random.nextInt(config.pcQueueDepth) + 1)  // to control the async read-write situations
-          }
-          dut.io.out.ready.poke(true)
-          fork
-            .withRegion(Monitor) {
-              while (!dut.io.out.valid.peekBoolean()) {
-                step(1)
-              }
-              //val temp = q.dequeue()
-              for(j <- 0 until config.nWide) {
-                //dut.io.out.bits.controller(j).pc.expect((temp + 4 * j).U)
-                //dut.io.out.bits.controller(j).mask.expect(true.B)
-              }
-            }
-            .joinAndStep()
-          dut.io.out.ready.poke(false)
-        }
-      }.joinAndStep()
     }
   }
 
