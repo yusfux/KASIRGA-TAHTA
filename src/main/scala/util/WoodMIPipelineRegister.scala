@@ -22,21 +22,12 @@ class WoodMIPipelineRegister(config: WoodConfig, numValids: Int) extends Module 
   val regValid     = RegEnable(regValidNext, 0.B, 1.B)
 
   when(io.flush) {
-    regData  := 0.U.asTypeOf(new MI(config))
-    regValid := 0.B
-  }
-  when(io.setflushed) {
-    regData  := 0.U.asTypeOf(new MI(config))
-    regValid := 0.B
-  }
-
-  when(io.flush) {
     regDataNext  := 0.U.asTypeOf(new MI(config))
     regValidNext := 0.U
   }.elsewhen(io.setflushed) {
-    regDataNext         := regData
+    regDataNext         := Mux(io.out.ready, io.in.bits, regData)
     regDataNext.flushed := 1.B
-    regValidNext        := regValid
+    regValidNext        := Mux(io.out.ready, io.in.valid, regValid)
   }.elsewhen(io.out.ready) {
     regDataNext  := io.in.bits
     regValidNext := io.in.valid

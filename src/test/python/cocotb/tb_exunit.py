@@ -91,10 +91,9 @@ async def flist_monitor(dut):
             in_ready[n] = getattr(dut, f"mistage.flist.io_in_{n}_ready").value.integer
             in_tag[n] = getattr(dut, f"mistage.flist.io_in_{n}_bits_tag").value.integer
 
-        for n in range(0, WOOD_NWIDE):
             if in_ready[n] & in_valid[n]:
                 if 0 in flist:
-                    assert 0, f"Zero inserted! tag_{n} {color(in_tag[n], Color.GREEN)} at {get_sim_time(units=TIME_UNIT)}{TIME_UNIT}"
+                    assert 0, f"Zero tag inserted! tag_{n} {color(in_tag[n], Color.GREEN)} at {get_sim_time(units=TIME_UNIT)}{TIME_UNIT}"
                 elif in_tag[n] in flist:
                     assert 0, f"Flist tag inserted twice! tag_{n} {color(in_tag[n], Color.GREEN)} at {get_sim_time(units=TIME_UNIT)}{TIME_UNIT}"
                 else:
@@ -110,7 +109,6 @@ async def flist_monitor(dut):
                 dut, f"mistage.flist.io_out_{n}_bits_tag"
             ).value.integer
 
-        for n in range(0, WOOD_NWIDE):
             if out_ready[n] & out_valid[n]:
                 if 0 == out_tag[n]:
                     assert 0, f"Zero read! tag_{n} {color(in_tag[n], Color.GREEN)} at {get_sim_time(units=TIME_UNIT)}{TIME_UNIT}"

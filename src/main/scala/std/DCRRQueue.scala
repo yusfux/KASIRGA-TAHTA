@@ -36,7 +36,10 @@ class DCRRQueue[T <: Data](gen: T)(numPorts: Int, queueDepth: Int, unique: Boole
   when(io.flush) {
     previousIn := VecInit(Seq.fill(numPorts)(0.U.asTypeOf(gen.cloneType)))
   }.otherwise {
-    previousIn := io.in.zipWithIndex.map { case (in, i) => Mux(in.valid && !is_duplicate(i), in.bits, previousIn(i)) }
+    if (unique)
+      previousIn := io.in.zipWithIndex.map { case (in, i) => Mux(in.valid && !is_duplicate(i), in.bits, previousIn(i)) }
+    else
+      previousIn := io.in.zipWithIndex.map { case (in, i) => Mux(in.valid, in.bits, previousIn(i)) }
   }
 
   queues.foreach(_.io.flush.get := io.flush)

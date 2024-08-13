@@ -72,11 +72,14 @@ class RetireStatusStage(config: WoodConfig) extends Module {
       exceptionStatusRegisterFile(tag) := 0.U
     }
 
-    self(j).bits  := overridenRetiredStatus(j).bits
+    self(j).bits         := overridenRetiredStatus(j).bits
+    self(j).bits.flushed := flushVector(j) | overridenRetiredStatus(j).bits.flushed
+
     self(j).valid := (allInValid.asUInt.andR & allRetired.asUInt.andR) | (io.in(j).bits.flushed & io.in(j).valid)
 
-    pRegs(j).io.valids(0) := io.in(j).valid
-    pRegs(j).io.flush     := flushVector(j)
+    pRegs(j).io.valids(0)       := io.in(j).valid
+    pRegs(j).io.flush           := 0.U // never lose tags
+    pRegs(j).io.in.bits.flushed := flushVector(j)
 
     overridenRetiredStatus(j).ready := self(j).ready
 

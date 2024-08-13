@@ -65,7 +65,7 @@ class RenameStage(config: WoodConfig) extends Module {
       self(j).bits.rs2Tag := frontEndRegisterFile(io.in(j).bits.rs2)
     }
 
-    self(j).bits.flushed := io.flush
+    self(j).bits.flushed := io.flush | io.in(j).bits.flushed
     self(j).valid        := allInValid.asUInt.andR & outReady.asUInt.andR
 
     pRegs(j).io.valids(0) := io.in(j).valid

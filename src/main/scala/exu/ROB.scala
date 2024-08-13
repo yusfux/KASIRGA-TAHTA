@@ -54,7 +54,7 @@ class ROBStage(config: WoodConfig) extends Module {
   (0 until config.nWide).foreach(j => {
     pRegs(j).io.valids(0)       := q.io.out(j).valid
     pRegs(j).io.in              <> q.io.out(j)
-    pRegs(j).io.in.bits.flushed := io.flush | (savedCounts(j) =/= 0.U)
+    pRegs(j).io.in.bits.flushed := q.io.out(j).bits.flushed | io.flush | (savedCounts(j) =/= 0.U)
     pRegs(j).io.in.bits.writeRf := Mux((io.flush | (savedCounts(j) =/= 0.U)), 0.U, q.io.out(j).bits.writeRf)
 
     pRegs(j).io.flush := 0.U // never lose tags
