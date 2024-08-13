@@ -120,10 +120,11 @@ class ExceptionBus(config: WoodConfig) extends TagBus(config) {
 }
 
 class BranchPredictorBus(config: WoodConfig) extends Bundle {
-  val pc        = UInt(config.pcWidth.W)
-  val taken     = Bool()
-  val exception = Bool()
-  val targetPC  = UInt(config.pcWidth.W)
+  val pc         = UInt(config.pcWidth.W)
+  val mispredict = Bool()
+  val taken      = Bool()
+  val exception  = Bool()
+  val targetPC   = UInt(config.pcWidth.W)
 }
 
 class ARFBus(config: WoodConfig) extends TagBus(config) {

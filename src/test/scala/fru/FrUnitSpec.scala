@@ -43,17 +43,18 @@ class FrUnitDut(config: WoodConfig) extends Module {
   io.ready                 := mem.io.wp(0).ready
 
   frunit.io.instPacket <> io.instPacket
-  frunit.io.bpBus.foreach(_.valid          := io.exception_en)
-  frunit.io.bpBus.foreach(_.bits.exception := true.B)
-  frunit.io.bpBus.foreach(_.bits.taken     := false.B)
-  frunit.io.bpBus.foreach(_.bits.pc        := 0.U)
-  frunit.io.bpBus.foreach(_.bits.targetPC  := io.exception_pc)
+  frunit.io.bpBus.foreach(_.valid           := io.exception_en)
+  frunit.io.bpBus.foreach(_.bits.exception  := true.B)
+  frunit.io.bpBus.foreach(_.bits.mispredict := false.B)
+  frunit.io.bpBus.foreach(_.bits.taken      := false.B)
+  frunit.io.bpBus.foreach(_.bits.pc         := 0.U)
+  frunit.io.bpBus.foreach(_.bits.targetPC   := io.exception_pc)
 }
 
 class FrUnitSpec extends AnyFlatSpec with ChiselScalatestTester {
   val mainmem = Source.fromFile(s"${os.pwd}/src/test/c/build/main.hex").getLines().toList
   val json = ujson.read(os.read(os.pwd / RelPath("src/test/c/build/spike_trace.json")))
-  val config = new WoodConfig(nWide = 8, memDepth = mainmem.length / 4, pcInitAddr = "h8000_0000")
+  val config = new WoodConfig(nWide = 4, memDepth = mainmem.length / 4, pcInitAddr = "h8000_0000")
   var pc = BigInt(config.pcInitAddr.stripPrefix("h").replace("_", ""), 16)
 
   //val TEST_SIZE = json.arr.length

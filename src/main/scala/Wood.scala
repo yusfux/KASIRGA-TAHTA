@@ -20,7 +20,6 @@ case class WoodConfig(
   pcInitAddr:   String = "h8000_0000",
   icacheDepth:  Int    = 1024,
   btbdepth:     Int    = 32,
-  ghrWidth:     Int    = 8,
   pcListDepth:  Int    = 16,
   pcQueueDepth: Int    = 16,
   scQueueDepth: Int    = 2,
@@ -42,8 +41,12 @@ case class WoodConfig(
     (prfDepth % nWide == 0),
     "prfDepth must be divisible by nWide"
   )
+  val ghrWidth   = log2Ceil(btbdepth)
+
   val byteOffset = log2Ceil(pcWidth >> 3)
   val bankOffset = log2Ceil(nWide)
+  val memOffset  = log2Ceil(memDataWidth / dataWidth)
+
   val itaglen    = pcWidth - (log2Ceil(icacheDepth) + byteOffset + bankOffset)
   val idatalen   = dataWidth
   val ivalidlen  = 1

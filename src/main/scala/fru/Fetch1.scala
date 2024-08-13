@@ -14,13 +14,14 @@ class Fetch1Stage(config: WoodConfig) extends Module {
   val bpred   = Module(new BranchPredictor(config))
   val pcqueue = Module(new PCQueue(config))
 
-  val brvalid = io.bpBus.map(_.valid).reduce(_ | _)
-  val bridx   = PriorityEncoder(io.bpBus.map(_.valid))
+  val mispredict = io.bpBus.map(bp => bp.valid && bp.bits.mispredict).reduce(_ || _)
+  val exception  = io.bpBus.map(bp => bp.valid && bp.bits.exception).reduce(_ || _)
+  val pcidx      = PriorityEncoder(io.bpBus.map(_.valid))
 
   val pc = RegInit(config.pcInitAddr.U(config.pcWidth.W))
 
-  when(brvalid) {
-    pc := io.bpBus(bridx).bits.targetPC
+  when(mispredict || exception) {
+    pc := io.bpBus(pcidx).bits.targetPC
   }.elsewhen(bpred.io.pred.en && pcqueue.io.in.ready) {
     pc := bpred.io.pred.fetchpc
   }.elsewhen(pcqueue.io.in.ready) {
@@ -28,11 +29,12 @@ class Fetch1Stage(config: WoodConfig) extends Module {
   }
 
   bpred.io.bpBus <> io.bpBus
+  //bpred.io.pc := pc
 
   pcqueue.io.in.bits.fetchpc := pc
   pcqueue.io.in.bits.mask    := Mux(bpred.io.pred.en, bpred.io.pred.mask, VecInit(Seq.fill(config.nWide)(true.B)))
   pcqueue.io.in.valid        := true.B
-  pcqueue.io.flush           := brvalid
+  pcqueue.io.flush           := mispredict
   pcqueue.io.out.ready       := io.pc.map(_.ready).reduce(_ & _)
 
 

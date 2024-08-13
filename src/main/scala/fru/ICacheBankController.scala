@@ -1,6 +1,7 @@
 package wood.fru
 
 import chisel3._
+import chisel3.std.BarrelShifter
 import chisel3.util._
 import wood.WoodConfig
 import wood.fru.{CorePort, MemPort}
@@ -51,7 +52,10 @@ class ICacheBankController(config: WoodConfig) extends Module {
 
   //TODO this is not parametric, it will brake anything other than 128 bit 4 wide config
   val memresp = VecInit(Seq.tabulate(config.memDataWidth / config.dataWidth)(i => io.mem.resp.bits.data((i + 1) * config.dataWidth - 1, i * config.dataWidth)))
-  (0 until config.nWide) foreach { i => icachebankio.mem(i).resp.bits.data := memresp(i % (config.memDataWidth / config.dataWidth)) }
+  val shamtmask = (config.nWide - 1).U(config.memOffset - 1, 0)
+  val shamtmemresp = io.core(0).req.bits.addr(config.memOffset + config.byteOffset - 1, config.byteOffset) & ~shamtmask
+  val shiftedmemresp = BarrelShifter.leftRotate(memresp, shamtmemresp)
+  (0 until config.nWide) foreach { i => icachebankio.mem(i).resp.bits.data := shiftedmemresp(i % (config.memDataWidth / config.dataWidth)) }
 
   icachebankio.mem.foreach(_.resp.bits.addr <> io.mem.resp.bits.addr)
   icachebankio.mem.foreach(_.resp.valid <> io.mem.resp.valid)
