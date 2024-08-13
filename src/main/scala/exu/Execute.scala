@@ -3,7 +3,8 @@ package wood.exu
 import chisel3._
 import chisel3.util._
 import wood.WoodConfig
-import wood.std.{DCArbiter, DCPipelineRegister}
+import wood.std.DCArbiter
+import wood.util.WoodMIPipelineRegister
 
 class ExecuteStage(config: WoodConfig) extends Module {
   val totalNumPorts = config.listExUnits.sum
@@ -20,7 +21,7 @@ class ExecuteStage(config: WoodConfig) extends Module {
     val out        = Vec(config.nWide, Decoupled(new MI(config)))
   })
 
-  val pRegs   = Seq.fill(config.nWide)(Module(new DCPipelineRegister(new MI(config))(1)))
+  val pRegs   = Seq.fill(config.nWide)(Module(new WoodMIPipelineRegister(config, 1)))
   val arbiter = Module(new DCArbiter(new MI(config))(totalNumPorts, config.nWide))
   val alus = Seq.tabulate(numALUs) { _ =>
     Module(new ALU(config))
@@ -75,7 +76,8 @@ class ExecuteStage(config: WoodConfig) extends Module {
 
     pRegs(j).io.valids(0) := io.aluIn(j).valid // TODO: BUG: BUG: BUG:
 
-    pRegs(j).io.flush := io.flush
+    pRegs(j).io.flush      := io.flush
+    pRegs(j).io.setflushed := io.flush
 
     pRegs(j).io.in <> arbiter.io.out(j)
     io.out(j)      <> pRegs(j).io.out

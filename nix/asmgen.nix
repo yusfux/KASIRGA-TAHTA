@@ -8,6 +8,7 @@ pkgs.writers.writePython3Bin "asmgen" { } ''
 
   class RiscVTestGenerator:
       def __init__(self, num_registers: int = 32) -> None:
+          self.COUNT = 0
           self.num_registers = num_registers
           self.onlyimm_instructions = ["li", "auipc", "lui"]
           self.immediate_instructions = ["addi", "xori", "ori", "andi",
@@ -18,7 +19,7 @@ pkgs.writers.writePython3Bin "asmgen" { } ''
                                         "sll", "srl", "sra", "slt", "sltu",
                                         "mul", "mulh", "mulhu", "mulhsu",
                                         "div", "divu", "rem", "remu"]
-          self.branch_instructions = ["beq"]
+          self.branch_instructions = ["beq", "bne", "bge", "bgeu", "blt", "bltu"]
 
       def init_regs(self) -> List[str]:
           asm_code = []
@@ -72,8 +73,14 @@ pkgs.writers.writePython3Bin "asmgen" { } ''
               imm2 = imm1
 
           test_number = random.randint(1, 9999)
-          equal_label = f'equal_{test_number}_{random.randint(1000, 9999)}'
-          done_label = f'done_{test_number}_{random.randint(1000, 9999)}'
+
+          equal_index = random.randint(1000, 9999)+self.COUNT
+          equal_label = f'equal_{test_number}_{equal_index}'
+          self.COUNT += 1
+
+          done_index = random.randint(1000, 9999)+self.COUNT
+          done_label = f'done_{test_number}_{done_index}'
+          self.COUNT += 1
 
           return f"""
                   li {reg1}, {imm1}
@@ -131,7 +138,7 @@ pkgs.writers.writePython3Bin "asmgen" { } ''
                    "slti", "sltiu", "add", "sub", "xor", "or",
                    "and", "sll", "srl", "sra", "slt", "sltu",
                    "li", "lui", "auipc",
-                   "beq",
+                   "beq", "bne", "bge", "bgeu", "blt", "bltu"
                    "mul", "mulh", "mulhu", "mulhsu",
                    "div", "divu", "rem", "remu"],
           required=True,

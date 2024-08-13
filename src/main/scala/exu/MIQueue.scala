@@ -4,7 +4,8 @@ import chisel3._
 import chisel3.util._
 import wood.WoodConfig
 import wood.exu.{FreeList, TagBus}
-import wood.std.{DCPipelineRegister, DCRRQueue}
+import wood.std.DCRRQueue
+import wood.util.WoodMIPipelineRegister
 
 class MIStage(config: WoodConfig) extends Module {
   val io = IO(new Bundle {
@@ -16,7 +17,7 @@ class MIStage(config: WoodConfig) extends Module {
 
   val flist       = Module(new FreeList(config))
   val miq         = Module(new DCRRQueue(new MI(config))(config.nWide, config.miQueueDepth))
-  val pRegs       = Seq.fill(config.nWide)(Module(new DCPipelineRegister(new MI(config))(3)))
+  val pRegs       = Seq.fill(config.nWide)(Module(new WoodMIPipelineRegister(config, 3)))
   val self        = Wire(Vec(config.nWide, Decoupled(new MI(config))))
   val allInValid  = Wire(Vec(config.nWide, Bool())).suggestName("allInValid")
   val allOutReady = Wire(Vec(config.nWide, Bool())).suggestName("allOutReady")
@@ -26,8 +27,9 @@ class MIStage(config: WoodConfig) extends Module {
   flist.io.in <> io.commitedBus
 
   for (j <- 0 until config.nWide) {
-    self(j).bits       := miq.io.out(j).bits
-    self(j).bits.rdTag := flist.io.out(j).bits.tag
+    self(j).bits         := miq.io.out(j).bits
+    self(j).bits.rdTag   := flist.io.out(j).bits.tag
+    self(j).bits.flushed := io.flush
 
     allInValid(j) := miq.io.out(j).valid & flist.io.out(j).valid & io.in(j).valid // output is valid only if all inputs are valid
     self(j).valid := allInValid.asUInt.andR
@@ -40,8 +42,9 @@ class MIStage(config: WoodConfig) extends Module {
     flist.io.out(j).ready := self(j).ready
     miq.io.out(j).ready   := self(j).ready
 
-    pRegs(j).io.flush := io.flush
-    miq.io.flush      := io.flush
+    pRegs(j).io.flush      := 0.B // never lose tags
+    pRegs(j).io.setflushed := io.flush
+    miq.io.flush           := io.flush
 
     pRegs(j).io.in        <> self(j)
     io.out(j)             <> pRegs(j).io.out

@@ -3,7 +3,8 @@ package wood.exu
 import chisel3._
 import chisel3.util._
 import wood.WoodConfig
-import wood.std.{DCCrossbar, DCPipelineRegister}
+import wood.std.DCCrossbar
+import wood.util.WoodMIPipelineRegister
 
 class RegisterReadStage(config: WoodConfig) extends Module {
   val io = IO(new Bundle {
@@ -20,9 +21,9 @@ class RegisterReadStage(config: WoodConfig) extends Module {
   val overrideForward   = Module(new OverrideRsFromBuses(config))
   val overrideWriteBack = Module(new OverrideRsFromBuses(config))
   val crossbar          = Module(new DCCrossbar(new MI(config))(config.nWide, config.listExUnits))
-  val aluPRegs          = Seq.fill(config.listExUnits(config.aluCrossbarIndex))(Module(new DCPipelineRegister(new MI(config))(1)))
-  val imuPRegs          = Seq.fill(config.listExUnits(config.imuCrossbarIndex))(Module(new DCPipelineRegister(new MI(config))(1)))
-  val iduPRegs          = Seq.fill(config.listExUnits(config.iduCrossbarIndex))(Module(new DCPipelineRegister(new MI(config))(1)))
+  val aluPRegs          = Seq.fill(config.listExUnits(config.aluCrossbarIndex))(Module(new WoodMIPipelineRegister(config, 1)))
+  val imuPRegs          = Seq.fill(config.listExUnits(config.imuCrossbarIndex))(Module(new WoodMIPipelineRegister(config, 1)))
+  val iduPRegs          = Seq.fill(config.listExUnits(config.iduCrossbarIndex))(Module(new WoodMIPipelineRegister(config, 1)))
 
   val prf = RegInit(VecInit(Seq.fill(config.prfDepth)(0.U(config.dataWidth.W)))) // TODO: remove reset
 
@@ -51,24 +52,28 @@ class RegisterReadStage(config: WoodConfig) extends Module {
   })
 
   (0 until config.listExUnits(config.aluCrossbarIndex)).foreach(j => {
-    aluPRegs(j).io.in        <> crossbar.io.out(config.aluCrossbarIndex)(j)
-    aluPRegs(j).io.valids(0) := io.in(j).valid
-    io.aluOut(j)             <> aluPRegs(j).io.out
-    aluPRegs(j).io.flush     := io.flush
+    aluPRegs(j).io.in         <> crossbar.io.out(config.aluCrossbarIndex)(j)
+    aluPRegs(j).io.valids(0)  := io.in(j).valid
+    io.aluOut(j)              <> aluPRegs(j).io.out
+    aluPRegs(j).io.flush      := io.flush
+    aluPRegs(j).io.setflushed := io.flush
+
   })
 
   (0 until config.listExUnits(config.imuCrossbarIndex)).foreach(j => {
-    imuPRegs(j).io.in        <> crossbar.io.out(config.imuCrossbarIndex)(j)
-    imuPRegs(j).io.valids(0) := io.in(j).valid
-    io.imuOut(j)             <> imuPRegs(j).io.out
-    imuPRegs(j).io.flush     := io.flush
+    imuPRegs(j).io.in         <> crossbar.io.out(config.imuCrossbarIndex)(j)
+    imuPRegs(j).io.valids(0)  := io.in(j).valid
+    io.imuOut(j)              <> imuPRegs(j).io.out
+    imuPRegs(j).io.flush      := io.flush
+    imuPRegs(j).io.setflushed := io.flush
   })
 
   (0 until config.listExUnits(config.iduCrossbarIndex)).foreach(j => {
-    iduPRegs(j).io.in        <> crossbar.io.out(config.iduCrossbarIndex)(j)
-    iduPRegs(j).io.valids(0) := io.in(j).valid
-    io.iduOut(j)             <> iduPRegs(j).io.out
-    iduPRegs(j).io.flush     := io.flush
+    iduPRegs(j).io.in         <> crossbar.io.out(config.iduCrossbarIndex)(j)
+    iduPRegs(j).io.valids(0)  := io.in(j).valid
+    io.iduOut(j)              <> iduPRegs(j).io.out
+    iduPRegs(j).io.flush      := io.flush
+    iduPRegs(j).io.setflushed := io.flush
   })
 
   overrideForward.io.inBus   <> io.forwardBus

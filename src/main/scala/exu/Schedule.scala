@@ -3,7 +3,8 @@ package wood.exu
 import chisel3._
 import chisel3.util._
 import wood.WoodConfig
-import wood.std.{DCArbiter, DCDemux, DCPipelineRegister, DCRRQueue}
+import wood.std.{DCArbiter, DCDemux, DCRRQueue}
+import wood.util.WoodMIPipelineRegister
 
 class ReadyList(val config: WoodConfig) extends Module {
   val io = IO(new Bundle {
@@ -78,7 +79,7 @@ class ScheduleStage(val config: WoodConfig) extends Module {
   }
 
   val readyList = Module(new ReadyList(config))
-  val pRegs     = Seq.fill(config.nWide)(Module(new DCPipelineRegister(new MI(config))(1)))
+  val pRegs     = Seq.fill(config.nWide)(Module(new WoodMIPipelineRegister(config, 1)))
 
   scq.io.in                <> io.in
   readyList.io.in          <> scq.io.out
@@ -101,6 +102,7 @@ class ScheduleStage(val config: WoodConfig) extends Module {
 
     reservationStations(j).io.flush := io.flush
     pRegs(j).io.flush               := io.flush
+    pRegs(j).io.setflushed          := io.flush
     scq.io.flush                    := io.flush
 
     pRegs(j).io.in <> bypassArbiters(j).io.out(0)

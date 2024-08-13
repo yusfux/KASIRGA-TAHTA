@@ -7,7 +7,7 @@ import wood.WoodConfig
 import wood.exu.Instructions._
 import wood.exu.{ALUOp, ExEngine, IDUOp, IMUOp}
 import wood.fru.PCInst
-import wood.std.DCPipelineRegister
+import wood.util.WoodMIPipelineRegister
 
 class ExpandBits(bitVectors: List[String]) {
   // Calculate the max width
@@ -330,7 +330,7 @@ class DecodeStage(config: WoodConfig) extends Module {
     val out   = Vec(config.nWide, Decoupled(new MI(config)))
   })
 
-  val pRegs             = Seq.fill(config.nWide)(Module(new DCPipelineRegister(new MI(config))(2)))
+  val pRegs             = Seq.fill(config.nWide)(Module(new WoodMIPipelineRegister(config, 2)))
   val decoders          = Seq.fill(config.nWide)(Module(new Decoder(config)))
   val self              = Wire(Vec(config.nWide, Decoupled(new MI(config))))
   val atLeastOneIsReady = Wire(Vec(config.nWide, Bool())).suggestName("atLeastOneIsReady")
@@ -349,7 +349,8 @@ class DecodeStage(config: WoodConfig) extends Module {
     io.in(j).ready       := self(j).ready
     atLeastOneIsReady(j) := self(j).ready
 
-    pRegs(j).io.flush := io.flush
+    pRegs(j).io.flush      := io.flush
+    pRegs(j).io.setflushed := io.flush
 
     pRegs(j).io.in <> self(j)
     io.out(j)      <> pRegs(j).io.out

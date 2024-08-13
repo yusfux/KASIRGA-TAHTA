@@ -21,4 +21,9 @@ class FreeList(config: WoodConfig) extends Module {
   initializer.io.in <> io.in
   q.io.in           <> initializer.io.out
   io.out            <> q.io.out
+
+  (0 until config.nWide).foreach(j => {
+    q.io.out(j).ready := io.out(j).ready
+    io.out(j).valid   := q.io.out(j).valid
+  })
 }

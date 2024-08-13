@@ -13,16 +13,21 @@ class ROBStage(config: WoodConfig) extends Module {
     val firstPC = Valid(UInt(config.pcWidth.W))
   })
 
-  val q     = Module(new DCRRQueue(new RetireMI(config))(config.nWide, config.robDepth))
+  val q     = Module(new DCRRQueue(new RetireMI(config))(config.nWide, config.robDepth, flow = false))
   val pRegs = Seq.fill(config.nWide)(Module(new DCPipelineRegister(new RetireMI(config))(1)))
 
-  val savedCounts = RegInit(VecInit(Seq.fill(config.nWide)(0.U(log2Ceil(config.robDepth).W))))
+  val savedCounts = RegInit(VecInit(Seq.fill(config.nWide)(0.U(log2Ceil(config.robDepth + 1).W))))
 
-  when(io.flush) {
-    (0 until config.nWide).foreach(j => {
-      savedCounts(j) := q.io.count(j) + io.in(j).valid
-    })
-  }
+  (0 until config.nWide).foreach(j => {
+    when(io.flush) {
+      when(q.io.count(j) > 0.U) {
+        savedCounts(j) := q.io.count(j) - Mux(io.in(j).valid, 0.U, 1.U)
+      }
+    }
+    when(savedCounts(j) > 0.U && io.out(j).fire) {
+      savedCounts(j) := savedCounts(j) - 1.U
+    }
+  })
 
   q.io.in <> io.in.map { mi =>
     val remi = Wire(DecoupledIO(new RetireMI(config)))
@@ -37,7 +42,7 @@ class ROBStage(config: WoodConfig) extends Module {
     remi.bits.targetPC := mi.bits.targetPC
     remi.bits.rdTag    := mi.bits.rdTag
     remi.bits.retired  := mi.bits.retired
-    remi.bits.flushed  := mi.bits.flushed
+    remi.bits.flushed  := mi.bits.flushed | io.flush
     remi.bits.arfTag   := mi.bits.arfTag
     remi.bits.arfValid := mi.bits.arfValid
     remi.bits.inst     := mi.bits.inst
@@ -47,21 +52,14 @@ class ROBStage(config: WoodConfig) extends Module {
   q.io.flush := 0.B // must return each tag back to freelist
 
   (0 until config.nWide).foreach(j => {
-    pRegs(j).io.valids(0) := q.io.out(j).valid
-    pRegs(j).io.flush     := io.flush
-    pRegs(j).io.in        <> q.io.out(j)
+    pRegs(j).io.valids(0)       := q.io.out(j).valid
+    pRegs(j).io.in              <> q.io.out(j)
+    pRegs(j).io.in.bits.flushed := io.flush | (savedCounts(j) =/= 0.U)
+    pRegs(j).io.in.bits.writeRf := Mux((io.flush | (savedCounts(j) =/= 0.U)), 0.U, q.io.out(j).bits.writeRf)
 
-    pRegs(j).io.flush := io.flush
+    pRegs(j).io.flush := 0.U // never lose tags
 
-    when(savedCounts(j) > 0.U) {
-      io.out(j)              <> pRegs(j).io.out
-      savedCounts(j)         := savedCounts(j) - 1.U
-      io.out(j).bits.writeRf := false.B
-      io.out(j).bits.flushed := true.B
-    }.otherwise {
-      io.out(j)              <> pRegs(j).io.out
-      io.out(j).bits.flushed := false.B
-    }
+    io.out(j) <> pRegs(j).io.out
   })
 
   io.firstPC.bits  := q.io.out(0).bits.pc

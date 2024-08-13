@@ -112,6 +112,8 @@ async def flist_monitor(dut):
 
         for n in range(0, WOOD_NWIDE):
             if out_ready[n] & out_valid[n]:
+                if 0 == out_tag[n]:
+                    assert 0, f"Zero read! tag_{n} {color(in_tag[n], Color.GREEN)} at {get_sim_time(units=TIME_UNIT)}{TIME_UNIT}"
                 if out_tag[n] in flist:
                     del flist[out_tag[n]]
 
@@ -154,6 +156,19 @@ async def get_branch_trace():
                 entry["taken"] = "Unknown (last instruction)"
 
             branches_and_jumps.append(entry)
+
+    btfile = "./branch_trace.json"
+    with Path(btfile).open("w") as output_file:
+        output_file.write("[\n")
+        output_file.write(
+            ",\n".join(
+                [
+                    json.dumps(entry, separators=(",", ":"))
+                    for entry in branches_and_jumps
+                ]
+            )
+        )
+        output_file.write("]\n")
 
     return branches_and_jumps
 
@@ -199,7 +214,7 @@ async def branch_monitor(dut):
                         (targetPC == golden_targetPC)
                         and (pc == golden_pc)
                         and (bp_taken[n] == golden_taken)
-                    ), f"                                                                                \n \
+                    ), f"{color('Incorrect JUMP!', Color.RED)}                                           \n \
                          TargetPC: {color(targetPC, Color.GREEN)} {color(golden_targetPC, Color.YELLOW)} \n \
                          PC:       {color(pc, Color.GREEN)} {color(golden_pc, Color.YELLOW)}             \n \
                          Taken:    {color(bp_taken[n], Color.GREEN)} {color(golden_taken, Color.YELLOW)} at {get_sim_time(units=TIME_UNIT)}{TIME_UNIT}\n \
@@ -274,9 +289,9 @@ async def diff_traces(dut):
                 inst_p[n] = f"{inst_p[n]}".strip()
                 rd_data_p[n] = f"x{arfBus_adr[n]:>2} {rd_data_p[n]}"
 
-                print(
-                    f"{{'pc': '{pc_p[n]}', 'inst': '{inst_p[n]}','result': '{rd_data_p[n]}', 'time': {get_sim_time(units=TIME_UNIT)}{TIME_UNIT}, 'n': {n}}}"
-                )
+                # print(
+                #     f"{{'pc': '{pc_p[n]}', 'inst': '{inst_p[n]}','result': '{rd_data_p[n]}', 'time': {get_sim_time(units=TIME_UNIT)}{TIME_UNIT}, 'n': {n}}}"
+                # )
 
                 assert (
                     pc_p[n] == golden_reference[n]["pc"]
