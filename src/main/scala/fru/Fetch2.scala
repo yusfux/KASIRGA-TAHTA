@@ -2,13 +2,13 @@ package wood.fru
 
 import chisel3._
 import chisel3.util._
-import wood.WoodConfig
-import wood.fru.{MemPort, PCInst}
+import wood.fru.PCInst
+import wood.{MemPortR, WoodConfig}
 
 class Fetch2Stage(config: WoodConfig) extends Module {
   val io = IO(new Bundle {
     val pc         = Vec(config.nWide, Flipped(DecoupledIO(UInt(config.pcWidth.W))))
-    val mem        = new MemPort(config)
+    val mem        = new MemPortR(config)
     val instPacket = Vec(config.nWide, DecoupledIO(new PCInst(config)))
   })
 

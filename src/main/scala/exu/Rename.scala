@@ -16,6 +16,7 @@ class RenameStage(config: WoodConfig) extends Module {
   val pRegs                = Seq.fill(config.nWide)(Module(new WoodMIPipelineRegister(config, 1)))
   val frontEndRegisterFile = RegInit(VecInit(Seq.fill(32)(0.U(config.tagWidth.W))))
   val self                 = Wire(Vec(config.nWide, Decoupled(new MI(config))))
+  val flushDelayed         = RegNext(RegNext(io.flush, false.B), false.B)
   val allInValid           = Wire(Vec(config.nWide, Bool())).suggestName("allInValid")
   allInValid := io.in.map(_.valid)
 
@@ -81,7 +82,7 @@ class RenameStage(config: WoodConfig) extends Module {
   })
 
   (0 until 32).foreach(j => {
-    when(io.flush) {
+    when(flushDelayed) {
       frontEndRegisterFile(j) := io.archRF(j)
     }
   })

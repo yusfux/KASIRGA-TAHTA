@@ -6,6 +6,7 @@ import chisel3.util._
 class ReadPortI[T <: Data](gen: T)(addrWidth: Int) extends Bundle {
   val addr = UInt(addrWidth.W)
 }
+
 class ReadPortO[T <: Data](gen: T)(addrWidth: Int) extends Bundle {
   val data = gen.cloneType
   val addr = UInt(addrWidth.W)
@@ -88,4 +89,3 @@ class DecoupledSyncReadBlockRAM[T <: Data](gen: T)(params: BlockRAMParams) exten
     io.rip(i).ready     := true.B
   }
 }
-

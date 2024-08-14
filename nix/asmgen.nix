@@ -138,7 +138,7 @@ pkgs.writers.writePython3Bin "asmgen" { } ''
                    "slti", "sltiu", "add", "sub", "xor", "or",
                    "and", "sll", "srl", "sra", "slt", "sltu",
                    "li", "lui", "auipc",
-                   "beq", "bne", "bge", "bgeu", "blt", "bltu"
+                   "beq", "bne", "bge", "bgeu", "blt", "bltu",
                    "mul", "mulh", "mulhu", "mulhsu",
                    "div", "divu", "rem", "remu"],
           required=True,

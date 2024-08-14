@@ -40,11 +40,12 @@ class RetireStatusStage(config: WoodConfig) extends Module {
   allInValid := io.in.map(_.valid)
 
   (0 until config.nWide).foreach(j => {
-    io.bpBus(j).bits.exception := exceptionStatusRegisterFile(io.in(j).bits.rdTag)
-    io.bpBus(j).bits.pc        := io.in(j).bits.pc
-    io.bpBus(j).bits.taken     := takenStatusRegisterFile(io.in(j).bits.rdTag) & !io.in(j).bits.flushed
-    io.bpBus(j).bits.targetPC  := pcRegisterFile(io.in(j).bits.rdTag)
-    io.bpBus(j).valid          := io.in(j).fire & !io.in(j).bits.flushed & (io.in(j).bits.isJAL | io.in(j).bits.isBranch)
+    io.bpBus(j).bits.exception  := exceptionStatusRegisterFile(io.in(j).bits.rdTag)
+    io.bpBus(j).bits.pc         := io.in(j).bits.pc
+    io.bpBus(j).bits.taken      := takenStatusRegisterFile(io.in(j).bits.rdTag) & !io.in(j).bits.flushed
+    io.bpBus(j).bits.mispredict := exceptionMispredSet(j)
+    io.bpBus(j).bits.targetPC   := pcRegisterFile(io.in(j).bits.rdTag)
+    io.bpBus(j).valid           := io.in(j).fire & !io.in(j).bits.flushed & (io.in(j).bits.isJAL | io.in(j).bits.isBranch) & !flushVector(j)
   })
 
   io.flush    := exceptionMispredSet.reduce(_ || _)

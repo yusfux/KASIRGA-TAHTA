@@ -69,6 +69,7 @@
           RISCV = "${(pkgs.callPackage ./nix/riscv-gcc.nix { })}";
           RISCV_PREFIX = "${(pkgs.callPackage ./nix/riscv-gcc.nix { })}/bin/riscv32-unknown-elf-";
           CSMITH_INCLUDE = "${pkgs.csmith}/include/csmith-2.3.0/";
+          PYTHONPATH = "./src/test/python";
 
           inherit (self.checks.${system}.pre-commit-check) shellHook;
           packages = [
