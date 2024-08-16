@@ -57,7 +57,7 @@ class ICacheBankController(config: WoodConfig) extends Module {
   val memresp = VecInit(Seq.tabulate(config.memDataWidth / config.dataWidth)(i => io.mem.resp.bits.data((i + 1) * config.dataWidth - 1, i * config.dataWidth)))
   val mask = (scala.math.abs(4 - config.nWide)).U(1, 0)
   val haha = arbiter.io.out(0).bits.addr(config.memOffset + config.byteOffset - 1, config.byteOffset)(1, 0)
-  val memrespShamt = RegEnable((haha & mask), 0.U, arbiter.io.out(0).fire)(1, 0)
+  val memrespShamt = RegEnable(haha & mask, 0.U, arbiter.io.out(0).fire)(1, 0)
   val shiftedmemresp = BarrelShifter.rightRotate(memresp, memrespShamt)
   (0 until config.nWide) foreach { i => icachebankio.mem(i).resp.bits.data := shiftedmemresp(i % (config.memDataWidth / config.dataWidth)) }
 

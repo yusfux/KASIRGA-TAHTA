@@ -21,9 +21,9 @@ class ICacheController(config: WoodConfig) extends Module {
     val idx  = addr(log2Ceil(config.icacheDepth) + config.byteOffset + config.bankOffset - 1, config.bankOffset + config.byteOffset)
     val tag  = addr(config.pcWidth - 1, log2Ceil(config.icacheDepth) + config.bankOffset + config.byteOffset)
 
-    val addrReg = RegEnable(addr, io.core.req.fire)
-    val idxReg  = RegEnable(idx , io.core.req.fire)
-    val tagReg  = RegEnable(tag , io.core.req.fire)
+    val addrReg = RegEnable(addr, 0.U, io.core.req.fire)
+    val idxReg  = RegEnable(idx , 0.U, io.core.req.fire)
+    val tagReg  = RegEnable(tag , 0.U, io.core.req.fire)
   }
 
   val cacheresponse = new Bundle() {
@@ -63,7 +63,7 @@ class ICacheController(config: WoodConfig) extends Module {
   io.core.resp.bits.data := cacheresponse.data
 
   io.cache.readwritePorts(0).address   := Mux(cren, corerequest.idx, waddr)
-  io.cache.readwritePorts(0).enable    := (cren || wack) || wen
+  io.cache.readwritePorts(0).enable    := true.B
   io.cache.readwritePorts(0).isWrite   := wen 
   io.cache.readwritePorts(0).writeData := wdata
 

@@ -14,7 +14,7 @@ case class WoodConfig(
   pcWidth:      Int = 32,
   xlen:         Int = 32,
   memDataWidth: Int = 128,
-  memDepth:     Int = 1024,
+  memDepth:     Int = 4096,
   //--------------
   // FrUnitConfig
   pcInitAddr:   String = "h8000_0000",

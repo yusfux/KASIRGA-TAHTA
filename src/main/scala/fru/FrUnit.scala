@@ -39,10 +39,10 @@ class FrUnit(config: WoodConfig) extends Module {
   f2stage.io.flush := flush
 
   for(i <- 0 until config.nWide) {
-    f2stage.io.pcPacket.bits(i).pc    := RegNext(Mux(flush, 0.U    , f1stage.io.pcPacket.bits(i).pc   ), init = 0.U    )
-    f2stage.io.pcPacket.bits(i).valid := RegNext(Mux(flush, false.B, f1stage.io.pcPacket.bits(i).valid), init = false.B)
-    f2stage.io.pcPacket.valid         := RegNext(Mux(flush, false.B, f1stage.io.pcPacket.valid        ), init = false.B)
-    f1stage.io.pcPacket.ready         := f2stage.io.pcPacket.ready
+    f2stage.io.pcPacket.bits(i).pc    := Mux(flush, 0.U    , f1stage.io.pcPacket.bits(i).pc   )
+    f2stage.io.pcPacket.bits(i).valid := Mux(flush, false.B, f1stage.io.pcPacket.bits(i).valid)
+    f2stage.io.pcPacket.valid         := Mux(flush, false.B, f1stage.io.pcPacket.valid        )
+    f1stage.io.pcPacket.ready         := Mux(flush, false.B, f2stage.io.pcPacket.ready)
 
     io.instPacket.bits(i).pc          := RegNext(Mux(flush, 0.U    , f2stage.io.instPacket.bits(i).pc   ), init = 0.U    )
     io.instPacket.bits(i).inst        := RegNext(Mux(flush, 0.U    , f2stage.io.instPacket.bits(i).inst ), init = 0.U    )
