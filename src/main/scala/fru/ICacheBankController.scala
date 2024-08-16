@@ -1,6 +1,7 @@
 package wood.fru
 
 import chisel3._
+import chisel3.std.BarrelShifter
 import chisel3.util._
 import wood.std.{DCArbiter, DCShifter}
 import wood.{CorePort, MemPortR, WoodConfig}
@@ -42,18 +43,23 @@ class ICacheBankController(config: WoodConfig) extends Module {
 
   memreqshifter.io.in <> icachebankio.mem.map(_.req)
   memreqshifter.io.shamt := config.nWide.U - shamtReg
+  val offset = if(config.nWide > config.memDataWidth / config.dataWidth) config.memOffset else config.bankOffset //THIS MAY SEEM NOT PROPER BUT IT IS DUE TO MAIN MEMORY LIMITATION
   (0 until config.nWide) foreach { i =>
     arbiter.io.in(i).bits := memreqshifter.io.out(i).bits
     arbiter.io.in(i).valid := memreqshifter.io.out(i).valid
     memreqshifter.io.out(i).ready := io.mem.req.ready &&
-      (memreqshifter.io.out(i).bits.addr(config.pcWidth - 1, config.memOffset + config.byteOffset) === arbiter.io.out(0).bits.addr(config.pcWidth - 1, config.memOffset + config.byteOffset))
+      (memreqshifter.io.out(i).bits.addr(config.pcWidth - 1, offset + config.byteOffset) === arbiter.io.out(0).bits.addr(config.pcWidth - 1, offset + config.byteOffset))
   }
   
   //-----------------------------------------------------------------------------------------------------------------
 
   //TODO this is not parametric, it will brake anything other than 128 bit 4 wide config
   val memresp = VecInit(Seq.tabulate(config.memDataWidth / config.dataWidth)(i => io.mem.resp.bits.data((i + 1) * config.dataWidth - 1, i * config.dataWidth)))
-  (0 until config.nWide) foreach { i => icachebankio.mem(i).resp.bits.data := memresp(i % (config.memDataWidth / config.dataWidth)) }
+  val mask = (scala.math.abs(4 - config.nWide)).U(1, 0)
+  val haha = arbiter.io.out(0).bits.addr(config.memOffset + config.byteOffset - 1, config.byteOffset)(1, 0)
+  val memrespShamt = RegEnable((haha & mask), 0.U, arbiter.io.out(0).fire)(1, 0)
+  val shiftedmemresp = BarrelShifter.rightRotate(memresp, memrespShamt)
+  (0 until config.nWide) foreach { i => icachebankio.mem(i).resp.bits.data := shiftedmemresp(i % (config.memDataWidth / config.dataWidth)) }
 
   icachebankio.mem.foreach(_.resp.valid <> io.mem.resp.valid)
   io.mem.resp.ready := true.B

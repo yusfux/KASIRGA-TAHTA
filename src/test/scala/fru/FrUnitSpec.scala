@@ -49,7 +49,7 @@ class FrUnitDut(config: WoodConfig) extends Module {
 class FrUnitSpec extends AnyFlatSpec with ChiselScalatestTester {
   val mainmem = Source.fromFile(s"${os.pwd}/src/test/c/build/main.hex").getLines().toList
   val json = ujson.read(os.read(os.pwd / RelPath("src/test/c/build/spike_trace.json")))
-  val config = new WoodConfig(nWide = 4, memDepth = mainmem.length / 4, pcInitAddr = "h8000_0000")
+  val config = new WoodConfig(nWide = 2, memDepth = mainmem.length / 4, pcInitAddr = "h8000_0004")
   var pc = BigInt(config.pcInitAddr.stripPrefix("h").replace("_", ""), 16)
 
   val TEST_SIZE = json.arr.length
@@ -176,7 +176,7 @@ class FrUnitSpec extends AnyFlatSpec with ChiselScalatestTester {
             //println(s"expected inst:${mainmem(i * config.nWide + j)}")
             //println(s"peeked value: ${dut.io.instPacket.bits(j).inst.peek().litValue.toString(16)}")
 
-            dut.io.instPacket.bits(j).inst.expect(s"h${mainmem(i * config.nWide + j)}".U)
+            dut.io.instPacket.bits(j).inst.expect(s"h${mainmem(i * config.nWide + j + 1)}".U)
             dut.io.instPacket.bits(j).pc.expect(pc.U)
           }
           pc = pc + 4

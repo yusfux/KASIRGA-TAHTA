@@ -13,7 +13,7 @@ import scala.io.Source
 class WoodSpec extends AnyFlatSpec with ChiselScalatestTester with ParallelTestExecution {
 
   val mainmem = Source.fromFile(s"${os.pwd}/src/test/c/build/main.hex").getLines().toList
-  val config = new WoodConfig(nWide = 4)
+  val config = new WoodConfig(nWide = 2)
 
   val TEST_SIZE = 1024
 

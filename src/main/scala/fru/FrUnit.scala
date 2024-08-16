@@ -24,8 +24,8 @@ class PCInst(config: WoodConfig) extends Bundle {
 class FrUnit(config: WoodConfig) extends Module {
   val io = IO(new Bundle {
     val bpBus        = Vec(config.nWide, Flipped(ValidIO(new BranchPredictorBus(config))))
-    val mem          = new MemPortR(config)
     val instPacket   = DecoupledIO(Vec(config.nWide, new PCInst(config)))
+    val mem          = new MemPortR(config)
   })
 
   val f1stage = Module(new Fetch1Stage(config))
