@@ -171,15 +171,15 @@ object DecodeConfig {
    CLMUL            -> Seq(op.e(ALUOp.toString(ALUOp.add))    ,ExEngine.toString(ExEngine.alu),WRITE_RF_1,OPERAND1_REG, OPERAND2_IMM  ,WAKEUP_0,IS_JAL_0,IS_BRANCH_0,TYPE_INT),
    CLMULH           -> Seq(op.e(ALUOp.toString(ALUOp.add))    ,ExEngine.toString(ExEngine.alu),WRITE_RF_1,OPERAND1_REG, OPERAND2_IMM  ,WAKEUP_0,IS_JAL_0,IS_BRANCH_0,TYPE_INT),
    CLMULR           -> Seq(op.e(ALUOp.toString(ALUOp.add))    ,ExEngine.toString(ExEngine.alu),WRITE_RF_1,OPERAND1_REG, OPERAND2_IMM  ,WAKEUP_0,IS_JAL_0,IS_BRANCH_0,TYPE_INT),
-   
+
    DIV              -> Seq(op.e(IDUOp.toString(IDUOp.div))    ,ExEngine.toString(ExEngine.idu),WRITE_RF_1,OPERAND1_REG, OPERAND2_REG  ,WAKEUP_0,IS_JAL_0,IS_BRANCH_0,TYPE_INT),
    DIVU             -> Seq(op.e(IDUOp.toString(IDUOp.divu))   ,ExEngine.toString(ExEngine.idu),WRITE_RF_1,OPERAND1_REG, OPERAND2_REG  ,WAKEUP_0,IS_JAL_0,IS_BRANCH_0,TYPE_INT),
    MUL              -> Seq(op.e(IMUOp.toString(IMUOp.mul))    ,ExEngine.toString(ExEngine.imu),WRITE_RF_1,OPERAND1_REG, OPERAND2_REG  ,WAKEUP_0,IS_JAL_0,IS_BRANCH_0,TYPE_INT),
    MULH             -> Seq(op.e(IMUOp.toString(IMUOp.mulh))   ,ExEngine.toString(ExEngine.imu),WRITE_RF_1,OPERAND1_REG, OPERAND2_REG  ,WAKEUP_0,IS_JAL_0,IS_BRANCH_0,TYPE_INT),
    MULHSU           -> Seq(op.e(IMUOp.toString(IMUOp.mulhsu)) ,ExEngine.toString(ExEngine.imu),WRITE_RF_1,OPERAND1_REG, OPERAND2_REG  ,WAKEUP_0,IS_JAL_0,IS_BRANCH_0,TYPE_INT),
    MULHU            -> Seq(op.e(IMUOp.toString(IMUOp.mulhu))  ,ExEngine.toString(ExEngine.imu),WRITE_RF_1,OPERAND1_REG, OPERAND2_REG  ,WAKEUP_0,IS_JAL_0,IS_BRANCH_0,TYPE_INT),
-   REM              -> Seq(op.e(IDUOp.toString(IDUOp.rem))    ,ExEngine.toString(ExEngine.idu),WRITE_RF_1,OPERAND1_REG, OPERAND1_REG  ,WAKEUP_0,IS_JAL_0,IS_BRANCH_0,TYPE_INT),
-   REMU             -> Seq(op.e(IDUOp.toString(IDUOp.remu))   ,ExEngine.toString(ExEngine.idu),WRITE_RF_1,OPERAND1_REG, OPERAND1_REG  ,WAKEUP_0,IS_JAL_0,IS_BRANCH_0,TYPE_INT),
+   REM              -> Seq(op.e(IDUOp.toString(IDUOp.rem))    ,ExEngine.toString(ExEngine.idu),WRITE_RF_1,OPERAND1_REG, OPERAND2_REG  ,WAKEUP_0,IS_JAL_0,IS_BRANCH_0,TYPE_INT),
+   REMU             -> Seq(op.e(IDUOp.toString(IDUOp.remu))   ,ExEngine.toString(ExEngine.idu),WRITE_RF_1,OPERAND1_REG, OPERAND2_REG  ,WAKEUP_0,IS_JAL_0,IS_BRANCH_0,TYPE_INT),
 
    FADD_S           -> Seq(op.e(ALUOp.toString(ALUOp.add))    ,ExEngine.toString(ExEngine.alu),WRITE_RF_1,OPERAND1_REG, OPERAND2_IMM  ,WAKEUP_0,IS_JAL_0,IS_BRANCH_0,TYPE_FLOAT),
    FCLASS_S         -> Seq(op.e(ALUOp.toString(ALUOp.add))    ,ExEngine.toString(ExEngine.alu),WRITE_RF_1,OPERAND1_REG, OPERAND2_IMM  ,WAKEUP_0,IS_JAL_0,IS_BRANCH_0,TYPE_FLOAT),

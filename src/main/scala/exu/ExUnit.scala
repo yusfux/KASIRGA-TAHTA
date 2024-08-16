@@ -154,21 +154,10 @@ class ExUnit(config: WoodConfig) extends Module {
   destage.io.in <> io.in
   mistage.io.in <> destage.io.out
   restage.io.in <> mistage.io.out
+  rbstage.io.in <> restage.io.out0
+  scstage.io.in <> restage.io.out1
 
   restage.io.archRF <> arstage.io.archRF
-
-  val restageFires = Wire(Vec(config.nWide, Bool()))
-  restageFires := restage.io.out.map(_.fire)
-
-  (0 until config.nWide).foreach(j => {
-    rbstage.io.in(j).bits  := restage.io.out(j).bits
-    rbstage.io.in(j).valid := restageFires.asUInt.andR // enqueue on fire
-
-    scstage.io.in(j).bits  := restage.io.out(j).bits
-    scstage.io.in(j).valid := restage.io.out(j).valid
-
-    restage.io.out(j).ready := rbstage.io.in(j).ready & scstage.io.in(j).ready
-  })
 
   rrstage.io.in    <> scstage.io.out
   exstage.io.aluIn <> rrstage.io.aluOut

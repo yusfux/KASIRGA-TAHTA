@@ -21,14 +21,15 @@ async def main_memory_writer(dut, hex_path):
     combined_inst = ""
     for index, inst in enumerate(insts):
         combined_inst += inst
-        if index % 4:
+        if ((index + 1) % 4 == 0) and (index != 0):
             try:
-                dut.mem.mem_ext.Memory[index >> 2].value = int(inst, 16)
+                print(combined_inst)
+                dut.mem.mem_ext.Memory[index >> 2].value = int(combined_inst, 16)
                 combined_inst = ""
             except Exception:
                 break
 
-    dut.reset.value = 1
+    dut.reset.value = 0
 
 
 @cocotb.test()

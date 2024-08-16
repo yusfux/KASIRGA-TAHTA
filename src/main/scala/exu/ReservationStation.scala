@@ -114,11 +114,3 @@ class ReservationStation(config: WoodConfig) extends Module {
 
   arbiter.io.out(0) <> io.out
 }
-
-// overloaded method apply with alternatives:
-// (x: BigInt,y: BigInt)chisel3.UInt <and>
-// (x: Int,y: Int)chisel3.UInt <and>
-// (x: chisel3.UInt)chisel3.Bool <and>
-// (x: Int)chisel3.Bool <and>
-// (x: BigInt)chisel3.Bool
-// cannot be applied to ()

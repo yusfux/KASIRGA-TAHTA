@@ -72,12 +72,20 @@ for {set i 0} {$i < $nWide} {incr i 1} {
 }
 
 for {set i 0} {$i < $nWide} {incr i 1} {
-  set sig_name [format "/ExUnit/restage/io_out_%d_bits_inst" $i]
-  add wave -noupdate -group exunit -group restage -group -radix RISCV io_out_$i $sig_name
+  set sig_name [format "/ExUnit/restage/io_out0_%d_bits_inst" $i]
+  add wave -noupdate -group exunit -group restage -group -radix RISCV io_out0_$i $sig_name
 }
 for {set i 0} {$i < $nWide} {incr i 1} {
-  set sig_name [format "/ExUnit/restage/io_out_%d*" $i]
-  add wave -noupdate -group exunit -group restage -group io_out_$i $sig_name
+  set sig_name [format "/ExUnit/restage/io_out0_%d*" $i]
+  add wave -noupdate -group exunit -group restage -group io_out0_$i $sig_name
+}
+for {set i 0} {$i < $nWide} {incr i 1} {
+  set sig_name [format "/ExUnit/restage/io_out1_%d_bits_inst" $i]
+  add wave -noupdate -group exunit -group restage -group -radix RISCV io_out1_$i $sig_name
+}
+for {set i 0} {$i < $nWide} {incr i 1} {
+  set sig_name [format "/ExUnit/restage/io_out1_%d*" $i]
+  add wave -noupdate -group exunit -group restage -group io_out1_$i $sig_name
 }
 
 ################################

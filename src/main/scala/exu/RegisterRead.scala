@@ -53,7 +53,7 @@ class RegisterReadStage(config: WoodConfig) extends Module {
 
   (0 until config.listExUnits(config.aluCrossbarIndex)).foreach(j => {
     aluPRegs(j).io.in         <> crossbar.io.out(config.aluCrossbarIndex)(j)
-    aluPRegs(j).io.valids(0)  := io.in(j).valid
+    aluPRegs(j).io.valids(0)  := crossbar.io.out(config.aluCrossbarIndex)(j).valid
     io.aluOut(j)              <> aluPRegs(j).io.out
     aluPRegs(j).io.flush      := io.flush
     aluPRegs(j).io.setflushed := io.flush
@@ -62,7 +62,7 @@ class RegisterReadStage(config: WoodConfig) extends Module {
 
   (0 until config.listExUnits(config.imuCrossbarIndex)).foreach(j => {
     imuPRegs(j).io.in         <> crossbar.io.out(config.imuCrossbarIndex)(j)
-    imuPRegs(j).io.valids(0)  := io.in(j).valid
+    imuPRegs(j).io.valids(0)  := crossbar.io.out(config.imuCrossbarIndex)(j).valid
     io.imuOut(j)              <> imuPRegs(j).io.out
     imuPRegs(j).io.flush      := io.flush
     imuPRegs(j).io.setflushed := io.flush
@@ -70,7 +70,7 @@ class RegisterReadStage(config: WoodConfig) extends Module {
 
   (0 until config.listExUnits(config.iduCrossbarIndex)).foreach(j => {
     iduPRegs(j).io.in         <> crossbar.io.out(config.iduCrossbarIndex)(j)
-    iduPRegs(j).io.valids(0)  := io.in(j).valid
+    iduPRegs(j).io.valids(0)  := crossbar.io.out(config.iduCrossbarIndex)(j).valid
     io.iduOut(j)              <> iduPRegs(j).io.out
     iduPRegs(j).io.flush      := io.flush
     iduPRegs(j).io.setflushed := io.flush

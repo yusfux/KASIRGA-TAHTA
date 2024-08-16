@@ -16,7 +16,7 @@ class RenameStageSpec extends AnyFlatSpec with ChiselScalatestTester with Parall
     test(new RenameStage(config)).withAnnotations(GetBackendAnnotation()) { dut =>
       val inMIs = dut.io.in.map(_.initSource())
       // val inFlistRetire = dut.io.in.map(_.initSource())
-      val outSinks = dut.io.out.map(_.initSink())
+      val outSinks = dut.io.out0.map(_.initSink())
 
       // format: off
       val inst1    = MI(config, 0.U, Map("rs1" -> 0.U, "operand1" -> Integer.parseInt(DecodeConfig.OPERAND1_REG, 2).U, "operand2" -> Integer.parseInt(DecodeConfig.OPERAND2_REG, 2).U,"rs2" -> 0.U, "rd" -> 1.U, "writeRf" -> Integer.parseInt(DecodeConfig.WRITE_RF_1, 2).U, "imm" -> 5.U))
@@ -30,7 +30,7 @@ class RenameStageSpec extends AnyFlatSpec with ChiselScalatestTester with Parall
         inMIs(0).enqueue(inst2)
         inMIs(0).enqueue(inst3)
       }.fork {
-        dut.io.out(0).ready.poke(1)
+        dut.io.out0(0).ready.poke(1)
         // outSinks(0).expectDequeue(inst1)
         step(100)
       }.joinAndStep()

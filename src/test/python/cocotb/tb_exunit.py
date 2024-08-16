@@ -90,7 +90,7 @@ async def decode_driver(dut, hex_path, nwide, base_addr):
 async def test_wood(dut):
     clock_period = 10
     time_unit = "ns"
-    timeout_value = 400
+    timeout_value = 800
     nwide = 2
     base_addr = 0x80000000
     timeout_event = Event(name="timeout")
