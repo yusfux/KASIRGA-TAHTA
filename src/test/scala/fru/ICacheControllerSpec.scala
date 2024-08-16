@@ -7,42 +7,30 @@ import chiseltest._
 import org.scalatest.flatspec.AnyFlatSpec
 import wood.util.{GenerateVerilog, GetBackendAnnotation}
 import wood.WoodConfig
-import wood.std.{DecoupledSyncReadBlockRAM}
-import wood.std.BlockRAMParams
-import wood.std.{ReadPortI, ReadPortO, WritePortI}
+import wood.{CorePort, MemPortW}
 
 class ICacheControllerDut(config: WoodConfig, memDepth: Int, cacheDataWidth: Int) extends Module {
   val io = IO(new Bundle() {
-    val core = new Bundle() {
-      val req = Flipped(DecoupledIO(new ReadPortI(UInt(config.dataWidth.W))(config.addrWidth)))
-      val resp = DecoupledIO(new ReadPortO(UInt(config.dataWidth.W))(config.addrWidth))
-    }
-
-    val mem = new Bundle {
-      val wp = Flipped(Decoupled(new WritePortI(UInt(config.dataWidth.W))(config.addrWidth)))
-    }
+    val core = new CorePort(config)
+    val mem  = new MemPortW(config)
   })
 
-  val cache = SRAM(config.icacheDepth, UInt(cacheDataWidth.W), 0, 0, 1)
-  val mem = Module(new DecoupledSyncReadBlockRAM(UInt(config.dataWidth.W))(new BlockRAMParams(memDepth, 1, 1)))
   val controller = Module(new ICacheController(config))
+  val cache = SRAM(config.icacheDepth, UInt(cacheDataWidth.W), 0, 0, 1)
+  val mem   = SyncReadMem(memDepth, UInt(config.memDataWidth.W))
 
+  controller.io.core  <> io.core
   controller.io.cache <> cache
 
-  mem.io.rip(0).valid := controller.io.mem.req.valid
-  mem.io.rip(0).bits.addr := controller.io.mem.req.bits.addr >> 2
-  controller.io.mem.req.ready := mem.io.rip(0).ready
+  controller.io.mem.req.ready := true.B
+  controller.io.mem.resp.valid := true.B
+  controller.io.mem.resp.bits.data := mem.read(controller.io.mem.req.bits.addr >> (config.byteOffset))
 
-  mem.io.rop(0) <> controller.io.mem.resp
-  mem.io.wp(0).valid := io.mem.wp.valid
-  mem.io.wp(0).bits.enable := io.mem.wp.bits.enable
-  mem.io.wp(0).bits.addr := io.mem.wp.bits.addr
-  mem.io.wp(0).bits.data := io.mem.wp.bits.data
-  io.mem.wp.ready := mem.io.wp(0).ready
+  when(io.mem.req.valid) {
+    mem.write(io.mem.req.bits.addr, io.mem.req.bits.data)
+  }
 
-
-  controller.io.core.req <> io.core.req
-  io.core.resp <> controller.io.core.resp 
+  io.mem.req.ready := true.B
 }
 
 class ICacheControllerSpec extends AnyFlatSpec with ChiselScalatestTester {
@@ -50,18 +38,15 @@ class ICacheControllerSpec extends AnyFlatSpec with ChiselScalatestTester {
   val TEST_SIZE    = 1 << scala.util.Random.nextInt(16)
   val ICACHE_DEPTH = 1 << scala.util.Random.nextInt(16)
   val MEM_DEPTH    = 1 << scala.util.Random.nextInt(16)
-  //val TEST_SIZE    = 4096
-  //val ICACHE_DEPTH = 512
-  //val MEM_DEPTH    = 2048
 
   println(s"[LOG] TEST SIZE: ${TEST_SIZE}")
   println(s"[LOG] CACHE DEPTH: ${ICACHE_DEPTH}")
   println(s"[LOG] MAIN MEM DEPTH: ${MEM_DEPTH}")
                  
-  val config = new WoodConfig(icacheDepth = ICACHE_DEPTH)
+  val config = new WoodConfig(icacheDepth = ICACHE_DEPTH, nWide=1)
 
   // TODO: make these parameters parametric on the Wood.scala after discussing with emre
-  val taglen   = 32 - (log2Ceil(ICACHE_DEPTH) + log2Ceil(32 >> 3))
+  val taglen   = 32 - (log2Ceil(config.icacheDepth) + config.byteOffset)
   val datalen  = 32
   val validlen = 1
   val cacheDataWidth =  taglen + datalen + validlen
@@ -73,17 +58,12 @@ class ICacheControllerSpec extends AnyFlatSpec with ChiselScalatestTester {
 
   def initMem(dut: ICacheControllerDut, seq: Seq[Int]) = {
     for(i <- 0 until MEM_DEPTH) {
-      dut.io.mem.wp.valid.poke(true.B)
-      dut.io.mem.wp.bits.addr.poke((i).U)
-      dut.io.mem.wp.bits.data.poke(seq(i).U)
-      dut.io.mem.wp.bits.enable.poke(true.B)
-      while(!dut.io.mem.wp.ready.peekBoolean()) {
-        step()
-      }
+      dut.io.mem.req.bits.addr.poke(i.U)
+      dut.io.mem.req.valid.poke(true.B)
+      dut.io.mem.req.bits.data.poke(seq(i).U)
       step()
     }
-
-    dut.io.mem.wp.valid.poke(false.B)
+    dut.io.mem.req.valid.poke(false.B)
     step()
   }
 

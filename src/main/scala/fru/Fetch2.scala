@@ -7,25 +7,47 @@ import wood.{MemPortR, WoodConfig}
 
 class Fetch2Stage(config: WoodConfig) extends Module {
   val io = IO(new Bundle {
-    val pc         = Vec(config.nWide, Flipped(DecoupledIO(UInt(config.pcWidth.W))))
+    val pcPacket   = Flipped(DecoupledIO(Vec(config.nWide, new PCMask(config))))
+    val instPacket = DecoupledIO(Vec(config.nWide, new PCInst(config)))
     val mem        = new MemPortR(config)
-    val instPacket = Vec(config.nWide, DecoupledIO(new PCInst(config)))
+
+    val flush      = Input(Bool())
   })
 
+  val pcPacketReg = RegEnable(io.pcPacket.bits, VecInit(Seq.fill(config.nWide)(0.U.asTypeOf(new PCMask(config)))) ,io.pcPacket.valid && io.pcPacket.ready)
+
   val icachebankcont = Module(new ICacheBankController(config))
+  val kill = RegInit(false.B)
 
   icachebankcont.io.mem <> io.mem
-  icachebankcont.io.core.zipWithIndex.foreach { case (core, i) =>
-    core.req.bits.addr := io.pc(i).bits
-    core.req.valid     := io.pc(i).valid
-    io.pc(i).ready     := core.req.ready
-
-    core.resp.ready := io.instPacket(i).ready
-    io.instPacket(i).bits.inst := core.resp.bits.data
+  for(i <- 0 until config.nWide) {
+    icachebankcont.io.core(i).req.valid     := io.pcPacket.valid && io.pcPacket.ready && io.pcPacket.bits(i).valid
+    icachebankcont.io.core(i).req.bits.addr := io.pcPacket.bits(i).pc
+    icachebankcont.io.core(i).resp.ready    := io.instPacket.ready && io.instPacket.valid
+    
+    io.instPacket.bits(i).pc    := pcPacketReg(i).pc
+    io.instPacket.bits(i).valid := pcPacketReg(i).valid
+    io.instPacket.bits(i).inst  := icachebankcont.io.core(i).resp.bits.data
   }
 
-  val allRespValid = icachebankcont.io.core.zipWithIndex.map { case (core, i) => core.resp.valid || ~io.pc(i).valid }.reduce(_ & _)
+  val allRespValid = icachebankcont.io.core.map(_.resp.valid).reduce(_ && _)
+  val allReqReady  = icachebankcont.io.core.map(_.req.ready).reduce(_ && _) 
 
-  (0 until config.nWide) foreach {i => io.instPacket(i).bits.pc := RegEnable(io.pc(i).bits, io.pc(i).fire) }
-  (0 until config.nWide) foreach {i => io.instPacket(i).valid   := icachebankcont.io.core(i).resp.valid && allRespValid}
+  io.pcPacket.ready   := allReqReady
+  io.instPacket.valid := allRespValid
+
+  when(io.flush && !allRespValid && !allReqReady) {
+    kill := true.B
+  }
+
+  when(kill && allRespValid) {
+    kill := false.B
+  }
+
+  when(kill) {
+    io.instPacket.valid := false.B
+    io.pcPacket.ready   := false.B
+    icachebankcont.io.core.foreach(_.resp.ready := allRespValid)
+  }
+
 }

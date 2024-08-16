@@ -84,7 +84,7 @@ class BranchPredictor(config: WoodConfig) extends Module {
                                         Mux(bim(mpredidx) =/= "b00".U, bim(mpredidx) - 1.U, bim(mpredidx)))
   }
 
-  io.pred.en      := predhit && predtaken
+  io.pred.en      := false.B
   io.pred.mask    := VecInit(predmask.asBools)
   io.pred.fetchpc := predpc
 }

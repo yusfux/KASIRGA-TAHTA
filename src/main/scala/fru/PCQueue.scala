@@ -17,9 +17,6 @@ class PCQueue(config: WoodConfig) extends Module {
   queue.io.flush.get := io.flush
 
   queue.io.enq <> io.in
-  queue.io.enq.valid := io.in.valid && !io.flush
-
   io.out <> queue.io.deq
-  io.out.valid := queue.io.deq.valid && !io.flush
 }
 

@@ -4,7 +4,6 @@ import chisel3._
 import chisel3.util._
 import wood.exu.ExUnit
 import wood.fru.FrUnit
-import wood.std.{ReadPortI, ReadPortO}
 
 case class TestConfig(val maxWidth: Int = 2) {}
 
@@ -64,26 +63,40 @@ case class WoodConfig(
   val listExUnits: List[Int] = List(nWide, 1, 1) // alu,mdu, idu
 }
 
-class WritePortBEI(config: WoodConfig) extends Bundle {
-  val enable = Bool()
-  val addr   = UInt(config.addrWidth.W)
-  val wstrb  = UInt((config.dataWidth / 8).W)
-  val data   = UInt(config.dataWidth.W)
+class ReqPort(addrWidth: Int, dataWidth: Int) extends Bundle {
+  val ReadReq = new Bundle {
+    val addr = UInt(addrWidth.W)
+  }
+
+  val WriteReq = new Bundle {
+    val addr = UInt(addrWidth.W)
+    val data = UInt(dataWidth.W)
+  }
 }
 
-class MemPortW(config: WoodConfig) extends Bundle {
-  val wreq = DecoupledIO(new WritePortBEI(config))
+class RespPort(dataWidth: Int) extends Bundle {
+  val ReadResp = new Bundle {
+    val data = UInt(dataWidth.W)
+  }
 }
 
 class MemPortR(config: WoodConfig) extends Bundle {
-  val req  = DecoupledIO(new ReadPortI(UInt(config.memDataWidth.W))(config.addrWidth))
-  val resp = Flipped(DecoupledIO(new ReadPortO(UInt(config.memDataWidth.W))(config.addrWidth)))
+  val req  = DecoupledIO(new ReqPort(config.addrWidth, config.memDataWidth).ReadReq)
+  val resp = Flipped(DecoupledIO(new RespPort(config.memDataWidth).ReadResp))
+}
+
+class MemPortW(config: WoodConfig) extends Bundle {
+  val req  = Flipped(DecoupledIO(new ReqPort(config.addrWidth, config.memDataWidth).WriteReq))
+}
+
+class CorePort(config: WoodConfig) extends Bundle {
+  val req = Flipped(DecoupledIO(new ReqPort(config.addrWidth, config.dataWidth).ReadReq))
+  val resp = DecoupledIO(new RespPort(config.dataWidth).ReadResp)
 }
 
 class Wood(config: WoodConfig) extends Module {
   val io = IO(new Bundle {
     val memr = new MemPortR(config)
-    // val memw = new MemPortW(config)
   })
 
   val frunit = Module(new FrUnit(config))
@@ -91,6 +104,14 @@ class Wood(config: WoodConfig) extends Module {
 
   frunit.io.bpBus <> exunit.io.bpBus
 
-  frunit.io.instPacket <> exunit.io.in
-  frunit.io.mem        <> io.memr
+  for(i <- 0 until config.nWide) {
+    exunit.io.in(i).valid      := frunit.io.instPacket.valid
+    exunit.io.in(i).bits.pc    := frunit.io.instPacket.bits(i).pc
+    exunit.io.in(i).bits.inst  := frunit.io.instPacket.bits(i).inst
+  }
+
+  frunit.io.instPacket.ready := exunit.io.in.map(_.ready).reduce(_ && _)
+  exunit.io.in.map(_.bits.valid := true.B)
+
+  frunit.io.mem <> io.memr
 }
