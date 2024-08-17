@@ -42,8 +42,10 @@ trace: compile
 
 .PHONY: inject_questa_radix
 inject_questa_radix: dump2
-		cp  $(SRC_DIR)/wave.do $(BUILD_DIR)/wave.do
-		sed -i '1r $(BUILD_DIR)/main.vsim.map' $(BUILD_DIR)/wave.do
+		cp  $(SRC_DIR)/exunit_wave.do $(BUILD_DIR)/exunit_wave.do
+		cp  $(SRC_DIR)/wood_wave.do $(BUILD_DIR)/wood_wave.do
+		sed -i '1r $(BUILD_DIR)/main.vsim.map' $(BUILD_DIR)/wood_wave.do
+		sed -i '1r $(BUILD_DIR)/main.vsim.map' $(BUILD_DIR)/exunit_wave.do
 
 
 clean:
