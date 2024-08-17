@@ -330,30 +330,25 @@ class DecodeStage(config: WoodConfig) extends Module {
     val out   = Vec(config.nWide, Decoupled(new MI(config)))
   })
 
-  val pRegs             = Seq.fill(config.nWide)(Module(new WoodMIPipelineRegister(config, 2)))
-  val decoders          = Seq.fill(config.nWide)(Module(new Decoder(config)))
-  val self              = Wire(Vec(config.nWide, Decoupled(new MI(config))))
-  val atLeastOneIsReady = Wire(Vec(config.nWide, Bool())).suggestName("atLeastOneIsReady")
+  val pRegs    = Seq.fill(config.nWide)(Module(new WoodMIPipelineRegister(config, 1)))
+  val decoders = Seq.fill(config.nWide)(Module(new Decoder(config)))
+  val self     = Wire(Vec(config.nWide, Decoupled(new MI(config))))
+  val allReady = io.out.map(_.ready).reduce(_ && _)
 
   for (j <- 0 until config.nWide) {
     decoders(j).io.in := io.in(j).bits.inst
 
     self(j).bits    := decoders(j).io.out
     self(j).bits.pc := io.in(j).bits.pc
-
-    self(j).valid := io.in(j).valid & io.in(j).valid // output is valid only if all inputs are valid
+    self(j).valid   := io.in(j).valid
 
     pRegs(j).io.valids(0) := io.in(j).valid
-    pRegs(j).io.valids(1) := io.in(j).valid
-
-    io.in(j).ready       := self(j).ready
-    atLeastOneIsReady(j) := self(j).ready
 
     pRegs(j).io.flush      := io.flush
     pRegs(j).io.setflushed := io.flush
 
     pRegs(j).io.in <> self(j)
     io.out(j)      <> pRegs(j).io.out
-    io.in(j).ready := atLeastOneIsReady.asUInt.orR
+    io.in(j).ready := allReady
   }
 }

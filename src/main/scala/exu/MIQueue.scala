@@ -15,13 +15,12 @@ class MIStage(config: WoodConfig) extends Module {
     val out         = Vec(config.nWide, Decoupled(new MI(config)))
   })
 
-  val flist       = Module(new FreeList(config))
-  val miq         = Module(new DCRRQueue(new MI(config))(config.nWide, config.miQueueDepth))
-  val pRegs       = Seq.fill(config.nWide)(Module(new WoodMIPipelineRegister(config, 3)))
-  val self        = Wire(Vec(config.nWide, Decoupled(new MI(config))))
-  val allInValid  = Wire(Vec(config.nWide, Bool())).suggestName("allInValid")
-  val allOutReady = Wire(Vec(config.nWide, Bool())).suggestName("allOutReady")
-  allOutReady := io.out.map(_.ready)
+  val flist      = Module(new FreeList(config))
+  val miq        = Module(new DCRRQueue(new MI(config))(config.nWide, config.miQueueDepth))
+  val pRegs      = Seq.fill(config.nWide)(Module(new WoodMIPipelineRegister(config, 2)))
+  val self       = Wire(Vec(config.nWide, Decoupled(new MI(config))))
+  val allInValid = Wire(Vec(config.nWide, Bool())).suggestName("allInValid")
+  val allReady   = io.out.map(_.ready).reduce(_ && _)
 
   miq.io.in   <> io.in
   flist.io.in <> io.commitedBus
@@ -31,16 +30,15 @@ class MIStage(config: WoodConfig) extends Module {
     self(j).bits.rdTag   := flist.io.out(j).bits.tag
     self(j).bits.flushed := io.flush
 
-    allInValid(j) := miq.io.out(j).valid & flist.io.out(j).valid & io.in(j).valid // output is valid only if all inputs are valid
+    allInValid(j) := miq.io.out(j).valid & flist.io.out(j).valid // output is valid only if all inputs are valid
     self(j).valid := allInValid.asUInt.andR
 
-    pRegs(j).io.valids(0) := io.in(j).valid
-    pRegs(j).io.valids(1) := miq.io.out(j).valid
-    pRegs(j).io.valids(2) := flist.io.out(j).valid
+    pRegs(j).io.valids(0) := miq.io.out(j).valid
+    pRegs(j).io.valids(1) := flist.io.out(j).valid
 
     // io.in(j).ready        := self(j).ready // Decoupled from the rest via miqueue
-    flist.io.out(j).ready := self(j).ready
-    miq.io.out(j).ready   := self(j).ready
+    flist.io.out(j).ready := allInValid.asUInt.andR && self(j).ready
+    miq.io.out(j).ready   := allInValid.asUInt.andR && self(j).ready
 
     pRegs(j).io.flush      := 0.B // never lose tags
     pRegs(j).io.setflushed := io.flush
@@ -48,6 +46,6 @@ class MIStage(config: WoodConfig) extends Module {
 
     pRegs(j).io.in        <> self(j)
     io.out(j)             <> pRegs(j).io.out
-    pRegs(j).io.out.ready := allOutReady.asUInt.andR // all has to be ready, stall otherwise
+    pRegs(j).io.out.ready := allReady
   }
 }
