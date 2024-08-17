@@ -12,13 +12,20 @@ pkgs.writers.writePython3Bin "asmgen" { } ''
           self.num_registers = num_registers
           self.onlyimm_instructions = ["li", "auipc", "lui"]
           self.immediate_instructions = ["addi", "xori", "ori", "andi",
-                                         "slli", "srli", "srai",
-                                         "slti", "sltiu"]
+                                         "slli", "srli", "srai", "slti", "sltiu",
+                                         "clz", "cpop", "ctz", "orc.b", "sext.b",
+                                         "sext.h", "rev8", "rori", "zext.h",
+                                         "zext.w", "bclri", "bexti", "binvi",
+                                         "bseti"]
           self.shift_instructions = ["slli", "srli", "srai"]  # 32 bit imm
           self.register_instructions = ["add", "sub", "xor", "or", "and",
                                         "sll", "srl", "sra", "slt", "sltu",
                                         "mul", "mulh", "mulhu", "mulhsu",
-                                        "div", "divu", "rem", "remu"]
+                                        "div", "divu", "rem", "remu",
+                                        "andn", "max", "maxu", "min", "minu",
+                                        "orn", "rol", "ror", "xnor", "bclr",
+                                        "bext", "binv", "bset", "clmul",
+                                        "clmulh", "clmulr"]
           self.branch_instructions = ["beq", "bne", "bge", "bgeu", "blt", "bltu"]
 
       def init_regs(self) -> List[str]:
@@ -140,7 +147,15 @@ pkgs.writers.writePython3Bin "asmgen" { } ''
                    "li", "lui", "auipc",
                    "beq", "bne", "bge", "bgeu", "blt", "bltu",
                    "mul", "mulh", "mulhu", "mulhsu",
-                   "div", "divu", "rem", "remu"],
+                   "div", "divu", "rem", "remu",
+                   "clz", "cpop", "ctz", "orc.b", "sext.b",
+                   "sext.h", "rev8", "rori", "zext_h",
+                   "zext.w", "bclri", "bexti", "binvi",
+                   "bseti",
+                   "andn", "max", "maxu", "min", "minu",
+                   "orn", "rol", "ror", "xnor", "bclr",
+                   "bext", "binv", "bset", "clmul",
+                   "clmulh", "clmulr"],
           required=True,
           help="inst type to generate (li, add, sub, addi, xori, ori, or andi)",
       )
