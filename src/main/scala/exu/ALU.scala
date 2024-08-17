@@ -72,38 +72,38 @@ class ALU(config: WoodConfig) extends Module {
     is(ALUOp.sltu)            { result := (data1 < data2).asUInt                   }
     is(ALUOp.pass)            { result := data2                                    }
 
-    is(ALUOp.andn)            { result := data1 & ~data2                                                               }
-    is(ALUOp.bclr)            { result := data1 & ~(1.U << data2(shamt, 0))                                            }
-    is(ALUOp.bclri)           { result := data1 & ~(1.U << data2(shamt, 0))                                            }
-    is(ALUOp.bext)            { result := (data1 >> data2(shamt, 0)) & 1.U                                             }
-    is(ALUOp.bexti)           { result := (data1 >> data2(shamt, 0)) & 1.U                                             }
-    is(ALUOp.binv)            { result := data1 &  (1.U << data2(shamt, 0))                                            }
-    is(ALUOp.binvi)           { result := data1 &  (1.U << data2(shamt, 0))                                            }
-    is(ALUOp.bset)            { result := data1 |  (1.U << data2(shamt, 0))                                            }
-    is(ALUOp.bseti)           { result := data1 |  (1.U << data2(shamt, 0))                                            }
-    //is(ALUOp.clmul)           { result := ??? }
-    //is(ALUOp.clmulh)          { result := ??? }
-    //is(ALUOp.clmulr)          { result := ??? }
-    is(ALUOp.clz)             { result := PriorityEncoder(data1.asBools.reverse)                                       }
-    is(ALUOp.cpop)            { result := PopCount(data1)                                                              }
-    is(ALUOp.ctz)             { result := PriorityEncoder(data1.asBools)                                               }
-    is(ALUOp.max)             { result := Mux(data1.asSInt > data2.asSInt, data1, data2)                               }
-    is(ALUOp.maxu)            { result := Mux(data1.asUInt > data2.asUInt, data1, data2)                               }
-    is(ALUOp.min)             { result := Mux(data1.asSInt > data2.asSInt, data2, data1)                               }
-    is(ALUOp.minu)            { result := Mux(data1.asUInt > data2.asUInt, data2, data1)                               }
-    is(ALUOp.orc_b)           { result := Cat(Seq.tabulate(4)(i => Mux(data1(8*i+7, 8*i).orR, 0xFF.U(8.W), 0.U(8.W)))) }
-    is(ALUOp.orn)             { result := data1 | ~data2                                                               }
-    is(ALUOp.rev8)            { result := Cat(Seq.tabulate(4)(i => data1(8 * (4 - i) - 1, 8 * (4 - i - 1))))           } //TODO: also check this
-    is(ALUOp.rol)             { result := (data1 << data2(shamt, 0)) | (data2 >> (config.xlen.U - data2(shamt, 0)))    } //TODO: check this
-    is(ALUOp.ror)             { result := (data1 >> data2(shamt, 0)) | (data2 << (config.xlen.U - data2(shamt, 0)))    }
-    is(ALUOp.rori)            { result := (data1 >> data2(shamt, 0)) | (data2 << (config.xlen.U - data2(shamt, 0)))    }
-    is(ALUOp.sext_b)          { result := Cat(Fill(24, data1(7)), data1(7, 0))                                         }
-    is(ALUOp.sext_h)          { result := Cat(Fill(16, data1(15)), data1(15, 0))                                       }
-    is(ALUOp.sh1add)          { result := (data2 + (data1 << 1))                                                       }
-    is(ALUOp.sh2add)          { result := (data2 + (data1 << 2))                                                       }
-    is(ALUOp.sh3add)          { result := (data2 + (data1 << 3))                                                       }
-    is(ALUOp.xnor)            { result := ~(data1 ^ data2)                                                             }
-    is(ALUOp.zext_h)          { result := Cat(Fill(16, 0.U), data1(15, 0))                                                 }
+    is(ALUOp.andn)            { result := data1 & ~data2                           }
+    is(ALUOp.bclr)            { result := data1 & ~(1.U << data2(shamt, 0))        }
+    is(ALUOp.bclri)           { result := data1 & ~(1.U << data2(shamt, 0))        }
+    is(ALUOp.bext)            { result := (data1 >> data2(shamt, 0)) & 1.U         }
+    is(ALUOp.bexti)           { result := (data1 >> data2(shamt, 0)) & 1.U         }
+    is(ALUOp.binv)            { result := data1 ^ (1.U << data2(shamt, 0))         }
+    is(ALUOp.binvi)           { result := data1 ^ (1.U << data2(shamt, 0))         }
+    is(ALUOp.bset)            { result := data1 | (1.U << data2(shamt, 0))         }
+    is(ALUOp.bseti)           { result := data1 | (1.U << data2(shamt, 0))         }
+    is(ALUOp.clmul)           { result := (0 until 32).foldLeft(0.U(32.W)) { (output, i) => Mux(data2(i), output ^ (data1 << i)                      , output) }}
+    is(ALUOp.clmulh)          { result := (0 until 32).foldLeft(0.U(32.W)) { (output, i) => Mux(data2(i), output ^ (data1 >> (32 - i))               , output) }}
+    is(ALUOp.clmulr)          { result := (0 until 32).foldLeft(0.U(32.W)) { (output, i) => Mux(data2(i), output ^ (data1 >> (32 - i - 1))           , output) }}
+    is(ALUOp.clz)             { result := Mux(data1 === 0.U, config.xlen.U, PriorityEncoder(data1.asBools.reverse)) }
+    is(ALUOp.cpop)            { result := PopCount(data1)                                                           }
+    is(ALUOp.ctz)             { result := Mux(data1 === 0.U, config.xlen.U, PriorityEncoder(data1.asBools))         }
+    is(ALUOp.max)             { result := Mux(data1.asSInt > data2.asSInt, data1, data2)                            }
+    is(ALUOp.maxu)            { result := Mux(data1.asUInt > data2.asUInt, data1, data2)                            }
+    is(ALUOp.min)             { result := Mux(data1.asSInt > data2.asSInt, data2, data1)                            }
+    is(ALUOp.minu)            { result := Mux(data1.asUInt > data2.asUInt, data2, data1)                            }
+    is(ALUOp.orc_b)           { result := Cat(Seq.tabulate(4)(i => Mux(data1(8 * i + 7, 8 * i).orR, 0xFF.U(8.W), 0.U(8.W))).reverse) }
+    is(ALUOp.orn)             { result := data1 | ~data2                                                            }
+    is(ALUOp.rev8)            { result := Cat(Seq.tabulate(4)(i => data1(8 * i + 7, 8 * i)))                        }
+    is(ALUOp.rol)             { result := (data1 << data2(shamt, 0)) | (data1 >> (config.xlen.U - data2(shamt, 0))) }
+    is(ALUOp.ror)             { result := (data1 >> data2(shamt, 0)) | (data1 << (config.xlen.U - data2(shamt, 0))) }
+    is(ALUOp.rori)            { result := (data1 >> data2(shamt, 0)) | (data1 << (config.xlen.U - data2(shamt, 0))) }
+    is(ALUOp.sext_b)          { result := Cat(Fill(24, data1(7)), data1(7, 0))                                      }
+    is(ALUOp.sext_h)          { result := Cat(Fill(16, data1(15)), data1(15, 0))                                    }
+    is(ALUOp.sh1add)          { result := (data2 + (data1 << 1))                                                    }
+    is(ALUOp.sh2add)          { result := (data2 + (data1 << 2))                                                    }
+    is(ALUOp.sh3add)          { result := (data2 + (data1 << 3))                                                    }
+    is(ALUOp.xnor)            { result := ~(data1 ^ data2)                                                          }
+    is(ALUOp.zext_h)          { result := Cat(Fill(16, 0.U), data1(15, 0))                                          }
 
   }
 

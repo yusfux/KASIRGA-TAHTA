@@ -13,11 +13,12 @@ pkgs.writers.writePython3Bin "asmgen" { } ''
           self.onlyimm_instructions = ["li", "auipc", "lui"]
           self.immediate_instructions = ["addi", "xori", "ori", "andi",
                                          "slli", "srli", "srai", "slti", "sltiu",
-                                         "clz", "cpop", "ctz", "orc.b", "sext.b",
-                                         "sext.h", "rev8", "rori", "zext.h",
-                                         "zext.w", "bclri", "bexti", "binvi",
+                                         "rori", "bclri", "bexti", "binvi",
                                          "bseti"]
-          self.shift_instructions = ["slli", "srli", "srai"]  # 32 bit imm
+          self.onlyregister_instructions = ["clz", "cpop", "ctz", "orc.b",
+                                            "rev8", "sext.b", "sext.h", "zext.h"]
+          self.shift_instructions = ["slli", "srli", "srai", "rori", "bclri",
+                                     "bexti", "binvi", "bseti"]
           self.register_instructions = ["add", "sub", "xor", "or", "and",
                                         "sll", "srl", "sra", "slt", "sltu",
                                         "mul", "mulh", "mulhu", "mulhsu",
@@ -58,6 +59,10 @@ pkgs.writers.writePython3Bin "asmgen" { } ''
               return self.generate_immediate_inst(inst_type)
           elif inst_type in self.branch_instructions:
               return self.generate_beq_inst()
+          elif inst_type in self.onlyregister_instructions:
+              register1 = f"x{random.randint(0, self.num_registers - 1)}"
+              register2 = f"x{random.randint(0, self.num_registers - 1)}"
+              return f"{inst_type} {register2}, {register1}"
           else:
               raise ValueError(f"Unsupported inst type: {inst_type}")
 
@@ -149,9 +154,8 @@ pkgs.writers.writePython3Bin "asmgen" { } ''
                    "mul", "mulh", "mulhu", "mulhsu",
                    "div", "divu", "rem", "remu",
                    "clz", "cpop", "ctz", "orc.b", "sext.b",
-                   "sext.h", "rev8", "rori", "zext_h",
-                   "zext.w", "bclri", "bexti", "binvi",
-                   "bseti",
+                   "sext.h", "rev8", "rori", "zext.h",
+                   "bclri", "bexti", "binvi", "bseti",
                    "andn", "max", "maxu", "min", "minu",
                    "orn", "rol", "ror", "xnor", "bclr",
                    "bext", "binv", "bset", "clmul",
