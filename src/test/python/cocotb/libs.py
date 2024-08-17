@@ -217,7 +217,6 @@ async def diff_traces(
     await RisingEdge(dut.clock)
     await RisingEdge(dut.clock)
 
-    # previous_pc = 69
     while True:
         in_valid = [0 for _ in range(nwide)]
         in_ready = [0 for _ in range(nwide)]
@@ -235,14 +234,17 @@ async def diff_traces(
         retired = [0 for _ in range(nwide)]
         flushed = [0 for _ in range(nwide)]
         for n in range(0, nwide):
-            arfBus_adr[n] = getattr(
-                dut, f"{top}rwstage.io_arfBus_{n}_bits_rd"
-            ).value.integer
-            arfBus_tag[n] = getattr(
-                dut, f"{top}rwstage.io_arfBus_{n}_bits_tag"
-            ).value.integer
             arfBus_valid[n] = getattr(
                 dut, f"{top}rwstage.io_arfBus_{n}_valid"
+            ).value.integer
+
+            if getattr(dut, f"{top}rwstage.io_arfBus_{n}_bits_rd").value.is_resolvable:
+                arfBus_adr[n] = getattr(
+                    dut, f"{top}rwstage.io_arfBus_{n}_bits_rd"
+                ).value.integer
+
+            arfBus_tag[n] = getattr(
+                dut, f"{top}rwstage.io_arfBus_{n}_bits_tag"
             ).value.integer
 
             commBus_valid[n] = getattr(
@@ -252,14 +254,21 @@ async def diff_traces(
                 dut, f"{top}rwstage.io_commitedBus_{n}_bits_tag"
             ).value.integer
 
-            inst[n] = getattr(dut, f"{top}rwstage.io_in_{n}_bits_inst").value.integer
+            if getattr(dut, f"{top}rwstage.io_in_{n}_bits_inst").value.is_resolvable:
+                inst[n] = getattr(
+                    dut, f"{top}rwstage.io_in_{n}_bits_inst"
+                ).value.integer
+
             pc[n] = getattr(dut, f"{top}rwstage.io_in_{n}_bits_pc").value.integer
             rd_data[n] = getattr(dut, f"{top}rrstage.prf_{arfBus_tag[n]}").value.integer
             in_valid[n] = getattr(dut, f"{top}rwstage.io_in_{n}_valid").value.integer
             in_ready[n] = getattr(dut, f"{top}rwstage.io_in_{n}_ready").value.integer
-            in_wrf[n] = getattr(
-                dut, f"{top}rwstage.io_in_{n}_bits_writeRf"
-            ).value.integer
+
+            if getattr(dut, f"{top}rwstage.io_in_{n}_bits_writeRf").value.is_resolvable:
+                in_wrf[n] = getattr(
+                    dut, f"{top}rwstage.io_in_{n}_bits_writeRf"
+                ).value.integer
+
             flushed[n] = getattr(
                 dut, f"{top}rwstage.io_in_{n}_bits_flushed"
             ).value.integer
@@ -269,13 +278,11 @@ async def diff_traces(
         inst_p = ["" for _ in range(nwide)]
         pc_p = ["" for _ in range(nwide)]
         rd_data_p = ["" for _ in range(nwide)]
-        # if previous_pc != pc:
-        # previous_pc = pc
 
         for n in range(0, nwide):
             if retired[n] and not flushed[n]:
                 golden_reference[n] = spike_trace.pop(0)
-                print(color(golden_reference[n], Color.YELLOW), f" n={n}")
+                print(color(golden_reference[n], Color.YELLOW), f" n={n}", flush=True)
 
                 inst_p[n] = "{0:#0{1}x}".format(inst[n], 10)
                 pc_p[n] = "{0:#0{1}x}".format(pc[n], 10)
