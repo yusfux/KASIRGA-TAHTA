@@ -106,6 +106,8 @@ class SRT16DividerDataModule(len: Int) extends Module {
   val quotM1IterReg = RegEnable(quotM1Iter, state(s_pre_1) | state(s_iter) | state(s_post_0))
   val specialReg    = RegEnable(special, state(s_pre_1))
   val aReg          = RegEnable(a, in_fire)
+  val isHi_r        = RegEnable(isHi, in_fire)
+  val isW_r         = RegEnable(isW, in_fire)
 
   when(kill_r) {
     state := UIntToOH(s_idle, 7)
@@ -426,8 +428,8 @@ class SRT16DividerDataModule(len: Int) extends Module {
   val rFinal =
     RegEnable(Mux(specialReg, remSpecialReg, rShifted), state(s_post_1)) // right shifted remainder. shift by the number of bits divisor is shifted
   val qFinal = RegEnable(Mux(specialReg, quotSpecialReg, Mux(needCorr, quotM1IterReg, quotIterReg)), state(s_post_1))
-  val res    = Mux(isHi, rFinal, qFinal)
-  io.out_data      := Mux(isW, SignExt(res(31, 0), len), res)
+  val res    = Mux(isHi_r, rFinal, qFinal)
+  io.out_data      := Mux(isW_r, SignExt(res(31, 0), len), res)
   io.in_ready      := state(s_idle)
   io.out_valid     := state(s_finish)
   io.out_validNext := state(s_post_1)

@@ -2,7 +2,7 @@
 **.bsp/
 **.target/
 */modelsim/*
-**/sim_build
+**/sim_build*
 **/build
 *_prove/
 **_pycache_*
@@ -51,6 +51,8 @@
 *.out
 *.dump
 
+*.wlf
+*.vcd
 *.gtkw
 *.do
 *.info
