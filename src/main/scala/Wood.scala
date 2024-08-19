@@ -27,7 +27,12 @@ case class WoodConfig(
   // ExUnitConfig
   miQueueDepth: Int = 16,
   robDepth:     Int = 16,
-  rsDepth:      Int = 4 // Reservation station depth
+  rsDepth:      Int = 4, // Reservation station depth
+  //--------------
+  // LsUnitConfig
+  lssqDepth:   Int = 4, // LS Store Queue Depth
+  lsrsDepth:   Int = 4, // LS reservation station Depth
+  dcacheDepth: Int = 1024
   //--------------
 ) {
 
@@ -60,7 +65,9 @@ case class WoodConfig(
   val aluCrossbarIndex = 0 // NOTE: ALU has to be 0
   val imuCrossbarIndex = 1
   val iduCrossbarIndex = 2
-  val listExUnits: List[Int] = List(nWide, 1, 1) // alu,mdu, idu
+  val lsuCrossbarIndex = 3
+  val listExCrossbarUnits: List[Int] = List(nWide, 1, 1) // alu, mdu, idu
+  val listExUnits:         List[Int] = List(nWide, 1, 1, 1) // alu, mdu, idu, lsu
 }
 
 class ReqPort(addrWidth: Int, dataWidth: Int) extends Bundle {
@@ -86,11 +93,11 @@ class MemPortR(config: WoodConfig) extends Bundle {
 }
 
 class MemPortW(config: WoodConfig) extends Bundle {
-  val req  = Flipped(DecoupledIO(new ReqPort(config.addrWidth, config.memDataWidth).WriteReq))
+  val req = Flipped(DecoupledIO(new ReqPort(config.addrWidth, config.memDataWidth).WriteReq))
 }
 
 class CorePort(config: WoodConfig) extends Bundle {
-  val req = Flipped(DecoupledIO(new ReqPort(config.addrWidth, config.dataWidth).ReadReq))
+  val req  = Flipped(DecoupledIO(new ReqPort(config.addrWidth, config.dataWidth).ReadReq))
   val resp = DecoupledIO(new RespPort(config.dataWidth).ReadResp)
 }
 
@@ -104,13 +111,13 @@ class Wood(config: WoodConfig) extends Module {
 
   frunit.io.bpBus <> exunit.io.bpBus
 
-  for(i <- 0 until config.nWide) {
-    exunit.io.in(i).valid      := frunit.io.instPacket.valid
-    exunit.io.in(i).bits.pc    := frunit.io.instPacket.bits(i).pc
-    exunit.io.in(i).bits.inst  := frunit.io.instPacket.bits(i).inst
+  for (i <- 0 until config.nWide) {
+    exunit.io.in(i).valid     := frunit.io.instPacket.valid
+    exunit.io.in(i).bits.pc   := frunit.io.instPacket.bits(i).pc
+    exunit.io.in(i).bits.inst := frunit.io.instPacket.bits(i).inst
   }
 
-  frunit.io.instPacket.ready := exunit.io.in.map(_.ready).reduce(_ && _)
+  frunit.io.instPacket.ready    := exunit.io.in.map(_.ready).reduce(_ && _)
   exunit.io.in.map(_.bits.valid := true.B)
 
   frunit.io.mem <> io.memr

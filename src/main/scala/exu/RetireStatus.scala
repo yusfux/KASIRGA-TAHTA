@@ -7,14 +7,15 @@ import wood.std.DCPipelineRegister
 
 class RetireStatusStage(config: WoodConfig) extends Module {
   val io = IO(new Bundle {
-    val in           = Flipped(Vec(config.nWide, Decoupled(new RetireMI(config))))
-    val firstPC      = Flipped(Valid(UInt(config.pcWidth.W)))
-    val writebackBus = Flipped(Vec(config.nWide, ValidIO(new TagBus(config))))
-    val exceptionBus = Flipped(Vec(config.nWide, ValidIO(new ExceptionBus(config))))
-    val commitedBus  = Flipped(Vec(config.nWide, ValidIO(new TagBus(config))))
-    val out          = Vec(config.nWide, Decoupled(new RetireMI(config)))
-    val bpBus        = Vec(config.nWide, ValidIO(new BranchPredictorBus(config)))
-    val flush        = Output(Bool())
+    val in             = Flipped(Vec(config.nWide, Decoupled(new RetireMI(config))))
+    val firstPC        = Flipped(Valid(UInt(config.pcWidth.W)))
+    val writebackBus   = Flipped(Vec(config.nWide, ValidIO(new TagBus(config))))
+    val exceptionBus   = Flipped(Vec(config.nWide, ValidIO(new ExceptionBus(config))))
+    val commitedBus    = Flipped(Vec(config.nWide, ValidIO(new TagBus(config))))
+    val out            = Vec(config.nWide, Decoupled(new RetireMI(config)))
+    val bpBus          = Vec(config.nWide, ValidIO(new BranchPredictorBus(config)))
+    val storeRetireBus = Vec(config.nWide, ValidIO(new TagBus(config)))
+    val flush          = Output(Bool())
   })
 
   val pRegs                       = Seq.fill(config.nWide)(Module(new DCPipelineRegister(new RetireMI(config))(1)))
@@ -29,6 +30,9 @@ class RetireStatusStage(config: WoodConfig) extends Module {
 
   val flushVector  = Wire(UInt(config.nWide.W))
   val flushVectors = Wire(Vec(config.nWide, UInt(config.nWide.W)))
+
+  val retireVector      = Wire(Vec(config.nWide + 1, Bool()))
+  val storeRetireVector = Wire(Vec(config.nWide, Bool()))
 
   val allRetired = Wire(Vec(config.nWide, Bool()))
   val allInValid = Wire(Vec(config.nWide, Bool()))
@@ -56,6 +60,41 @@ class RetireStatusStage(config: WoodConfig) extends Module {
   (0 until config.nWide).foreach(j => {
     overridenRetiredStatus(j).bits.retired := retireStatusRegisterFile(io.in(j).bits.rdTag) | io.in(j).bits.flushed | flushVector(j)
 
+    self(j).bits         := overridenRetiredStatus(j).bits
+    self(j).bits.flushed := flushVector(j) | overridenRetiredStatus(j).bits.flushed
+
+    self(j).valid := (allInValid.asUInt.andR & allRetired.asUInt.andR) | (io.in(j).bits.flushed & io.in(j).valid)
+
+    pRegs(j).io.valids(0)       := io.in(j).valid
+    pRegs(j).io.flush           := 0.U // never lose tags
+    pRegs(j).io.in.bits.flushed := flushVector(j)
+
+    overridenRetiredStatus(j).ready := self(j).ready
+
+    pRegs(j).io.in <> self(j)
+    io.out(j)      <> pRegs(j).io.out
+  })
+
+  // retire? 0 0 0 0 1 (dummy)
+  // retire0 0 0 0 0 1 (not retired)
+  // retire1 0 0 1 0 1 (    retired)
+  // retire2 0 1 0 0 1 (    retired)
+  // retire3 0 0 0 0 1 (not retired)
+  // -----------------or
+  //         0 1 1 0 1 (only lane0 can store)
+
+  retireVector(0) := 1.B
+
+  (0 until config.nWide).foreach(j => {
+    retireVector(j + 1)  := retireStatusRegisterFile(io.in(j).bits.rdTag)
+    storeRetireVector(j) := PopCount(retireVector.asUInt(j + 1, 0)) === (j.U + 1.U)
+
+    io.storeRetireBus(j).bits.tag := io.in(j).bits.rdTag
+    io.storeRetireBus(j).valid    := storeRetireVector(j) & !flushVector(j)
+    io.storeRetireBus(j).valid    := !flushVector(j)
+  })
+
+  (0 until config.nWide).foreach(j => {
     when(io.exceptionBus(j).valid) {
       val tag = io.exceptionBus(j).bits.tag
       pcRegisterFile(tag)              := io.exceptionBus(j).bits.pc
@@ -72,20 +111,6 @@ class RetireStatusStage(config: WoodConfig) extends Module {
       takenStatusRegisterFile(tag)     := 0.U
       exceptionStatusRegisterFile(tag) := 0.U
     }
-
-    self(j).bits         := overridenRetiredStatus(j).bits
-    self(j).bits.flushed := flushVector(j) | overridenRetiredStatus(j).bits.flushed
-
-    self(j).valid := (allInValid.asUInt.andR & allRetired.asUInt.andR) | (io.in(j).bits.flushed & io.in(j).valid)
-
-    pRegs(j).io.valids(0)       := io.in(j).valid
-    pRegs(j).io.flush           := 0.U // never lose tags
-    pRegs(j).io.in.bits.flushed := flushVector(j)
-
-    overridenRetiredStatus(j).ready := self(j).ready
-
-    pRegs(j).io.in <> self(j)
-    io.out(j)      <> pRegs(j).io.out
   })
 
   (0 until config.nWide).foreach(j => {

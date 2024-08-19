@@ -6,6 +6,7 @@ import chisel3.util._
 import wood.WoodConfig
 import wood.exu.{DecodeConfig, DecodeStage}
 import wood.fru.PCInst
+import wood.lsu.LSUnit
 
 case class MI(config: WoodConfig) extends Bundle {
   val isFloat     = UInt(DecodeConfig.subWidths(0).W)
@@ -147,6 +148,10 @@ class ExUnit(config: WoodConfig) extends Module {
     val bpBus = Vec(config.nWide, ValidIO(new BranchPredictorBus(config)))
   })
 
+  val lsunit = Module(new LSUnit(config))
+  val lsOuts = Wire(Vec(1, Decoupled(new MI(config)))) // only 1 LSU for now
+  lsOuts(0) <> lsunit.io.out
+
   val destage = Module(new DecodeStage(config))
   val mistage = Module(new MIStage(config))
   val restage = Module(new RenameStage(config))
@@ -166,6 +171,11 @@ class ExUnit(config: WoodConfig) extends Module {
   restage.io.in <> mistage.io.out
   rbstage.io.in <> restage.io.out0
   scstage.io.in <> restage.io.out1
+  lsunit.io.in  <> restage.io.out2
+
+  exstage.io.lsuIn         <> lsOuts
+  lsunit.io.storeRetireBus <> rsstage.io.storeRetireBus
+  lsunit.io.lsBus          <> wbstage.io.lsBus
 
   restage.io.archRF <> arstage.io.archRF
 
@@ -200,6 +210,7 @@ class ExUnit(config: WoodConfig) extends Module {
   exstage.io.flush <> rsstage.io.flush
   mistage.io.flush <> rsstage.io.flush
   rbstage.io.flush <> rsstage.io.flush
+  lsunit.io.flush  <> rsstage.io.flush
 
   mistage.io.commitedBus <> rwstage.io.commitedBus
   (0 until config.nWide).foreach(j => {

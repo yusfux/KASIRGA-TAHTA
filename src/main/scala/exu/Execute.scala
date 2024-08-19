@@ -11,12 +11,14 @@ class ExecuteStage(config: WoodConfig) extends Module {
   val numALUs       = config.listExUnits(config.aluCrossbarIndex)
   val numIMUs       = config.listExUnits(config.imuCrossbarIndex)
   val numIDUs       = config.listExUnits(config.iduCrossbarIndex)
+  val numLSUs       = config.listExUnits(config.lsuCrossbarIndex)
 
   val io = IO(new Bundle {
     val aluIn      = Flipped(Vec(numALUs, Decoupled(new MI(config))))
     val flush      = Input(Bool())
     val imuIn      = Flipped(Vec(numIMUs, Decoupled(new MI(config))))
     val iduIn      = Flipped(Vec(numIMUs, Decoupled(new MI(config))))
+    val lsuIn      = Flipped(Vec(numLSUs, Decoupled(new MI(config))))
     val forwardBus = Vec(config.nWide, ValidIO(new DataBus(config)))
     val out        = Vec(config.nWide, Decoupled(new MI(config)))
   })
@@ -31,6 +33,9 @@ class ExecuteStage(config: WoodConfig) extends Module {
   }
   val idus = Seq.tabulate(numIDUs) { _ =>
     Module(new IDU(config))
+  }
+  val lsus = Seq.tabulate(numLSUs) { _ =>
+    Module(new LSU(config))
   }
 
   val aluOutputs = Wire(Vec(numALUs, Decoupled(new MI(config))))
@@ -48,9 +53,15 @@ class ExecuteStage(config: WoodConfig) extends Module {
   iduInputs  <> idus.map(_.io.in)
   iduOutputs <> idus.map(_.io.out)
 
+  val lsuOutputs = Wire(Vec(numLSUs, Decoupled(new MI(config))))
+  val lsuInputs  = Wire(Vec(numLSUs, Decoupled(new MI(config))))
+  lsuInputs  <> lsus.map(_.io.in)
+  lsuOutputs <> lsus.map(_.io.out)
+
   aluInputs <> io.aluIn
   imuInputs <> io.imuIn
   iduInputs <> io.iduIn
+  lsuInputs <> io.lsuIn
 
   // alu.foreach(_.io.flush := io.flush)
   imus.foreach(_.io.flush := io.flush)
@@ -58,7 +69,8 @@ class ExecuteStage(config: WoodConfig) extends Module {
 
   val aluRange = (0 until numALUs)
   val imuRange = (numALUs until numALUs + numIMUs)
-  val iduRange = (numALUs + numIMUs until totalNumPorts)
+  val iduRange = (numALUs + numIMUs until numALUs + numIMUs + numIDUs)
+  val lsuRange = (numALUs + numIMUs + numIDUs until totalNumPorts)
   (aluRange).foreach(j => {
     arbiter.io.in(j) <> aluOutputs(j)
   })
@@ -67,6 +79,9 @@ class ExecuteStage(config: WoodConfig) extends Module {
   })
   (iduRange).foreach(j => {
     arbiter.io.in(j) <> iduOutputs(j - iduRange(0))
+  })
+  (lsuRange).foreach(j => {
+    arbiter.io.in(j) <> lsuOutputs(j - lsuRange(0))
   })
 
   (0 until config.nWide).foreach(j => {

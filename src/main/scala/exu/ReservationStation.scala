@@ -3,7 +3,7 @@ package wood.exu
 import chisel3._
 import chisel3.util._
 import wood.WoodConfig
-import wood.std.{DCArbiter, DCDemux}
+import wood.std.{DCDemux, DCRRArbiter}
 
 class ReservationStationRow(config: WoodConfig) extends Module {
   val io = IO(new Bundle {
@@ -11,7 +11,6 @@ class ReservationStationRow(config: WoodConfig) extends Module {
     val forwardBus = Input(Vec(config.nWide, ValidIO(new TagBus(config))))
     val wakeupBus  = Input(Vec(config.nWide, ValidIO(new TagBus(config))))
     val out        = Decoupled(new MI(config))
-
   })
 
   val busR1MatchesForward = Wire(Vec(config.nWide, Bool()))
@@ -92,7 +91,7 @@ class ReservationStation(config: WoodConfig) extends Module {
   })
 
   val rows    = Seq.fill(config.rsDepth)(Module(new ReservationStationRow(config)))
-  val arbiter = Module(new DCArbiter(new MI(config))(config.rsDepth, 1))
+  val arbiter = Module(new DCRRArbiter(new MI(config), config.rsDepth))
   val demux   = Module(new DCDemux(new MI(config))(1, config.rsDepth))
 
   val rowReady = Wire(Vec(config.rsDepth, Bool()))
@@ -112,5 +111,5 @@ class ReservationStation(config: WoodConfig) extends Module {
     arbiter.io.in(j) <> rows(j).io.out
   })
 
-  arbiter.io.out(0) <> io.out
+  arbiter.io.out <> io.out
 }

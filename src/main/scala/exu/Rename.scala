@@ -13,9 +13,12 @@ class RenameStage(config: WoodConfig) extends Module {
 
     val out0 = Vec(config.nWide, Decoupled(new MI(config)))
     val out1 = Vec(config.nWide, Decoupled(new MI(config)))
+    val out2 = Vec(config.nWide, Decoupled(new MI(config)))
   })
-  val pRegs0               = Seq.fill(config.nWide)(Module(new WoodMIPipelineRegister(config, 1)))
-  val pRegs1               = Seq.fill(config.nWide)(Module(new WoodMIPipelineRegister(config, 1)))
+  val pRegs0 = Seq.fill(config.nWide)(Module(new WoodMIPipelineRegister(config, 1)))
+  val pRegs1 = Seq.fill(config.nWide)(Module(new WoodMIPipelineRegister(config, 1)))
+  val pRegs2 = Seq.fill(config.nWide)(Module(new WoodMIPipelineRegister(config, 1)))
+
   val frontEndRegisterFile = RegInit(VecInit(Seq.fill(32)(0.U(config.tagWidth.W))))
   val self                 = Wire(Vec(config.nWide, Decoupled(new MI(config))))
   val flushDelayed         = RegNext(RegNext(io.flush, false.B), false.B)
@@ -26,6 +29,8 @@ class RenameStage(config: WoodConfig) extends Module {
   out0Ready := io.out0.map(_.ready)
   val out1Ready = Wire(Vec(config.nWide, Bool()))
   out1Ready := io.out1.map(_.ready)
+  val out2Ready = Wire(Vec(config.nWide, Bool()))
+  out2Ready := io.out2.map(_.ready)
 
   (0 until config.nWide).foreach(j => {
     when((io.in(j).bits.writeRf === Integer.parseInt(DecodeConfig.WRITE_RF_I, 2).U) & io.in(j).fire & !io.flush & !io.in(j).bits.flushed) {
@@ -73,8 +78,9 @@ class RenameStage(config: WoodConfig) extends Module {
 
     pRegs0(j).io.valids(0) := io.in(j).valid
     pRegs1(j).io.valids(0) := io.in(j).valid
+    pRegs2(j).io.valids(0) := io.in(j).valid
 
-    io.in(j).ready := out1Ready.asUInt.andR & out0Ready.asUInt.andR
+    io.in(j).ready := out2Ready.asUInt.andR & out1Ready.asUInt.andR & out0Ready.asUInt.andR
 
     pRegs0(j).io.flush      := 0.U // never lose tags
     pRegs0(j).io.setflushed := io.flush
@@ -82,15 +88,20 @@ class RenameStage(config: WoodConfig) extends Module {
     pRegs1(j).io.flush      := 0.U // never lose tags
     pRegs1(j).io.setflushed := io.flush
 
+    pRegs2(j).io.flush      := 0.U // never lose tags
+    pRegs2(j).io.setflushed := io.flush
+
     pRegs0(j).io.in       <> self(j)
-    pRegs0(j).io.in.valid := self(j).valid & (out1Ready.asUInt.andR & out0Ready.asUInt.andR)
+    pRegs0(j).io.in.valid := self(j).valid & (out1Ready.asUInt.andR & out1Ready.asUInt.andR & out0Ready.asUInt.andR)
     io.out0(j)            <> pRegs0(j).io.out
-    // pRegs0(j).io.out.ready := out0Ready.asUInt.andR // always fire together
 
     pRegs1(j).io.in       <> self(j)
-    pRegs1(j).io.in.valid := self(j).valid & (out1Ready.asUInt.andR & out0Ready.asUInt.andR)
+    pRegs1(j).io.in.valid := self(j).valid & (out1Ready.asUInt.andR & out1Ready.asUInt.andR & out0Ready.asUInt.andR)
     io.out1(j)            <> pRegs1(j).io.out
-    // pRegs1(j).io.out.ready := out1Ready.asUInt.andR // always fire together
+
+    pRegs2(j).io.in       <> self(j)
+    pRegs2(j).io.in.valid := self(j).valid & (out1Ready.asUInt.andR & out1Ready.asUInt.andR & out0Ready.asUInt.andR)
+    io.out2(j)            <> pRegs2(j).io.out
   })
 
   (0 until 32).foreach(j => {

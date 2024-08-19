@@ -347,6 +347,28 @@ for {set i 0} {$i < $nWide} {incr i 1} {
 }
 
 
+
+################################
+# LSUnit
+add wave -noupdate -group exunit -group lsunit io_flush
+for {set i 0} {$i < $nWide} {incr i 1} {
+  set sig_name [format "/ExUnit/mistage/io_in_%d_bits_inst" $i]
+  add wave -noupdate -group exunit -group lsunit -group -radix RISCV io_in_$i $sig_name
+}
+for {set i 0} {$i < $nWide} {incr i 1} {
+  set sig_name [format "/ExUnit/mistage/io_in_%d*" $i]
+  add wave -noupdate -group exunit -group lsunit -group io_in_$i $sig_name
+}
+
+for {set i 0} {$i < $nWide} {incr i 1} {
+  set sig_name [format "/ExUnit/mistage/io_out_%d_bits_inst" $i]
+  add wave -noupdate -group exunit -group mistage -group -radix RISCV io_out_$i $sig_name
+}
+for {set i 0} {$i < $nWide} {incr i 1} {
+  set sig_name [format "/ExUnit/mistage/io_out_%d*" $i]
+  add wave -noupdate -group exunit -group mistage -group io_out_$i $sig_name
+}
+
 # After all signals are added, zoom out to full view
 wave zoom full
 

@@ -103,19 +103,19 @@ object DecodeConfig {
    FENCE_TSO        -> Seq(op.e(ALUOp.toString(ALUOp.add))   ,ExEngine.toString(ExEngine.alu), WRITE_RF_I, OPERAND1_IRF, OPERAND2_IRF,  OPERAND3_IMM  ,WAKEUP_1,IS_JAL_0,IS_BRANCH_0,TYPE_INT),
    JAL              -> Seq(op.e(ALUOp.toString(ALUOp.jal))   ,ExEngine.toString(ExEngine.alu), WRITE_RF_I, OPERAND1_PC,  OPERAND2_IMM,  OPERAND3_IMM  ,WAKEUP_1,IS_JAL_1,IS_BRANCH_0,TYPE_INT),
    JALR             -> Seq(op.e(ALUOp.toString(ALUOp.jalr))  ,ExEngine.toString(ExEngine.alu), WRITE_RF_I, OPERAND1_IRF, OPERAND2_IMM,  OPERAND3_IMM  ,WAKEUP_1,IS_JAL_1,IS_BRANCH_0,TYPE_INT),
-   LB               -> Seq(op.e(ALUOp.toString(ALUOp.add))   ,ExEngine.toString(ExEngine.alu), WRITE_RF_I, OPERAND1_IRF, OPERAND2_IMM,  OPERAND3_IMM  ,WAKEUP_1,IS_JAL_0,IS_BRANCH_0,TYPE_INT),
-   LBU              -> Seq(op.e(ALUOp.toString(ALUOp.add))   ,ExEngine.toString(ExEngine.alu), WRITE_RF_I, OPERAND1_IRF, OPERAND2_IMM,  OPERAND3_IMM  ,WAKEUP_1,IS_JAL_0,IS_BRANCH_0,TYPE_INT),
-   LH               -> Seq(op.e(ALUOp.toString(ALUOp.add))   ,ExEngine.toString(ExEngine.alu), WRITE_RF_I, OPERAND1_IRF, OPERAND2_IMM,  OPERAND3_IMM  ,WAKEUP_1,IS_JAL_0,IS_BRANCH_0,TYPE_INT),
-   LHU              -> Seq(op.e(ALUOp.toString(ALUOp.add))   ,ExEngine.toString(ExEngine.alu), WRITE_RF_I, OPERAND1_IRF, OPERAND2_IMM,  OPERAND3_IMM  ,WAKEUP_1,IS_JAL_0,IS_BRANCH_0,TYPE_INT),
+   LB               -> Seq(op.e(ALUOp.toString(ALUOp.add))   ,ExEngine.toString(ExEngine.alu), WRITE_RF_I, OPERAND1_IRF, OPERAND2_IMM,  OPERAND3_IMM  ,WAKEUP_0,IS_JAL_0,IS_BRANCH_0,TYPE_INT),
+   LBU              -> Seq(op.e(ALUOp.toString(ALUOp.add))   ,ExEngine.toString(ExEngine.alu), WRITE_RF_I, OPERAND1_IRF, OPERAND2_IMM,  OPERAND3_IMM  ,WAKEUP_0,IS_JAL_0,IS_BRANCH_0,TYPE_INT),
+   LH               -> Seq(op.e(ALUOp.toString(ALUOp.add))   ,ExEngine.toString(ExEngine.alu), WRITE_RF_I, OPERAND1_IRF, OPERAND2_IMM,  OPERAND3_IMM  ,WAKEUP_0,IS_JAL_0,IS_BRANCH_0,TYPE_INT),
+   LHU              -> Seq(op.e(ALUOp.toString(ALUOp.add))   ,ExEngine.toString(ExEngine.alu), WRITE_RF_I, OPERAND1_IRF, OPERAND2_IMM,  OPERAND3_IMM  ,WAKEUP_0,IS_JAL_0,IS_BRANCH_0,TYPE_INT),
    LUI              -> Seq(op.e(ALUOp.toString(ALUOp.add))   ,ExEngine.toString(ExEngine.alu), WRITE_RF_I, OPERAND1_X0,  OPERAND2_IMM,  OPERAND3_IMM  ,WAKEUP_1,IS_JAL_0,IS_BRANCH_0,TYPE_INT),
-   LW               -> Seq(op.e(ALUOp.toString(ALUOp.add))   ,ExEngine.toString(ExEngine.alu), WRITE_RF_I, OPERAND1_IRF, OPERAND2_IMM,  OPERAND3_IMM  ,WAKEUP_1,IS_JAL_0,IS_BRANCH_0,TYPE_INT),
+   LW               -> Seq(op.e(ALUOp.toString(ALUOp.add))   ,ExEngine.toString(ExEngine.alu), WRITE_RF_I, OPERAND1_IRF, OPERAND2_IMM,  OPERAND3_IMM  ,WAKEUP_0,IS_JAL_0,IS_BRANCH_0,TYPE_INT),
    OR               -> Seq(op.e(ALUOp.toString(ALUOp.or))    ,ExEngine.toString(ExEngine.alu), WRITE_RF_I, OPERAND1_IRF, OPERAND2_IRF,  OPERAND3_IMM  ,WAKEUP_1,IS_JAL_0,IS_BRANCH_0,TYPE_INT),
    ORI              -> Seq(op.e(ALUOp.toString(ALUOp.or))    ,ExEngine.toString(ExEngine.alu), WRITE_RF_I, OPERAND1_IRF, OPERAND2_IMM,  OPERAND3_IMM  ,WAKEUP_1,IS_JAL_0,IS_BRANCH_0,TYPE_INT),
    PAUSE            -> Seq(op.e(ALUOp.toString(ALUOp.add))   ,ExEngine.toString(ExEngine.alu), WRITE_RF_I, OPERAND1_IRF, OPERAND2_IMM,  OPERAND3_IMM  ,WAKEUP_1,IS_JAL_0,IS_BRANCH_0,TYPE_INT),
-   SB               -> Seq(op.e(ALUOp.toString(ALUOp.add))   ,ExEngine.toString(ExEngine.alu), WRITE_RF_0, OPERAND1_IRF, OPERAND2_IMM,  OPERAND3_IMM  ,WAKEUP_1,IS_JAL_0,IS_BRANCH_0,TYPE_INT),
+   SB               -> Seq(op.e(ALUOp.toString(ALUOp.add))   ,ExEngine.toString(ExEngine.alu), WRITE_RF_0, OPERAND1_IRF, OPERAND2_IMM,  OPERAND3_IMM  ,WAKEUP_0,IS_JAL_0,IS_BRANCH_0,TYPE_INT),
    SBREAK           -> Seq(op.e(ALUOp.toString(ALUOp.add))   ,ExEngine.toString(ExEngine.alu), WRITE_RF_I, OPERAND1_IRF, OPERAND2_IMM,  OPERAND3_IMM  ,WAKEUP_1,IS_JAL_0,IS_BRANCH_0,TYPE_INT),
    SCALL            -> Seq(op.e(ALUOp.toString(ALUOp.add))   ,ExEngine.toString(ExEngine.alu), WRITE_RF_I, OPERAND1_IRF, OPERAND2_IMM,  OPERAND3_IMM  ,WAKEUP_1,IS_JAL_0,IS_BRANCH_0,TYPE_INT),
-   SH               -> Seq(op.e(ALUOp.toString(ALUOp.add))   ,ExEngine.toString(ExEngine.alu), WRITE_RF_0, OPERAND1_IRF, OPERAND2_IMM,  OPERAND3_IMM  ,WAKEUP_1,IS_JAL_0,IS_BRANCH_0,TYPE_INT),
+   SH               -> Seq(op.e(ALUOp.toString(ALUOp.add))   ,ExEngine.toString(ExEngine.alu), WRITE_RF_0, OPERAND1_IRF, OPERAND2_IMM,  OPERAND3_IMM  ,WAKEUP_0,IS_JAL_0,IS_BRANCH_0,TYPE_INT),
    SLL              -> Seq(op.e(ALUOp.toString(ALUOp.sll))   ,ExEngine.toString(ExEngine.alu), WRITE_RF_I, OPERAND1_IRF, OPERAND2_IRF,  OPERAND3_IMM  ,WAKEUP_1,IS_JAL_0,IS_BRANCH_0,TYPE_INT),
    SLT              -> Seq(op.e(ALUOp.toString(ALUOp.slt))   ,ExEngine.toString(ExEngine.alu), WRITE_RF_I, OPERAND1_IRF, OPERAND2_IRF,  OPERAND3_IMM  ,WAKEUP_1,IS_JAL_0,IS_BRANCH_0,TYPE_INT),
    SLTI             -> Seq(op.e(ALUOp.toString(ALUOp.slt))   ,ExEngine.toString(ExEngine.alu), WRITE_RF_I, OPERAND1_IRF, OPERAND2_IMM,  OPERAND3_IMM  ,WAKEUP_1,IS_JAL_0,IS_BRANCH_0,TYPE_INT),
@@ -124,7 +124,7 @@ object DecodeConfig {
    SRA              -> Seq(op.e(ALUOp.toString(ALUOp.sra))   ,ExEngine.toString(ExEngine.alu), WRITE_RF_I, OPERAND1_IRF, OPERAND2_IRF,  OPERAND3_IMM  ,WAKEUP_1,IS_JAL_0,IS_BRANCH_0,TYPE_INT),
    SRL              -> Seq(op.e(ALUOp.toString(ALUOp.srl))   ,ExEngine.toString(ExEngine.alu), WRITE_RF_I, OPERAND1_IRF, OPERAND2_IRF,  OPERAND3_IMM  ,WAKEUP_1,IS_JAL_0,IS_BRANCH_0,TYPE_INT),
    SUB              -> Seq(op.e(ALUOp.toString(ALUOp.sub))   ,ExEngine.toString(ExEngine.alu), WRITE_RF_I, OPERAND1_IRF, OPERAND2_IRF,  OPERAND3_IMM  ,WAKEUP_1,IS_JAL_0,IS_BRANCH_0,TYPE_INT),
-   SW               -> Seq(op.e(ALUOp.toString(ALUOp.add))   ,ExEngine.toString(ExEngine.alu), WRITE_RF_0, OPERAND1_IRF, OPERAND2_IMM,  OPERAND3_IMM  ,WAKEUP_1,IS_JAL_0,IS_BRANCH_0,TYPE_INT),
+   SW               -> Seq(op.e(ALUOp.toString(ALUOp.add))   ,ExEngine.toString(ExEngine.alu), WRITE_RF_0, OPERAND1_IRF, OPERAND2_IMM,  OPERAND3_IMM  ,WAKEUP_0,IS_JAL_0,IS_BRANCH_0,TYPE_INT),
    XOR              -> Seq(op.e(ALUOp.toString(ALUOp.xor))   ,ExEngine.toString(ExEngine.alu), WRITE_RF_I, OPERAND1_IRF, OPERAND2_IRF,  OPERAND3_IMM  ,WAKEUP_1,IS_JAL_0,IS_BRANCH_0,TYPE_INT),
    XORI             -> Seq(op.e(ALUOp.toString(ALUOp.xor))   ,ExEngine.toString(ExEngine.alu), WRITE_RF_I, OPERAND1_IRF, OPERAND2_IMM,  OPERAND3_IMM  ,WAKEUP_1,IS_JAL_0,IS_BRANCH_0,TYPE_INT),
 
@@ -260,7 +260,7 @@ class Decoder(config: WoodConfig) extends Module {
   io.out.rs3TagReady := MuxCase(
     0.U,
     Array(
-      ((io.out.operand3 === Integer.parseInt(DecodeConfig.OPERAND3_IMM, 2).U))                        -> 1.U,
+      ((io.out.operand3 === Integer.parseInt(DecodeConfig.OPERAND3_IMM, 2).U)) -> 1.U
     ).toIndexedSeq
   )
 
