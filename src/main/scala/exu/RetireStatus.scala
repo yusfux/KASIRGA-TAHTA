@@ -109,7 +109,7 @@ class RetireStatusStage(config: WoodConfig) extends Module {
 
   (0 until config.nWide).foreach(j => {
     when(flushVector(j)) {
-      self(j).bits.writeRf := false.B
+      self(j).bits.writeRf := 0.U
       self(j).bits.retired := true.B
       self(j).bits.retired := true.B
     }

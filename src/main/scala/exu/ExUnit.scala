@@ -14,24 +14,30 @@ case class MI(config: WoodConfig) extends Bundle {
   val wakeup      = UInt(DecodeConfig.subWidths(3).W)
   val operand1    = UInt(DecodeConfig.subWidths(4).W)
   val operand2    = UInt(DecodeConfig.subWidths(5).W)
-  val writeRf     = UInt(DecodeConfig.subWidths(6).W)
-  val exEngine    = UInt(DecodeConfig.subWidths(7).W)
-  val exOp        = UInt(DecodeConfig.subWidths(8).W)
+  val operand3    = UInt(DecodeConfig.subWidths(6).W)
+  val writeRf     = UInt(DecodeConfig.subWidths(7).W)
+  val exEngine    = UInt(DecodeConfig.subWidths(8).W)
+  val exOp        = UInt(DecodeConfig.subWidths(9).W)
   val exception   = Bool()
   val taken       = Bool()
   val imm         = UInt(32.W) // TODO
   val rs1         = UInt(5.W)
   val rs2         = UInt(5.W)
+  val rs3         = UInt(5.W)
   val rd          = UInt(5.W)
+  val rm          = UInt(3.W)
   val pc          = UInt(config.pcWidth.W)
   val targetPC    = UInt(config.pcWidth.W)
   val rs1Tag      = UInt(config.tagWidth.W)
   val rs1TagReady = Bool()
   val rs2Tag      = UInt(config.tagWidth.W)
   val rs2TagReady = Bool()
+  val rs3Tag      = UInt(config.tagWidth.W)
+  val rs3TagReady = Bool()
   val rdTag       = UInt(config.tagWidth.W)
   val rs1Data     = UInt(config.dataWidth.W)
   val rs2Data     = UInt(config.dataWidth.W)
+  val rs3Data     = UInt(config.dataWidth.W)
   val rdData      = UInt(config.dataWidth.W)
   val retired     = Bool()
   val flushed     = Bool()
@@ -62,6 +68,7 @@ object MI { // for testbench only, set all to value except overrides
       _.isBranch    -> overrides.getOrElse("isBranch", value),
       _.isJAL       -> overrides.getOrElse("isJAL", value),
       _.wakeup      -> overrides.getOrElse("wakeup", value),
+      _.operand3    -> overrides.getOrElse("operand3", value),
       _.operand2    -> overrides.getOrElse("operand2", value),
       _.operand1    -> overrides.getOrElse("operand1", value),
       _.writeRf     -> overrides.getOrElse("writeRf", value),
@@ -72,7 +79,9 @@ object MI { // for testbench only, set all to value except overrides
       _.imm         -> overrides.getOrElse("imm", value),
       _.rs1         -> overrides.getOrElse("rs1", value),
       _.rs2         -> overrides.getOrElse("rs2", value),
+      _.rs3         -> overrides.getOrElse("rs3", value),
       _.rd          -> overrides.getOrElse("rd", value),
+      _.rm          -> overrides.getOrElse("rm", value),
       _.pc          -> overrides.getOrElse("pc", value),
       _.rs1Tag      -> overrides.getOrElse("rs1Tag", value),
       _.rs1TagReady -> overrides.getOrElse("rs1TagReady", value),
@@ -81,6 +90,7 @@ object MI { // for testbench only, set all to value except overrides
       _.rdTag       -> overrides.getOrElse("rdTag", value),
       _.rs1Data     -> overrides.getOrElse("rs1Data", value),
       _.rs2Data     -> overrides.getOrElse("rs2Data", value),
+      _.rs3Data     -> overrides.getOrElse("rs3Data", value),
       _.rdData      -> overrides.getOrElse("rdData", value),
       _.retired     -> overrides.getOrElse("retired", value),
       _.flushed     -> overrides.getOrElse("flushed", value),
@@ -93,8 +103,8 @@ object MI { // for testbench only, set all to value except overrides
 }
 
 object ExEngine extends ChiselEnum {
-  val alu, imu, idu, lsu, float, none = Value
-  val values                          = IndexedSeq(alu, imu, idu, lsu, float, none)
+  val alu, imu, idu, lsu, fpu, none = Value
+  val values                          = IndexedSeq(alu, imu, idu, lsu, fpu, none)
 
   def toBitpat(op: ExEngine.Type): BitPat =
     BitPat(op.litValue.U(getWidth.W))

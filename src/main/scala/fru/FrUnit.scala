@@ -44,10 +44,10 @@ class FrUnit(config: WoodConfig) extends Module {
     f2stage.io.pcPacket.valid         := Mux(flush, false.B, f1stage.io.pcPacket.valid        )
     f1stage.io.pcPacket.ready         := Mux(flush, false.B, f2stage.io.pcPacket.ready)
 
-    io.instPacket.bits(i).pc          := RegNext(Mux(flush, 0.U    , f2stage.io.instPacket.bits(i).pc   ), init = 0.U    )
-    io.instPacket.bits(i).inst        := RegNext(Mux(flush, 0.U    , f2stage.io.instPacket.bits(i).inst ), init = 0.U    )
-    io.instPacket.bits(i).valid       := RegNext(Mux(flush, false.B, f2stage.io.instPacket.bits(i).valid), init = false.B)
-    io.instPacket.valid               := RegNext(Mux(flush, false.B, f2stage.io.instPacket.valid        ), init = false.B)
+    io.instPacket.bits(i).pc          := Mux(flush, 0.U    , f2stage.io.instPacket.bits(i).pc   )
+    io.instPacket.bits(i).inst        := Mux(flush, 0.U    , f2stage.io.instPacket.bits(i).inst )
+    io.instPacket.bits(i).valid       := Mux(flush, false.B, f2stage.io.instPacket.bits(i).valid)
+    io.instPacket.valid               := Mux(flush, false.B, f2stage.io.instPacket.valid        )
     f2stage.io.instPacket.ready       := io.instPacket.ready
   }
 }

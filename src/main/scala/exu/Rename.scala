@@ -28,7 +28,7 @@ class RenameStage(config: WoodConfig) extends Module {
   out1Ready := io.out1.map(_.ready)
 
   (0 until config.nWide).foreach(j => {
-    when((io.in(j).bits.writeRf === Integer.parseInt(DecodeConfig.WRITE_RF_1, 2).U) & io.in(j).fire & !io.flush & !io.in(j).bits.flushed) {
+    when((io.in(j).bits.writeRf === Integer.parseInt(DecodeConfig.WRITE_RF_I, 2).U) & io.in(j).fire & !io.flush & !io.in(j).bits.flushed) {
       frontEndRegisterFile(io.in(j).bits.rd) := io.in(j).bits.rdTag
     }
   })
@@ -39,9 +39,9 @@ class RenameStage(config: WoodConfig) extends Module {
 
     val (rs1HasOverride, overrideRs1Tag) = (0 until j).foldLeft((0.B, 0.U)) { (acc, k) =>
       val rs1Match = (io.in(j).bits.rs1 === io.in(k).bits.rd)
-      val rs1Valid = (io.in(j).bits.operand1 === Integer.parseInt(DecodeConfig.OPERAND1_REG, 2).U)
+      val rs1Valid = (io.in(j).bits.operand1 === Integer.parseInt(DecodeConfig.OPERAND1_IRF, 2).U)
 
-      val rdValid    = (io.in(k).bits.writeRf === Integer.parseInt(DecodeConfig.WRITE_RF_1, 2).U)
+      val rdValid    = (io.in(k).bits.writeRf === Integer.parseInt(DecodeConfig.WRITE_RF_I, 2).U)
       val matchFound = rs1Match & rs1Valid & rdValid
 
       (acc._1 || matchFound, Mux(matchFound, io.in(k).bits.rdTag, acc._2))
@@ -55,9 +55,9 @@ class RenameStage(config: WoodConfig) extends Module {
 
     val (rs2HasOverride, overrideRs2Tag) = (0 until j).foldLeft((0.B, 0.U)) { (acc, k) =>
       val rs2Match = (io.in(j).bits.rs2 === io.in(k).bits.rd)
-      val rs2Valid = (io.in(j).bits.operand2 === Integer.parseInt(DecodeConfig.OPERAND2_REG, 2).U)
+      val rs2Valid = (io.in(j).bits.operand2 === Integer.parseInt(DecodeConfig.OPERAND2_IRF, 2).U)
 
-      val rdValid    = (io.in(k).bits.writeRf === Integer.parseInt(DecodeConfig.WRITE_RF_1, 2).U)
+      val rdValid    = (io.in(k).bits.writeRf === Integer.parseInt(DecodeConfig.WRITE_RF_I, 2).U)
       val matchFound = rs2Match & rs2Valid & rdValid
 
       (acc._1 || matchFound, Mux(matchFound, io.in(k).bits.rdTag, acc._2))

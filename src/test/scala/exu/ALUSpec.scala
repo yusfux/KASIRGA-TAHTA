@@ -51,8 +51,8 @@ trait ALUBehavior {
                   "rs2Data"  -> b.U,
                   "exOp"     -> fn.litValue.U,
                   "rdData"   -> result.U(dataWidth.W),
-                  "operand1" -> Integer.parseInt(DecodeConfig.OPERAND1_REG, 2).U,
-                  "operand2" -> Integer.parseInt(DecodeConfig.OPERAND2_REG, 2).U
+                  "operand1" -> Integer.parseInt(DecodeConfig.OPERAND1_IRF, 2).U,
+                  "operand2" -> Integer.parseInt(DecodeConfig.OPERAND2_IRF, 2).U
                 )
               )
             results.enqueue(mi)
@@ -68,8 +68,8 @@ trait ALUBehavior {
                     "rs1Data"  -> a.U,
                     "rs2Data"  -> b.U,
                     "exOp"     -> fn.litValue.U,
-                    "operand1" -> Integer.parseInt(DecodeConfig.OPERAND1_REG, 2).U,
-                    "operand2" -> Integer.parseInt(DecodeConfig.OPERAND2_REG, 2).U
+                    "operand1" -> Integer.parseInt(DecodeConfig.OPERAND1_IRF, 2).U,
+                    "operand2" -> Integer.parseInt(DecodeConfig.OPERAND2_IRF, 2).U
                   )
                 )
               mi

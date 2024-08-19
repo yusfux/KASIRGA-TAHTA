@@ -19,10 +19,10 @@ class RenameStageSpec extends AnyFlatSpec with ChiselScalatestTester with Parall
       val outSinks = dut.io.out0.map(_.initSink())
 
       // format: off
-      val inst1    = MI(config, 0.U, Map("rs1" -> 0.U, "operand1" -> Integer.parseInt(DecodeConfig.OPERAND1_REG, 2).U, "operand2" -> Integer.parseInt(DecodeConfig.OPERAND2_REG, 2).U,"rs2" -> 0.U, "rd" -> 1.U, "writeRf" -> Integer.parseInt(DecodeConfig.WRITE_RF_1, 2).U, "imm" -> 5.U))
-      val inst2    = MI(config, 0.U, Map("rs1" -> 0.U, "operand1" -> Integer.parseInt(DecodeConfig.OPERAND1_REG, 2).U, "operand2" -> Integer.parseInt(DecodeConfig.OPERAND2_REG, 2).U,"rs2" -> 0.U, "rd" -> 2.U, "writeRf" -> Integer.parseInt(DecodeConfig.WRITE_RF_1, 2).U, "imm" -> 6.U))
-      val inst3    = MI(config, 0.U, Map("rs1" -> 1.U, "operand1" -> Integer.parseInt(DecodeConfig.OPERAND1_REG, 2).U, "operand2" -> Integer.parseInt(DecodeConfig.OPERAND2_REG, 2).U,"rs2" -> 2.U, "rd" -> 3.U, "writeRf" -> Integer.parseInt(DecodeConfig.WRITE_RF_0, 2).U, "imm" -> 7.U))
-      val finalOut = MI(config, 0.U, Map("rs1" -> 1.U, "operand1" -> Integer.parseInt(DecodeConfig.OPERAND1_REG, 2).U, "operand2" -> Integer.parseInt(DecodeConfig.OPERAND2_REG, 2).U,"rs2" -> 2.U, "rd" -> 3.U, "writeRf" -> Integer.parseInt(DecodeConfig.WRITE_RF_0, 2).U, "imm" -> 7.U))
+      val inst1    = MI(config, 0.U, Map("rs1" -> 0.U, "operand1" -> Integer.parseInt(DecodeConfig.OPERAND1_IRF, 2).U, "operand2" -> Integer.parseInt(DecodeConfig.OPERAND2_IRF, 2).U,"rs2" -> 0.U, "rd" -> 1.U, "writeRf" -> Integer.parseInt(DecodeConfig.WRITE_RF_I, 2).U, "imm" -> 5.U))
+      val inst2    = MI(config, 0.U, Map("rs1" -> 0.U, "operand1" -> Integer.parseInt(DecodeConfig.OPERAND1_IRF, 2).U, "operand2" -> Integer.parseInt(DecodeConfig.OPERAND2_IRF, 2).U,"rs2" -> 0.U, "rd" -> 2.U, "writeRf" -> Integer.parseInt(DecodeConfig.WRITE_RF_I, 2).U, "imm" -> 6.U))
+      val inst3    = MI(config, 0.U, Map("rs1" -> 1.U, "operand1" -> Integer.parseInt(DecodeConfig.OPERAND1_IRF, 2).U, "operand2" -> Integer.parseInt(DecodeConfig.OPERAND2_IRF, 2).U,"rs2" -> 2.U, "rd" -> 3.U, "writeRf" -> Integer.parseInt(DecodeConfig.WRITE_RF_0, 2).U, "imm" -> 7.U))
+      val finalOut = MI(config, 0.U, Map("rs1" -> 1.U, "operand1" -> Integer.parseInt(DecodeConfig.OPERAND1_IRF, 2).U, "operand2" -> Integer.parseInt(DecodeConfig.OPERAND2_IRF, 2).U,"rs2" -> 2.U, "rd" -> 3.U, "writeRf" -> Integer.parseInt(DecodeConfig.WRITE_RF_0, 2).U, "imm" -> 7.U))
       // format: on
 
       fork {
