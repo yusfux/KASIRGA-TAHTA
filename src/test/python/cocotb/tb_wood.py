@@ -8,7 +8,6 @@ from cocotb.triggers import Event, RisingEdge
 from libs import diff_traces, flist_monitor, watchdog_timer
 
 
-
 @cocotb.coroutine
 async def main_memory_writer(dut, hex_path):
     insts: list[str] = []
@@ -40,7 +39,7 @@ async def main_memory_writer(dut, hex_path):
 @cocotb.test()
 async def test_wood(dut):
     inst = os.getenv("INST")
-    nwide = int(os.getenv("NWIDE"))
+    nwide = int(os.getenv("NWIDE", 0))
 
     clock_period = 10
     time_unit = "ns"

@@ -88,10 +88,12 @@ async def decode_driver(dut, hex_path, nwide, base_addr):
 
 @cocotb.test()
 async def test_wood(dut):
+    inst = os.getenv("INST")
+    nwide = int(os.getenv("NWIDE", 0))
+
     clock_period = 10
     time_unit = "ns"
     timeout_value = 800
-    nwide = 2
     base_addr = 0x80000000
     timeout_event = Event(name="timeout")
     top = ""  # relative to exunit
@@ -101,8 +103,8 @@ async def test_wood(dut):
     cwd = os.path.abspath(f"{project_dir}")
     build_dir = f"{cwd}/src/test/c/build"
 
-    hex_path = Path(f"{build_dir}/main.hex")
-    trace_path = Path(f"{build_dir}/spike_trace.json")
+    hex_path = Path(f"{build_dir}/{inst}_main.hex")
+    trace_path = Path(f"{build_dir}/{inst}_spike_trace.json")
 
     await cocotb.start(
         Clock(dut.clock, clock_period, time_unit).start(start_high=False)

@@ -38,71 +38,73 @@ class RenameStage(config: WoodConfig) extends Module {
     }
   })
 
-  (0 until config.nWide).foreach(j => {
-    self(j).bits  := io.in(j).bits
-    self(j).valid := io.in(j).valid
+  (0 until config.nWide)
+    .foreach(j => {
+      self(j).bits  := io.in(j).bits
+      self(j).valid := io.in(j).valid
 
-    val (rs1HasOverride, overrideRs1Tag) = (0 until j).foldLeft((0.B, 0.U)) { (acc, k) =>
-      val rs1Match = (io.in(j).bits.rs1 === io.in(k).bits.rd)
-      val rs1Valid = (io.in(j).bits.operand1 === Integer.parseInt(DecodeConfig.OPERAND1_IRF, 2).U)
+      val (rs1HasOverride, overrideRs1Tag) = (0 until j).foldLeft((0.B, 0.U)) { (acc, k) =>
+        val rs1Match = (io.in(j).bits.rs1 === io.in(k).bits.rd)
+        val rs1Valid = (io.in(j).bits.operand1 === Integer.parseInt(DecodeConfig.OPERAND1_IRF, 2).U)
 
-      val rdValid    = (io.in(k).bits.writeRf === Integer.parseInt(DecodeConfig.WRITE_RF_I, 2).U)
-      val matchFound = rs1Match & rs1Valid & rdValid
+        val rdValid    = (io.in(k).bits.writeRf === Integer.parseInt(DecodeConfig.WRITE_RF_I, 2).U)
+        val matchFound = rs1Match & rs1Valid & rdValid
 
-      (acc._1 || matchFound, Mux(matchFound, io.in(k).bits.rdTag, acc._2))
-    }
+        (acc._1 || matchFound, Mux(matchFound, io.in(k).bits.rdTag, acc._2))
+      }
 
-    when(rs1HasOverride) {
-      self(j).bits.rs1Tag := overrideRs1Tag
-    }.otherwise {
-      self(j).bits.rs1Tag := frontEndRegisterFile(io.in(j).bits.rs1)
-    }
+      when(rs1HasOverride) {
+        self(j).bits.rs1Tag := overrideRs1Tag
+      }.otherwise {
+        self(j).bits.rs1Tag := frontEndRegisterFile(io.in(j).bits.rs1)
+      }
 
-    val (rs2HasOverride, overrideRs2Tag) = (0 until j).foldLeft((0.B, 0.U)) { (acc, k) =>
-      val rs2Match = (io.in(j).bits.rs2 === io.in(k).bits.rd)
-      val rs2Valid = (io.in(j).bits.operand2 === Integer.parseInt(DecodeConfig.OPERAND2_IRF, 2).U)
+      val (rs2HasOverride, overrideRs2Tag) = (0 until j).foldLeft((0.B, 0.U)) { (acc, k) =>
+        val rs2Match = (io.in(j).bits.rs2 === io.in(k).bits.rd)
+        val rs2Valid = (io.in(j).bits.operand2 === Integer.parseInt(DecodeConfig.OPERAND2_IRF, 2).U)
 
-      val rdValid    = (io.in(k).bits.writeRf === Integer.parseInt(DecodeConfig.WRITE_RF_I, 2).U)
-      val matchFound = rs2Match & rs2Valid & rdValid
+        val rdValid    = (io.in(k).bits.writeRf === Integer.parseInt(DecodeConfig.WRITE_RF_I, 2).U)
+        val matchFound = rs2Match & rs2Valid & rdValid
 
-      (acc._1 || matchFound, Mux(matchFound, io.in(k).bits.rdTag, acc._2))
-    }
+        (acc._1 || matchFound, Mux(matchFound, io.in(k).bits.rdTag, acc._2))
+      }
 
-    when(rs2HasOverride) {
-      self(j).bits.rs2Tag := overrideRs2Tag
-    }.otherwise {
-      self(j).bits.rs2Tag := frontEndRegisterFile(io.in(j).bits.rs2)
-    }
+      when(rs2HasOverride) {
+        self(j).bits.rs2Tag := overrideRs2Tag
+      }.otherwise {
+        self(j).bits.rs2Tag := frontEndRegisterFile(io.in(j).bits.rs2)
+      }
 
-    self(j).bits.flushed := io.flush | io.in(j).bits.flushed
+      self(j).bits.flushed := io.flush | io.in(j).bits.flushed
 
-    pRegs0(j).io.valids(0) := io.in(j).valid
-    pRegs1(j).io.valids(0) := io.in(j).valid
-    pRegs2(j).io.valids(0) := io.in(j).valid
+      pRegs0(j).io.valids(0) := io.in(j).valid
+      pRegs1(j).io.valids(0) := io.in(j).valid
+      pRegs2(j).io.valids(0) := io.in(j).valid
 
-    io.in(j).ready := out2Ready.asUInt.andR & out1Ready.asUInt.andR & out0Ready.asUInt.andR
+      io.in(j).ready := out2Ready.asUInt.andR & out1Ready.asUInt.andR & out0Ready.asUInt.andR
 
-    pRegs0(j).io.flush      := 0.U // never lose tags
-    pRegs0(j).io.setflushed := io.flush
+      pRegs0(j).io.flush      := 0.U // never lose tags
+      pRegs0(j).io.setflushed := io.flush
 
-    pRegs1(j).io.flush      := 0.U // never lose tags
-    pRegs1(j).io.setflushed := io.flush
+      pRegs1(j).io.flush      := 0.U // never lose tags
+      pRegs1(j).io.setflushed := io.flush
 
-    pRegs2(j).io.flush      := 0.U // never lose tags
-    pRegs2(j).io.setflushed := io.flush
+      pRegs2(j).io.flush      := 0.U // never lose tags
+      pRegs2(j).io.setflushed := io.flush
 
-    pRegs0(j).io.in       <> self(j)
-    pRegs0(j).io.in.valid := self(j).valid & (out1Ready.asUInt.andR & out1Ready.asUInt.andR & out0Ready.asUInt.andR)
-    io.out0(j)            <> pRegs0(j).io.out
+      pRegs0(j).io.in       <> self(j)
+      pRegs0(j).io.in.valid := self(j).valid & (out1Ready.asUInt.andR & out1Ready.asUInt.andR & out0Ready.asUInt.andR)
+      io.out0(j)            <> pRegs0(j).io.out
 
-    pRegs1(j).io.in       <> self(j)
-    pRegs1(j).io.in.valid := self(j).valid & (out1Ready.asUInt.andR & out1Ready.asUInt.andR & out0Ready.asUInt.andR)
-    io.out1(j)            <> pRegs1(j).io.out
+      pRegs1(j).io.in       <> self(j)
+      pRegs1(j).io.in.valid := self(j).valid & (out1Ready.asUInt.andR & out1Ready.asUInt.andR & out0Ready.asUInt.andR)
+      io.out1(j)            <> pRegs1(j).io.out
 
-    pRegs2(j).io.in       <> self(j)
-    pRegs2(j).io.in.valid := self(j).valid & (out1Ready.asUInt.andR & out1Ready.asUInt.andR & out0Ready.asUInt.andR)
-    io.out2(j)            <> pRegs2(j).io.out
-  })
+      val isLS = (self(j).bits.isLS === Integer.parseInt(DecodeConfig.IS_LS_1, 2).U)
+      pRegs2(j).io.in       <> self(j)
+      pRegs2(j).io.in.valid := self(j).valid & (out1Ready.asUInt.andR & out1Ready.asUInt.andR & out0Ready.asUInt.andR) & isLS
+      io.out2(j)            <> pRegs2(j).io.out
+    })
 
   (0 until 32).foreach(j => {
     when(flushDelayed) {

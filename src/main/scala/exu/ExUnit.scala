@@ -12,13 +12,14 @@ case class MI(config: WoodConfig) extends Bundle {
   val isFloat     = UInt(DecodeConfig.subWidths(0).W)
   val isBranch    = UInt(DecodeConfig.subWidths(1).W)
   val isJAL       = UInt(DecodeConfig.subWidths(2).W)
-  val wakeup      = UInt(DecodeConfig.subWidths(3).W)
-  val operand1    = UInt(DecodeConfig.subWidths(4).W)
-  val operand2    = UInt(DecodeConfig.subWidths(5).W)
-  val operand3    = UInt(DecodeConfig.subWidths(6).W)
-  val writeRf     = UInt(DecodeConfig.subWidths(7).W)
-  val exEngine    = UInt(DecodeConfig.subWidths(8).W)
-  val exOp        = UInt(DecodeConfig.subWidths(9).W)
+  val isLS        = UInt(DecodeConfig.subWidths(3).W)
+  val wakeup      = UInt(DecodeConfig.subWidths(4).W)
+  val operand1    = UInt(DecodeConfig.subWidths(5).W)
+  val operand2    = UInt(DecodeConfig.subWidths(6).W)
+  val operand3    = UInt(DecodeConfig.subWidths(7).W)
+  val writeRf     = UInt(DecodeConfig.subWidths(8).W)
+  val exEngine    = UInt(DecodeConfig.subWidths(9).W)
+  val exOp        = UInt(DecodeConfig.subWidths(10).W)
   val exception   = Bool()
   val taken       = Bool()
   val imm         = UInt(32.W) // TODO
@@ -105,7 +106,7 @@ object MI { // for testbench only, set all to value except overrides
 
 object ExEngine extends ChiselEnum {
   val alu, imu, idu, lsu, fpu, none = Value
-  val values                          = IndexedSeq(alu, imu, idu, lsu, fpu, none)
+  val values                        = IndexedSeq(alu, imu, idu, lsu, fpu, none)
 
   def toBitpat(op: ExEngine.Type): BitPat =
     BitPat(op.litValue.U(getWidth.W))
