@@ -8,7 +8,7 @@ SCRIPT_DIR = Path(os.path.realpath(__file__)).parent.absolute()
 
 
 def run_test(
-    simulator: str, test_file: Path, top_module: str, waves: bool, hdl_dir: str
+    simulator: str, test_file: Path, top_module: str, waves: bool, hdl_dir: str, inst: str, nwide: str
 ):
     hdlPath = Path(hdl_dir)
     verilog_files = hdlPath.rglob("*.v")
@@ -43,6 +43,7 @@ def run_test(
         pre_cmd=[
             'set WildcardFilter {};set WildcardSizeThreshold "16777216"; coverage save -onexit covres.ucdb; do wave.do;'
         ],
+        extra_env={"INST": inst, "NWIDE": nwide},
     )
 
 
@@ -61,7 +62,19 @@ if __name__ == "__main__":
         "--test",
         type=str,
         required=True,
-        help="Python test file to run, all tests inside will be run",
+        help="Python test file to run, all tests inside will be run"
+    )
+    parser.add_argument(
+        "--inst",
+        type=str,
+        required=True,
+        help = "Instruction type that will be tested"
+    )
+    parser.add_argument(
+        "--width",
+        type=str,
+        required=True,
+        help = "Width of the pipeline (i.e., nwide)"
     )
     parser.add_argument("--waves", type=bool, help="Dump waves? <true,false>")
     args = parser.parse_args()
@@ -80,4 +93,4 @@ if __name__ == "__main__":
     # if args.test not in test_names:
     #     raise FileNotFoundError(f"Can't find <{args.test}> in <{tests}>")
 
-    run_test(args.sim, args.test, args.top, args.waves, args.dir)
+    run_test(args.sim, args.test, args.top, args.waves, args.dir, args.inst, args.width)

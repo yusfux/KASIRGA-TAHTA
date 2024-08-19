@@ -1,5 +1,3 @@
-SUBMAKE := $(MAKE) --no-print-directory -C
-
 # All args except for the first one (which is the target name)
 ARGS := $(wordlist 2,$(words $(MAKECMDGOALS)),$(MAKECMDGOALS))
 # first argument
@@ -10,6 +8,8 @@ inst := $(word 2,$(ARGS))
 type := $(word 3,$(ARGS))
 # fourth argument
 numInst := $(word 4,$(ARGS))
+
+SUBMAKE := $(MAKE) inst=$(inst) --no-print-directory -C
 
 .PHONY: all test
 all: 
@@ -25,10 +25,10 @@ exunit_asm_test:
 
 .PHONY: wood_asm_test
 wood_asm_test:
-	asmgen --inst $(inst) --type $(type) --num-insts $(numInst) &> src/test/c/src/test.S
-	+@$(SUBMAKE) src/test/c/
-	grouphex -f src/test/c/build/main.hex -g $(nWide) -o src/test/c/build/
-	python3 src/test/python/cocotb/main.py --test tb_wood --top WoodDut --waves true --sim questa --dir ./test_run_dir/WoodDut_should_emit_for_cocotb/
+	asmgen --inst $(inst) --type $(type) --num-insts $(numInst) &> src/test/c/src/$(inst)_test.S
+	+@$(SUBMAKE)  src/test/c/
+	grouphex -f src/test/c/build/$(inst)_main.hex -g $(nWide) -o src/test/c/build/
+	python3 src/test/python/cocotb/main.py --inst $(inst) --width $(nWide) --test tb_wood --top WoodDut --waves true --sim questa --dir ./test_run_dir/WoodDut_should_emit_for_cocotb/
 
 .PHONY: clean
 clean:
