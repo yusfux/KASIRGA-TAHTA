@@ -174,6 +174,7 @@ class ExUnit(config: WoodConfig) extends Module {
   scstage.io.in <> restage.io.out1
   lsunit.io.in  <> restage.io.out2
 
+  rsstage.io.lsuIn         <> lsOuts
   rrstage.io.lsuIn         <> lsOuts
   lsunit.io.storeRetireBus <> rsstage.io.storeRetireBus
   lsunit.io.lsOperandBus   <> wbstage.io.lsOperandBus
@@ -230,7 +231,9 @@ class ExUnit(config: WoodConfig) extends Module {
     tBus
   }
 
-  scstage.io.wakeupBus <> rrstage.io.wakeupBus
+  scstage.io.wakeupBus               <> rrstage.io.wakeupBus
+  scstage.io.lsWakeupBus(0).bits.tag := lsunit.io.out.bits.rdTag
+  scstage.io.lsWakeupBus(0).valid    := lsunit.io.out.valid
 
   io.bpBus <> rsstage.io.bpBus
 }

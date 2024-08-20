@@ -22,6 +22,8 @@ class LSAtom(config: WoodConfig) extends Module {
   selfMerged.ready := io.outSQ.ready
   alu.io.out.ready := selfMerged.ready
 
+  val isWriteOperation = selfMerged.bits.wStrobe.asUInt.orR
+
   (0 until config.dataWidth / 8).foreach(j => {
     val atomByteUpdate = io.inPass.bits.wStrobe(j) && (io.inPass.bits.addr === io.inCache.bits.addr)
 
@@ -44,6 +46,7 @@ class LSAtom(config: WoodConfig) extends Module {
 
   retireOverrider.io.in <> alu.io.out
   io.outSQ              <> retireOverrider.io.out
+  io.outSQ.valid        := retireOverrider.io.out.valid & isWriteOperation
 
   io.outRF.bits  := selfMerged.bits
   io.outRF.valid := selfMerged.valid

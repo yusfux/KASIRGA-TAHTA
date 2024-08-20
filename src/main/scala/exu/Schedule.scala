@@ -10,6 +10,7 @@ class ReadyList(val config: WoodConfig) extends Module {
   val io = IO(new Bundle {
     val in          = Flipped(Vec(config.nWide, Decoupled(new MI(config))))
     val forwardBus  = Input(Vec(config.nWide, ValidIO(new TagBus(config))))
+    val lsWakeupBus = Input(Vec(1, ValidIO(new TagBus(config))))
     val wakeupBus   = Input(Vec(config.nWide, ValidIO(new TagBus(config))))
     val commitedBus = Input(Vec(config.nWide, ValidIO(new TagBus(config))))
     val out         = Vec(config.nWide, Decoupled(new MI(config)))
@@ -25,6 +26,9 @@ class ReadyList(val config: WoodConfig) extends Module {
       readyList(io.commitedBus(j).bits.tag) := 0.U
     }
   })
+  when(io.lsWakeupBus(0).valid) {
+    readyList(io.lsWakeupBus(0).bits.tag) := 1.U
+  }
 
   // No need to forward the commitedBus, there is a 2 cycle delay between tag being added to the free list and ready list is being read.
   val overrideForward = Module(new OverrideRsFromBuses(config))
@@ -61,6 +65,7 @@ class ScheduleStage(val config: WoodConfig) extends Module {
     val in          = Flipped(Vec(config.nWide, Decoupled(new MI(config))))
     val flush       = Input(Bool())
     val forwardBus  = Input(Vec(config.nWide, ValidIO(new TagBus(config))))
+    val lsWakeupBus = Input(Vec(1, ValidIO(new TagBus(config))))
     val wakeupBus   = Input(Vec(config.nWide, ValidIO(new TagBus(config))))
     val commitedBus = Input(Vec(config.nWide, ValidIO(new TagBus(config))))
 
@@ -84,6 +89,7 @@ class ScheduleStage(val config: WoodConfig) extends Module {
   readyList.io.commitedBus <> io.commitedBus
   readyList.io.wakeupBus   <> io.wakeupBus
   readyList.io.forwardBus  <> io.forwardBus
+  readyList.io.lsWakeupBus <> io.lsWakeupBus
 
   (0 until config.nWide).foreach(j => {
     bypassDemuxes(j).io.sel(0) := io.out(j).ready & io.in(j).valid & readyList.io.out(j).bits.rs1TagReady & readyList.io.out(j).bits.rs2TagReady
@@ -93,8 +99,9 @@ class ScheduleStage(val config: WoodConfig) extends Module {
     bypassArbiters(j).io.in(1)   <> bypassDemuxes(j).io.out(1)(0)
     bypassArbiters(j).io.in(0)   <> reservationStations(j).io.out
 
-    reservationStations(j).io.forwardBus <> io.forwardBus
-    reservationStations(j).io.wakeupBus  <> io.wakeupBus
+    reservationStations(j).io.forwardBus  <> io.forwardBus
+    reservationStations(j).io.wakeupBus   <> io.wakeupBus
+    reservationStations(j).io.lsWakeupBus <> io.lsWakeupBus
 
     pRegs(j).io.valids(0) := bypassArbiters(j).io.out(0).valid
 

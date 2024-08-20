@@ -117,6 +117,10 @@ for {set i 0} {$i < $nWide} {incr i 1} {
   add wave -noupdate -group exunit -group scstage -group readyList -group io_wakeupBus_$i $sig_name
 }
 for {set i 0} {$i < $nWide} {incr i 1} {
+  set sig_name [format "/ExUnit/scstage/readyList/io_lsWakeupBus_%d*" $i]
+  add wave -noupdate -group exunit -group scstage -group readyList -group io_lsWakeupBus_$i $sig_name
+}
+for {set i 0} {$i < $nWide} {incr i 1} {
   set sig_name [format "/ExUnit/scstage/readyList/io_in_%d*" $i]
   add wave -noupdate -group exunit -group scstage -group readyList -group io_in_$i $sig_name
 }
@@ -159,9 +163,9 @@ for {set i 0} {$i < $prfDepth} {incr i 1} {
   set sig_name [format "/ExUnit/rrstage/io_writebackBus_%d*" $i]
   add wave -noupdate -group exunit -group rrstage -group io_writebackBus_$i $sig_name
 }
-for {set i 0} {$i < $prfDepth} {incr i 1} {
-  set sig_name [format "/ExUnit/rrstage/io_wakeupBus_%d*" $i]
-  add wave -noupdate -group exunit -group rrstage -group io_wakeupBus_$i $sig_name
+for {set i 0} {$i < 1} {incr i 1} {
+  set sig_name [format "/ExUnit/rrstage/io_lsuIn_%d*" $i]
+  add wave -noupdate -group exunit -group rrstage -group io_lsuIn_$i $sig_name
 }
 
 
@@ -399,7 +403,7 @@ add wave -noupdate -group exunit -group lsunit -group lsdc1stage -group io_out /
 
 ################################
 # LSAtomStage
-add wave -noupdate -group exunit -group lsunit -group lsatstage -group -radix RISCV io_out /ExUnit/lsunit/lsatstage/io_in_bits_inst
+add wave -noupdate -group exunit -group lsunit -group lsatstage -group -radix RISCV io_in /ExUnit/lsunit/lsatstage/io_in_bits_inst
 add wave -noupdate -group exunit -group lsunit -group lsatstage -group io_in /ExUnit/lsunit/lsatstage/io_in*
 
 add wave -noupdate -group exunit -group lsunit -group lsatstage -group -radix RISCV io_out /ExUnit/lsunit/lsatstage/io_out_bits_inst

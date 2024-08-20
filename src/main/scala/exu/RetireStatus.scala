@@ -3,11 +3,13 @@ package wood.exu
 import chisel3._
 import chisel3.util._
 import wood.WoodConfig
+import wood.lsu.LSMI
 import wood.std.DCPipelineRegister
 
 class RetireStatusStage(config: WoodConfig) extends Module {
   val io = IO(new Bundle {
     val in             = Flipped(Vec(config.nWide, Decoupled(new RetireMI(config))))
+    val lsuIn          = Flipped(Vec(1, ValidIO(new LSMI(config))))
     val firstPC        = Flipped(Valid(UInt(config.pcWidth.W)))
     val writebackBus   = Flipped(Vec(config.nWide, ValidIO(new TagBus(config))))
     val exceptionBus   = Flipped(Vec(config.nWide, ValidIO(new ExceptionBus(config))))
@@ -111,7 +113,13 @@ class RetireStatusStage(config: WoodConfig) extends Module {
       takenStatusRegisterFile(tag)     := 0.U
       exceptionStatusRegisterFile(tag) := 0.U
     }
+
   })
+
+  when(io.lsuIn(0).valid) {
+    val tag = io.lsuIn(0).bits.rdTag
+    retireStatusRegisterFile(tag) := 1.U
+  }
 
   (0 until config.nWide).foreach(j => {
     val tag             = io.in(j).bits.rdTag

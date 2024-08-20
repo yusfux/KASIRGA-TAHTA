@@ -13,9 +13,10 @@ class LSDummyCache(config: WoodConfig) extends Module {
 
   val numBytes = config.dcacheDataWidth / 8
 
-  val pReg = Module(new DCPipelineRegister(new LSMI(config))(1))
-  val sram = dontTouch(SRAM(config.dcacheDepth, UInt(config.memDataWidth.W), 0, 0, 1))
-  val self = Wire(Decoupled(new LSMI(config)))
+  val pReg      = Module(new DCPipelineRegister(new LSMI(config))(1))
+  val pRegCache = Module(new DCPipelineRegister(new LSMI(config))(1))
+  val sram      = dontTouch(SRAM(config.dcacheDepth, UInt(config.memDataWidth.W), 0, 0, 1))
+  val self      = Wire(Decoupled(new LSMI(config)))
 
   val sramOut = Wire(UInt(config.memDataWidth.W))
 
@@ -25,10 +26,13 @@ class LSDummyCache(config: WoodConfig) extends Module {
   sram.readwritePorts(0).enable    := io.in.valid
   sramOut                          := sram.readwritePorts(0).readData
 
-  pReg.io.valids(0) := io.in.valid
-  pReg.io.flush     := 0.B // TODO: think
+  pRegCache.io.valids(0) := io.in.valid
+  pReg.io.valids(0)      := pRegCache.io.out.valid
+  pRegCache.io.flush     := 0.B // TODO: think
+  pReg.io.flush          := 0.B // TODO: think
 
-  self                  <> io.in
+  pRegCache.io.in       <> io.in
+  self                  <> pRegCache.io.out
   self.bits.memDataRead := VecInit(Seq.tabulate(numBytes)(j => sramOut(8 * j + 7, 8 * j)))
   pReg.io.in            <> self
   io.out                <> pReg.io.out
