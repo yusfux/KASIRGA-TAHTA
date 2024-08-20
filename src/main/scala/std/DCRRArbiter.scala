@@ -15,8 +15,8 @@ private object ArbiterCtrl {
 
 class LockingRRArbiter[T <: Data](gen: T, n: Int, count: Int, needsLock: Option[T => Bool] = None)
     extends LockingArbiterLike[T](gen, n, count, needsLock) {
-  // this register is not initialized on purpose, see #267
-  lazy val lastGrant = RegEnable(io.chosen, 0.U, io.out.fire)
+  // this register IS initialized on purpose, see #267
+  lazy val lastGrant = RegEnable(io.chosen, 1.U, io.out.fire)
   lazy val grantMask = (0 until n).map(_.asUInt > lastGrant)
   lazy val validMask = io.in.zip(grantMask).map { case (in, g) => in.valid && g }
 

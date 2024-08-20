@@ -93,7 +93,7 @@ class LSReservationStation(config: WoodConfig) extends Module {
   }
 
   io.in.ready  := !full
-  io.out.valid := !empty & outValid.asUInt.orR
+  io.out.valid := !empty & outValid(deqPtr.value) & valid(deqPtr.value)
 
   when(io.flush) {
     valid.foreach(_ := 0.B)

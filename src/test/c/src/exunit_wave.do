@@ -88,6 +88,14 @@ for {set i 0} {$i < $nWide} {incr i 1} {
   set sig_name [format "/ExUnit/restage/io_out1_%d*" $i]
   add wave -noupdate -group exunit -group restage -group io_out1_$i $sig_name
 }
+for {set i 0} {$i < $nWide} {incr i 1} {
+  set sig_name [format "/ExUnit/restage/io_out2_%d_bits_inst" $i]
+  add wave -noupdate -group exunit -group restage -group -radix RISCV io_out2_$i $sig_name
+}
+for {set i 0} {$i < $nWide} {incr i 1} {
+  set sig_name [format "/ExUnit/restage/io_out2_%d*" $i]
+  add wave -noupdate -group exunit -group restage -group io_out2_$i $sig_name
+}
 
 ################################
 # SCSTAGE
