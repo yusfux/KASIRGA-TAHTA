@@ -21,11 +21,11 @@ class LSExtend(config: WoodConfig) extends Module {
   result := DontCare
 // format: off
   switch(control) {
-    is(LSOp.lb)  { result := Cat(Fill(24,io.inData( 7)),io.inData) }
-    is(LSOp.lh)  { result := Cat(Fill(24,io.inData(15)),io.inData) }
-    is(LSOp.lw)  { result :=                            io.inData  }
-    is(LSOp.lbu) { result := Cat(Fill(24,0.U),          io.inData) }
-    is(LSOp.lhu) { result := Cat(Fill(24,io.inData(15)),io.inData) }
+    is(LSOp.lb)  { result := Cat(Fill(24,io.inData( 7)),io.inData( 7,0)) }
+    is(LSOp.lh)  { result := Cat(Fill(16,io.inData(15)),io.inData(15,0)) }
+    is(LSOp.lw)  { result :=                            io.inData        }
+    is(LSOp.lbu) { result := Cat(Fill(24,          0.U),io.inData( 7,0)) }
+    is(LSOp.lhu) { result := Cat(Fill(16,          0.U),io.inData(15,0)) }
   }
 // format: on
   io.out := result

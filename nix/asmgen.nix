@@ -109,7 +109,7 @@ pkgs.writers.writePython3Bin "asmgen" { } ''
                                         "bext", "binv", "bset", "clmul",
                                         "clmulh", "clmulr"]
           self.branch_instructions = ["beq", "bne", "bge", "bgeu", "blt", "bltu"]
-          self.load_instructions = ["lw", "lh"]
+          self.load_instructions = ["lw", "lh", "lb", "lbu", "lhu"]
 
       def init_regs(self) -> List[str]:
           asm_code = []
@@ -267,7 +267,7 @@ pkgs.writers.writePython3Bin "asmgen" { } ''
                    "andn", "max", "maxu", "min", "minu",
                    "orn", "rol", "ror", "xnor", "bclr",
                    "bext", "binv", "bset", "clmul",
-                   "lw", "lh",
+                   "lw", "lh", "lb", "lbu", "lhu",
                    "clmulh", "clmulr"],
           required=True,
           help="inst type to generate (li, add, sub, addi, xori, ori, or andi)",

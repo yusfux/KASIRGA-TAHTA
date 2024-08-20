@@ -2,7 +2,7 @@ package wood.exu
 
 import chisel3._
 import chisel3.util._
-import chisel3.util.experimental.decode.{EspressoMinimizer, TruthTable, decoder}
+import chisel3.util.experimental.decode.{decoder, EspressoMinimizer, TruthTable}
 import wood.WoodConfig
 import wood.exu.Instructions._
 import wood.exu.{ALUOp, ExEngine, IDUOp, IMUOp}
@@ -131,7 +131,7 @@ object DecodeConfig {
    JAL        -> Seq(op.e(LSOp.str(LSOp.nop)),     op.e(ALUOp.str(ALUOp.jal))       ,ExEngine.str(ExEngine.alu),W_RF_I,OPSRC1_PC, OPSRC2_IMM,OPSRC3_IMM,WAKEUP_1,LS_T_N,IS_JAL_1,IS_BRANCH_0,T_I),
    JALR       -> Seq(op.e(LSOp.str(LSOp.nop)),     op.e(ALUOp.str(ALUOp.jalr))      ,ExEngine.str(ExEngine.alu),W_RF_I,OPSRC1_IRF,OPSRC2_IMM,OPSRC3_IMM,WAKEUP_1,LS_T_N,IS_JAL_1,IS_BRANCH_0,T_I),
    LB         -> Seq(op.e(LSOp.str(LSOp.lb)),      op.e(ALUOp.str(ALUOp.add))       ,ExEngine.str(ExEngine.alu),W_RF_I,OPSRC1_IRF,OPSRC2_IMM,OPSRC3_IMM,WAKEUP_0,LS_T_L,IS_JAL_0,IS_BRANCH_0,T_I),
-   LBU        -> Seq(op.e(LSOp.str(LSOp.lbu)),     op.e(ALUOp.str(ALUOp.add))       ,ExEngine.str(ExEngine.alu),W_RF_I,OPSRC1_IRF,OPSRC2_IMM,OPSRC3_IMM,WAKEUP_0,LS_T_N,IS_JAL_0,IS_BRANCH_0,T_I),
+   LBU        -> Seq(op.e(LSOp.str(LSOp.lbu)),     op.e(ALUOp.str(ALUOp.add))       ,ExEngine.str(ExEngine.alu),W_RF_I,OPSRC1_IRF,OPSRC2_IMM,OPSRC3_IMM,WAKEUP_0,LS_T_L,IS_JAL_0,IS_BRANCH_0,T_I),
    LH         -> Seq(op.e(LSOp.str(LSOp.lh)),      op.e(ALUOp.str(ALUOp.add))       ,ExEngine.str(ExEngine.alu),W_RF_I,OPSRC1_IRF,OPSRC2_IMM,OPSRC3_IMM,WAKEUP_0,LS_T_L,IS_JAL_0,IS_BRANCH_0,T_I),
    LHU        -> Seq(op.e(LSOp.str(LSOp.lhu)),     op.e(ALUOp.str(ALUOp.add))       ,ExEngine.str(ExEngine.alu),W_RF_I,OPSRC1_IRF,OPSRC2_IMM,OPSRC3_IMM,WAKEUP_0,LS_T_L,IS_JAL_0,IS_BRANCH_0,T_I),
    LUI        -> Seq(op.e(LSOp.str(LSOp.nop)),     op.e(ALUOp.str(ALUOp.add))       ,ExEngine.str(ExEngine.alu),W_RF_I,OPSRC1_X0, OPSRC2_IMM,OPSRC3_IMM,WAKEUP_1,LS_T_N,IS_JAL_0,IS_BRANCH_0,T_I),
