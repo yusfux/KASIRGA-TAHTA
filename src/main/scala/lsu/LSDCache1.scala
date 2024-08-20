@@ -31,7 +31,7 @@ class LSDCache1Stage(config: WoodConfig) extends Module {
   io.lsDCacheBus.bits  := io.in.bits
   io.lsDCacheBus.valid := io.in.valid
 
-  (0 until config.dataWidth / 8).foreach(j => {
+  (0 until config.numBytes).foreach(j => {
     val atomByteUpdate = io.lsAtomBus.bits.wStrobe(j) && (io.in.bits.addr === io.lsAtomBus.bits.addr)
 
     self.bits.rs2Data(j) := MuxCase(

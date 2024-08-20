@@ -8,18 +8,15 @@ import wood.fru.FrUnit
 case class TestConfig(val maxWidth: Int = 2) {}
 
 case class WoodConfig(
-  nWide:        Int = 4,
-  dataWidth:    Int = 32,
-  addrWidth:    Int = 32,
-  pcWidth:      Int = 32,
-  xlen:         Int = 32,
-  memDataWidth: Int = 128,
-  memDepth:     Int = 4096,
+  nWide:            Int = 4,
+  xlen:             Int = 32,
+  mmInterfaceWidth: Int = 128, // Main Memory Interface Width
+  mmDepth:          Int = 4096,
   //--------------
   // FrUnitConfig
   pcInitAddr:   String = "h8000_0000",
-  icacheDepth:  Int    = 1024,
-  btbdepth:     Int    = 32,
+  iCacheDepth:  Int    = 1024,
+  btbDepth:     Int    = 32,
   pcListDepth:  Int    = 16,
   pcQueueDepth: Int    = 16,
   scQueueDepth: Int    = 2,
@@ -30,41 +27,40 @@ case class WoodConfig(
   rsDepth:      Int = 2, // Reservation station depth
   //--------------
   // LsUnitConfig
-  lssqDepth: Int = 2, // LS Store Queue Depth
-  lsrsDepth: Int = 2 // LS reservation station Depth
-  // dcacheDepth: Int = 1024
+  lsSQDepth: Int = 2, // LS Store Queue Depth
+  lsRSDepth: Int = 2 // LS reservation station Depth
   //--------------
 ) {
-  val dcacheDepth     = memDepth // TODO: connect the cache
-  val dcacheDataWidth = memDataWidth
+  val dcacheDepth     = mmDepth // TODO: connect the cache
+  val dCacheLineWidth = mmInterfaceWidth
+  val iCacheLineWidth = mmInterfaceWidth // TODO set or use this
 
   require(
     robDepth % nWide == 0,
     "RobDepth must be divisible by nWide"
   )
-
   require(
     xlen == 32,
     "Other xlen values are not tested"
   )
-
   val prfDepth = (32 + (rsDepth * nWide) + (8 * nWide) + (robDepth * nWide))
   require(
     (prfDepth % nWide == 0),
     "prfDepth must be divisible by nWide"
   )
   require(
-    (dataWidth % 8 == 0),
-    "dataWidth must be multiple of 8"
+    (mmInterfaceWidth == 128),
+    "Other mmInterfaceWidth values are not tested"
   )
-  val ghrWidth = log2Ceil(btbdepth)
 
-  val byteOffset = log2Ceil(pcWidth >> 3)
+  val ghrWidth = log2Ceil(btbDepth)
+
+  val byteOffset = log2Ceil(xlen >> 3)
   val bankOffset = log2Ceil(nWide)
-  val memOffset  = log2Ceil(memDataWidth / dataWidth)
+  val memOffset  = log2Ceil(mmInterfaceWidth / xlen)
 
-  val itaglen   = pcWidth - (log2Ceil(icacheDepth) + byteOffset + bankOffset)
-  val idatalen  = dataWidth
+  val itaglen   = xlen - (log2Ceil(iCacheDepth) + byteOffset + bankOffset)
+  val idatalen  = xlen
   val ivalidlen = 1
 
   val tagWidth: Int = log2Ceil(prfDepth)
@@ -74,6 +70,8 @@ case class WoodConfig(
   val iduCrossbarIndex = 2
   val listExCrossbarUnits: List[Int] = List(nWide, 1, 1) // alu, mdu, idu
   val listExUnits:         List[Int] = List(nWide, 1, 1) // alu, mdu, idu
+
+  val numBytes = xlen / 8
 }
 
 class ReqPort(addrWidth: Int, dataWidth: Int) extends Bundle {
@@ -94,17 +92,17 @@ class RespPort(dataWidth: Int) extends Bundle {
 }
 
 class MemPortR(config: WoodConfig) extends Bundle {
-  val req  = DecoupledIO(new ReqPort(config.addrWidth, config.memDataWidth).ReadReq)
-  val resp = Flipped(DecoupledIO(new RespPort(config.memDataWidth).ReadResp))
+  val req  = DecoupledIO(new ReqPort(config.xlen, config.mmInterfaceWidth).ReadReq)
+  val resp = Flipped(DecoupledIO(new RespPort(config.mmInterfaceWidth).ReadResp))
 }
 
 class MemPortW(config: WoodConfig) extends Bundle {
-  val req = Flipped(DecoupledIO(new ReqPort(config.addrWidth, config.memDataWidth).WriteReq))
+  val req = Flipped(DecoupledIO(new ReqPort(config.xlen, config.mmInterfaceWidth).WriteReq))
 }
 
 class CorePort(config: WoodConfig) extends Bundle {
-  val req  = Flipped(DecoupledIO(new ReqPort(config.addrWidth, config.dataWidth).ReadReq))
-  val resp = DecoupledIO(new RespPort(config.dataWidth).ReadResp)
+  val req  = Flipped(DecoupledIO(new ReqPort(config.xlen, config.xlen).ReadReq))
+  val resp = DecoupledIO(new RespPort(config.xlen).ReadResp)
 }
 
 class Wood(config: WoodConfig) extends Module {

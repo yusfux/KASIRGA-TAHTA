@@ -18,7 +18,7 @@ class RetireWritebackStage(config: WoodConfig) extends Module {
 
   (0 until config.nWide).foreach(j => {
     rdOverriden(j) := ((j + 1) until config.nWide).foldRight(false.B) { (k, acc) =>
-      val rdM = (io.in(j).bits.rd === io.in(k).bits.rd) & io.in(k).bits.writeRf === Integer.parseInt(DecodeConfig.WRITE_RF_I, 2).U & io.in(k).valid
+      val rdM = (io.in(j).bits.rd === io.in(k).bits.rd) & io.in(k).bits.writeRf === Integer.parseInt(DecodeConfig.W_RF_I, 2).U & io.in(k).valid
       acc || rdM
     }
 
@@ -27,10 +27,10 @@ class RetireWritebackStage(config: WoodConfig) extends Module {
     io.arfBus(j).valid := MuxCase(
       0.U,
       Array(
-        (!io.in(j).valid)                                           -> 0.U,
-        (io.in(j).bits.flushed)                                     -> 0.U,
-        ((io.in(j).bits.rd === 0.U) & io.in(j).bits.writeRf === Integer.parseInt(DecodeConfig.WRITE_RF_I, 2).U) -> 0.U,
-        (!rdOverriden(j) & io.in(j).bits.writeRf === Integer.parseInt(DecodeConfig.WRITE_RF_I, 2).U)            -> 1.U
+        (!io.in(j).valid)                                                                                   -> 0.U,
+        (io.in(j).bits.flushed)                                                                             -> 0.U,
+        ((io.in(j).bits.rd === 0.U) & io.in(j).bits.writeRf === Integer.parseInt(DecodeConfig.W_RF_I, 2).U) -> 0.U,
+        (!rdOverriden(j) & io.in(j).bits.writeRf === Integer.parseInt(DecodeConfig.W_RF_I, 2).U)            -> 1.U
       ).toIndexedSeq
     )
 

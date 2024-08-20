@@ -51,8 +51,8 @@ trait ALUBehavior {
                   "rs2Data"  -> b.U,
                   "exOp"     -> fn.litValue.U,
                   "rdData"   -> result.U(dataWidth.W),
-                  "operand1" -> Integer.parseInt(DecodeConfig.OPERAND1_IRF, 2).U,
-                  "operand2" -> Integer.parseInt(DecodeConfig.OPERAND2_IRF, 2).U
+                  "operand1" -> Integer.parseInt(DecodeConfig.OPSRC1_IRF, 2).U,
+                  "operand2" -> Integer.parseInt(DecodeConfig.OPSRC2_IRF, 2).U
                 )
               )
             results.enqueue(mi)
@@ -68,8 +68,8 @@ trait ALUBehavior {
                     "rs1Data"  -> a.U,
                     "rs2Data"  -> b.U,
                     "exOp"     -> fn.litValue.U,
-                    "operand1" -> Integer.parseInt(DecodeConfig.OPERAND1_IRF, 2).U,
-                    "operand2" -> Integer.parseInt(DecodeConfig.OPERAND2_IRF, 2).U
+                    "operand1" -> Integer.parseInt(DecodeConfig.OPSRC1_IRF, 2).U,
+                    "operand2" -> Integer.parseInt(DecodeConfig.OPSRC2_IRF, 2).U
                   )
                 )
               mi
@@ -96,7 +96,7 @@ class ALUSpec extends AnyFlatSpec with ALUBehavior with ChiselScalatestTester wi
   behavior.of("ALU")
   val tagWidth = config.tagWidth
   val opWidth  = DecodeConfig.op.maxWidth
-  val dataWidths: List[Int] = List(config.dataWidth)
+  val dataWidths: List[Int] = List(config.xlen)
   val numVectors: Int       = 100 // Number of random test vectors
   val rand = new Random()
 

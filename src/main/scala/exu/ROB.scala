@@ -10,7 +10,7 @@ class ROBStage(config: WoodConfig) extends Module {
     val in      = Flipped(Vec(config.nWide, Decoupled(new MI(config))))
     val flush   = Input(Bool())
     val out     = Vec(config.nWide, Decoupled(new RetireMI(config)))
-    val firstPC = Valid(UInt(config.pcWidth.W))
+    val firstPC = Valid(UInt(config.xlen.W))
   })
 
   val q     = Module(new DCRRQueue(new RetireMI(config))(config.nWide, config.robDepth, flow = false))

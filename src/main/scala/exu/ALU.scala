@@ -3,8 +3,9 @@ package wood.exu
 import chisel3._
 import chisel3.util._
 import wood.WoodConfig
-import wood.exu.DecodeConfig.{OPERAND1_IRF, OPERAND1_PC, OPERAND2_IMM, OPERAND2_IRF}
+import wood.exu.DecodeConfig.{OPSRC1_IRF, OPSRC1_PC, OPSRC2_IMM, OPSRC2_IRF}
 
+// format: off
 object ALUOp extends ChiselEnum {
   val sub, add, xor, or, and, sll, srl, sra, slt, sltu, pass, beq, bne, blt, bge, bltu, bgeu, jal, jalr,
       andn, bclr, bclri, bext, bexti, binv, binvi, bset, bseti, clmul, clmulh, clmulr, clz, cpop, ctz, max, 
@@ -17,9 +18,10 @@ object ALUOp extends ChiselEnum {
   def toBitpat(op: ALUOp.Type): BitPat =
     BitPat(op.litValue.U(getWidth.W))
 
-  def toString(op: ALUOp.Type): String =
+  def str(op: ALUOp.Type): String =
     toBitpat(op).rawString
 }
+// format: on
 
 class ALU(config: WoodConfig) extends Module {
   val io = IO(new Bundle {
@@ -27,7 +29,7 @@ class ALU(config: WoodConfig) extends Module {
     val out = Decoupled(new MI(config))
   })
 
-  val shamt = if (config.dataWidth > 1) log2Ceil(config.dataWidth) - 1 else 0 // Shift amount.
+  val shamt = if (config.xlen > 1) log2Ceil(config.xlen) - 1 else 0 // Shift amount.
 
   val rawOp = Wire(UInt(ALUOp.getWidth.W))
   rawOp := io.in.bits.exOp
@@ -38,15 +40,15 @@ class ALU(config: WoodConfig) extends Module {
   val data1 = MuxCase(
     io.in.bits.rs1Data,
     Array(
-      (io.in.bits.operand1 === Integer.parseInt(OPERAND1_IRF, 2).U) -> io.in.bits.rs1Data,
-      (io.in.bits.operand1 === Integer.parseInt(OPERAND1_PC, 2).U)  -> io.in.bits.pc
+      (io.in.bits.operand1 === Integer.parseInt(OPSRC1_IRF, 2).U) -> io.in.bits.rs1Data,
+      (io.in.bits.operand1 === Integer.parseInt(OPSRC1_PC, 2).U)  -> io.in.bits.pc
     ).toIndexedSeq
   )
   val data2 = MuxCase(
     io.in.bits.rs2Data,
     Array(
-      (io.in.bits.operand2 === Integer.parseInt(OPERAND2_IRF, 2).U) -> io.in.bits.rs2Data,
-      (io.in.bits.operand2 === Integer.parseInt(OPERAND2_IMM, 2).U) -> io.in.bits.imm
+      (io.in.bits.operand2 === Integer.parseInt(OPSRC2_IRF, 2).U) -> io.in.bits.rs2Data,
+      (io.in.bits.operand2 === Integer.parseInt(OPSRC2_IMM, 2).U) -> io.in.bits.imm
     ).toIndexedSeq
   )
 
@@ -54,13 +56,13 @@ class ALU(config: WoodConfig) extends Module {
   val arithmeticData2 = Mux(control === ALUOp.sub, Cat(~data2, 1.U(1.W)), Cat(data2, 0.U(1.W)))
   val resultAdd       = arithmeticData1 + arithmeticData2
 
-  val result = Wire(UInt(config.dataWidth.W))
-  val pc     = Wire(UInt(config.dataWidth.W))
+  val result = Wire(UInt(config.xlen.W))
+  val pc     = Wire(UInt(config.xlen.W))
 
   // format: off
   result := 0.U
   switch(control) {
-    is(ALUOp.sub, ALUOp.add)  { result := resultAdd(config.dataWidth, 1)           }
+    is(ALUOp.sub, ALUOp.add)  { result := resultAdd(config.xlen, 1)                }
     is(ALUOp.jal, ALUOp.jalr) { result := io.in.bits.pc + 4.U                      }
     is(ALUOp.xor)             { result := data1 ^ data2                            }
     is(ALUOp.or)              { result := data1 | data2                            }

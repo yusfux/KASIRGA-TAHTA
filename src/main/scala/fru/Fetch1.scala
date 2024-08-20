@@ -14,7 +14,7 @@ class Fetch1Stage(config: WoodConfig) extends Module {
   val bpred   = Module(new BranchPredictor(config))
   val pcqueue = Module(new PCQueue(config))
 
-  val pc = RegInit(config.pcInitAddr.U(config.pcWidth.W))
+  val pc = RegInit(config.pcInitAddr.U(config.xlen.W))
 
   val mispredict = io.bpBus.map(bp => bp.valid && bp.bits.mispredict).reduce(_ || _)
   val exception  = io.bpBus.map(bp => bp.valid && bp.bits.exception).reduce(_ || _)
@@ -30,7 +30,7 @@ class Fetch1Stage(config: WoodConfig) extends Module {
 
   pcqueue.io.out.ready := io.pcPacket.ready
   io.pcPacket.valid    := pcqueue.io.out.valid
-  for(i <- 0 until config.nWide) {
+  for (i <- 0 until config.nWide) {
     io.pcPacket.bits(i).pc    := pcqueue.io.out.bits.fetchpc + (i * 4).U
     io.pcPacket.bits(i).valid := pcqueue.io.out.bits.mask(i)
   }
@@ -43,4 +43,3 @@ class Fetch1Stage(config: WoodConfig) extends Module {
     pc := pc + (config.nWide * 4).U
   }
 }
-

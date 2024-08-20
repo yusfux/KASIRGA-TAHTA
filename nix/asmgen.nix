@@ -109,7 +109,7 @@ pkgs.writers.writePython3Bin "asmgen" { } ''
                                         "bext", "binv", "bset", "clmul",
                                         "clmulh", "clmulr"]
           self.branch_instructions = ["beq", "bne", "bge", "bgeu", "blt", "bltu"]
-          self.load_instructions = ["lw"]
+          self.load_instructions = ["lw", "lh"]
 
       def init_regs(self) -> List[str]:
           asm_code = []
@@ -165,7 +165,7 @@ pkgs.writers.writePython3Bin "asmgen" { } ''
               reg2 = random.choice(registers)
               data_index = random.randint(1, num_data)
               load_test.append(f"la {reg1}, tdat{data_index}")
-              load_test.append(f"lw {reg2}, 0({reg1})")
+              load_test.append(f"{inst_type} {reg2}, 0({reg1})")
               return "\n".join(load_test)
           else:
               raise 1
@@ -267,7 +267,7 @@ pkgs.writers.writePython3Bin "asmgen" { } ''
                    "andn", "max", "maxu", "min", "minu",
                    "orn", "rol", "ror", "xnor", "bclr",
                    "bext", "binv", "bset", "clmul",
-                   "lw",
+                   "lw", "lh",
                    "clmulh", "clmulr"],
           required=True,
           help="inst type to generate (li, add, sub, addi, xori, ori, or andi)",

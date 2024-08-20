@@ -12,7 +12,7 @@ class PCListSpec extends AnyFlatSpec with ChiselScalatestTester {
 
   "PCList" should "work" in {
     test(new PCList(new WoodConfig)).withAnnotations(GetBackendAnnotation()) { dut =>
-      for(i <- 0 until TEST_SIZE) {
+      for (i <- 0 until TEST_SIZE) {
         step()
       }
     }
@@ -22,6 +22,3 @@ class PCListSpec extends AnyFlatSpec with ChiselScalatestTester {
     GenerateVerilog(new PCList(new WoodConfig))
   }
 }
-
-
-

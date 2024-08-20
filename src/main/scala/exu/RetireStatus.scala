@@ -3,14 +3,13 @@ package wood.exu
 import chisel3._
 import chisel3.util._
 import wood.WoodConfig
-import wood.lsu.LSMI
 import wood.std.DCPipelineRegister
 
 class RetireStatusStage(config: WoodConfig) extends Module {
   val io = IO(new Bundle {
     val in             = Flipped(Vec(config.nWide, Decoupled(new RetireMI(config))))
-    val lsuIn          = Flipped(Vec(1, ValidIO(new LSMI(config))))
-    val firstPC        = Flipped(Valid(UInt(config.pcWidth.W)))
+    val lsuIn          = Flipped(Vec(1, ValidIO(new TagBus(config))))
+    val firstPC        = Flipped(Valid(UInt(config.xlen.W)))
     val writebackBus   = Flipped(Vec(config.nWide, ValidIO(new TagBus(config))))
     val exceptionBus   = Flipped(Vec(config.nWide, ValidIO(new ExceptionBus(config))))
     val commitedBus    = Flipped(Vec(config.nWide, ValidIO(new TagBus(config))))
@@ -24,7 +23,7 @@ class RetireStatusStage(config: WoodConfig) extends Module {
   val retireStatusRegisterFile    = RegInit(VecInit(Seq.fill(config.prfDepth)(0.U(1.W))))
   val takenStatusRegisterFile     = RegInit(VecInit(Seq.fill(config.prfDepth)(0.U(1.W))))
   val exceptionStatusRegisterFile = RegInit(VecInit(Seq.fill(config.prfDepth)(0.U(1.W))))
-  val pcRegisterFile              = RegInit(VecInit(Seq.fill(config.prfDepth)(0.U(config.dataWidth.W)))) // TODO: remove reset
+  val pcRegisterFile              = RegInit(VecInit(Seq.fill(config.prfDepth)(0.U(config.xlen.W)))) // TODO: remove reset
 
   val predictedPCs           = VecInit(io.in.tail.map(_.bits.pc) :+ io.firstPC.bits)
   val self                   = Wire(Vec(config.nWide, Decoupled(new RetireMI(config))))
@@ -117,7 +116,7 @@ class RetireStatusStage(config: WoodConfig) extends Module {
   })
 
   when(io.lsuIn(0).valid) {
-    val tag = io.lsuIn(0).bits.rdTag
+    val tag = io.lsuIn(0).bits.tag
     retireStatusRegisterFile(tag) := 1.U
   }
 

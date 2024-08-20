@@ -11,19 +11,19 @@ object CacheState extends ChiselEnum {
 class ICacheController(config: WoodConfig) extends Module {
   val io = IO(new Bundle {
     val core  = new CorePort(config)
-    val mem   = new MemPortR(config.copy(memDataWidth = config.dataWidth))
-    val cache = Flipped(new SRAMInterface(config.icacheDepth, UInt((config.ivalidlen + config.itaglen + config.idatalen).W), 0, 0, 1))
+    val mem   = new MemPortR(config.copy(mmInterfaceWidth = config.xlen))
+    val cache = Flipped(new SRAMInterface(config.iCacheDepth, UInt((config.ivalidlen + config.itaglen + config.idatalen).W), 0, 0, 1))
   })
 
   // ---------------------------------------------------------------------------
   val corerequest = new Bundle() {
     val addr = io.core.req.bits.addr
-    val idx  = addr(log2Ceil(config.icacheDepth) + config.byteOffset + config.bankOffset - 1, config.bankOffset + config.byteOffset)
-    val tag  = addr(config.pcWidth - 1, log2Ceil(config.icacheDepth) + config.bankOffset + config.byteOffset)
+    val idx  = addr(log2Ceil(config.iCacheDepth) + config.byteOffset + config.bankOffset - 1, config.bankOffset + config.byteOffset)
+    val tag  = addr(config.xlen - 1, log2Ceil(config.iCacheDepth) + config.bankOffset + config.byteOffset)
 
     val addrReg = RegEnable(addr, 0.U, io.core.req.fire)
-    val idxReg  = RegEnable(idx , 0.U, io.core.req.fire)
-    val tagReg  = RegEnable(tag , 0.U, io.core.req.fire)
+    val idxReg  = RegEnable(idx, 0.U, io.core.req.fire)
+    val tagReg  = RegEnable(tag, 0.U, io.core.req.fire)
   }
 
   val cacheresponse = new Bundle() {
@@ -34,7 +34,7 @@ class ICacheController(config: WoodConfig) extends Module {
     val data  = cacheline(config.idatalen - 1, 0)
   }
 
-  val state = RegInit(CacheState.init)
+  val state    = RegInit(CacheState.init)
   val isInit   = state === CacheState.init
   val isIdle   = state === CacheState.idle
   val isRead   = state === CacheState.read
@@ -42,7 +42,7 @@ class ICacheController(config: WoodConfig) extends Module {
 
   // ---------------------------------------------------------------------------
 
-  val (initIdx, initCompleted) = Counter(true.B, config.icacheDepth)
+  val (initIdx, initCompleted) = Counter(true.B, config.iCacheDepth)
 
   val isHit = cacheresponse.valid && (cacheresponse.tag === corerequest.tagReg)
 
@@ -64,10 +64,10 @@ class ICacheController(config: WoodConfig) extends Module {
 
   io.cache.readwritePorts(0).address   := Mux(cren, corerequest.idx, waddr)
   io.cache.readwritePorts(0).enable    := true.B
-  io.cache.readwritePorts(0).isWrite   := wen 
+  io.cache.readwritePorts(0).isWrite   := wen
   io.cache.readwritePorts(0).writeData := wdata
 
-  io.mem.req.valid     := isRead   && !isHit
+  io.mem.req.valid     := isRead && !isHit
   io.mem.resp.ready    := isRefill && !wack //TODO: i did it while watching dts in the background, it is propably wrong
   io.mem.req.bits.addr := corerequest.addrReg
 

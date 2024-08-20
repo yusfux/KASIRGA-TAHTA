@@ -42,11 +42,10 @@
               scalafmt = {
                 enable = true;
                 name = "scalafmt";
-                entry = "${pkgs.scalafmt}/bin/scalafmt --respect-project-filters";
-                types = [
-                  "scala"
-                  "sbt"
-                ];
+                entry = "${pkgs.scalafmt}/bin/scalafmt";
+                files = "\\.scala$";
+                language = "system";
+                pass_filenames = false;
               };
               verible = {
                 enable = true;
@@ -103,6 +102,8 @@
             pkgs.dtc
 
             pkgs.csmith
+
+            pkgs.scalafmt
 
             (pkgs.callPackage ./nix/bin2hex.nix { })
             (pkgs.callPackage ./nix/dump2vsim.nix { })

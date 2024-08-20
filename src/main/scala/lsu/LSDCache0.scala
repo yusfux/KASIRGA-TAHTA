@@ -46,18 +46,18 @@ class StoreQueueRow(config: WoodConfig) extends Module {
 class StoreQueue(config: WoodConfig) extends Module {
   val io = IO(new Bundle {
     val in             = Flipped(Decoupled(new LSMI(config)))
-    val camReadIn      = Input(UInt(config.addrWidth.W))
+    val camReadIn      = Input(UInt(config.xlen.W))
     val storeRetireBus = Input(Vec(config.nWide, ValidIO(new TagBus(config))))
     val flush          = Input(Bool())
     val camReadOut     = Output(new LSMI(config))
     val out            = Decoupled(new LSMI(config))
   })
 
-  val rows     = Seq.fill(config.lssqDepth)(Module(new StoreQueueRow(config)))
-  val valid    = RegInit(VecInit(Seq.fill(config.lssqDepth)(false.B)))
-  val outValid = RegInit(VecInit(Seq.fill(config.lssqDepth)(false.B)))
-  val enqPtr   = Counter(config.lssqDepth)
-  val deqPtr   = Counter(config.lssqDepth)
+  val rows     = Seq.fill(config.lsSQDepth)(Module(new StoreQueueRow(config)))
+  val valid    = RegInit(VecInit(Seq.fill(config.lsSQDepth)(false.B)))
+  val outValid = RegInit(VecInit(Seq.fill(config.lsSQDepth)(false.B)))
+  val enqPtr   = Counter(config.lsSQDepth)
+  val deqPtr   = Counter(config.lsSQDepth)
   val empty    = enqPtr.value === deqPtr.value && !valid(deqPtr.value)
   val full     = enqPtr.value === deqPtr.value && valid(deqPtr.value)
 
@@ -84,7 +84,7 @@ class StoreQueue(config: WoodConfig) extends Module {
     deqPtr.reset()
   }
 
-  (0 until config.lssqDepth).foreach(j => {
+  (0 until config.lsSQDepth).foreach(j => {
     rows(j).io.flush          := io.flush
     rows(j).io.in.valid       := io.in.fire && (enqPtr.value === j.U)
     rows(j).io.in.bits        := io.in.bits
@@ -93,23 +93,21 @@ class StoreQueue(config: WoodConfig) extends Module {
   })
 
   //********* CAM Logic ************//
-  val recencyArray = VecInit(Seq.fill(config.lssqDepth)(0.U))
-  (0 until config.lssqDepth).foreach(j => {
+  val recencyArray = VecInit(Seq.fill(config.lsSQDepth)(0.U))
+  (0 until config.lsSQDepth).foreach(j => {
     recencyArray(j) := j.U - deqPtr.value
   })
 
-  val numBytes = config.xlen / 8
-
   val (finalWstrobe, finalData) =
-    (0 until config.lssqDepth).foldLeft((0.U(numBytes.W), VecInit(Seq.fill(numBytes)(0.U(8.W))))) {
+    (0 until config.lsSQDepth).foldLeft((0.U(config.numBytes.W), VecInit(Seq.fill(config.numBytes)(0.U(8.W))))) {
       case ((accWstrobe, accData), j) =>
         val currentWstrobe = rows(j).io.out.bits.wStrobe
         val currentData    = rows(j).io.out.bits.rs2Data
         val currentRecency = recencyArray(j)
 
-        val newWstrobe = accWstrobe | (currentWstrobe.asUInt & Fill(numBytes, valid(j)))
+        val newWstrobe = accWstrobe | (currentWstrobe.asUInt & Fill(config.numBytes, valid(j)))
 
-        val addrMatch = VecInit(Seq.fill(config.lssqDepth)(0.B))
+        val addrMatch = VecInit(Seq.fill(config.lsSQDepth)(0.B))
         addrMatch.zipWithIndex.foreach {
           case (row, j) =>
             addrMatch(j) := rows(j).io.out.bits.addr === io.camReadIn
@@ -117,14 +115,14 @@ class StoreQueue(config: WoodConfig) extends Module {
 
         val wstrobeValid = VecInit(rows.map(_.io.out.bits.wStrobe))
 
-        val recencyCompare = VecInit(Seq.fill(config.lssqDepth)(0.B))
+        val recencyCompare = VecInit(Seq.fill(config.lsSQDepth)(0.B))
         recencyCompare.zipWithIndex.foreach {
           case (row, j) =>
             recencyCompare(j) := currentRecency > recencyArray(j)
         }
 
-        val newData = VecInit(Seq.fill(numBytes)(0.U(8.W)))
-        newData := (0 until numBytes).map { byteIndex =>
+        val newData = VecInit(Seq.fill(config.numBytes)(0.U(8.W)))
+        newData := (0 until config.numBytes).map { byteIndex =>
           val isCurrentByteValid = currentWstrobe(byteIndex)
 
           val moreRecentValid = (0 until j).map(k => addrMatch(k) && wstrobeValid(k)(byteIndex) && recencyCompare(k)).foldLeft(true.B)(_ && _)
@@ -138,8 +136,8 @@ class StoreQueue(config: WoodConfig) extends Module {
         (newWstrobe, newData)
     }
 
-  val tstrobe = Wire(Vec(numBytes, Bool()))
-  tstrobe := VecInit(Seq.tabulate(numBytes)(j => finalWstrobe(j)))
+  val tstrobe = Wire(Vec(config.numBytes, Bool()))
+  tstrobe := VecInit(Seq.tabulate(config.numBytes)(j => finalWstrobe(j)))
 
   io.camReadOut         := DontCare
   io.camReadOut.wStrobe := tstrobe

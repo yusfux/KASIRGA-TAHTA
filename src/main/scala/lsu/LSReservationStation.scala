@@ -6,8 +6,6 @@ import wood.WoodConfig
 import wood.exu.TagBus
 
 class LSReservationStationRow(config: WoodConfig) extends Module {
-  val numBytes = config.xlen / 8
-
   val io = IO(new Bundle {
     val in             = Flipped(ValidIO(new LSMI(config)))
     val flush          = Input(Bool())
@@ -37,8 +35,8 @@ class LSReservationStationRow(config: WoodConfig) extends Module {
     rowNext          := io.in.bits
   }.otherwise {
     val operandTargetAddr = io.lsOperandBus(operandBusMatchIndex).bits.targetAddr
-    val tdata             = Wire(Vec(numBytes, UInt(8.W)))
-    tdata := VecInit(Seq.tabulate(numBytes)(j => io.lsOperandBus(operandBusMatchIndex).bits.rs2Data(8 * j + 7, 8 * j)))
+    val tdata             = Wire(Vec(config.numBytes, UInt(8.W)))
+    tdata := VecInit(Seq.tabulate(config.numBytes)(j => io.lsOperandBus(operandBusMatchIndex).bits.rs2Data(8 * j + 7, 8 * j)))
 
     rowNext          := row
     rowNext.addr     := Mux(operandBusMatches.asUInt.orR, operandTargetAddr, row.addr)

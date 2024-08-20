@@ -9,7 +9,7 @@ object IMUOp extends ChiselEnum {
   val values                   = IndexedSeq(mul, mulh, mulhsu, mulhu)
   def toBitpat(op: IMUOp.Type): BitPat =
     BitPat(op.litValue.U(getWidth.W))
-  def toString(op: IMUOp.Type): String =
+  def str(op: IMUOp.Type): String =
     toBitpat(op).rawString
 }
 

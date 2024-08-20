@@ -3,19 +3,33 @@ package wood.lsu
 import chisel3._
 import chisel3.util._
 import wood.WoodConfig
-import wood.exu.{DecodeConfig, MI, TagBus}
+import wood.exu.{DataBus, DecodeConfig, MI, TagBus}
+
+// format: off
+object LSOp extends ChiselEnum {
+  val nop, lb,lh,lw,lbu,lhu,sb,sh,sw, lrw,scw,amoswap,amoadd,amoand,amoor,amoxor,amomax,amomin,amomaxu,amominu = Value
+
+  val values = IndexedSeq(nop, lb,lh,lw,lbu,lhu,sb,sh,sw, lrw,scw,amoswap,amoadd,amoand,amoor,amoxor,amomax,amomin,amomaxu,amominu)
+
+  def toBitpat(op: LSOp.Type): BitPat =
+    BitPat(op.litValue.U(getWidth.W))
+
+  def str(op: LSOp.Type): String =
+    toBitpat(op).rawString
+}
+// format: on
 
 case class LSMI(config: WoodConfig) extends Bundle {
   val addr         = UInt(config.xlen.W)
   val rs2Data      = Vec(config.xlen / 8, UInt(8.W))
-  val memDataRead  = Vec(config.memDataWidth / 8, UInt(8.W))
-  val memDataWrite = Vec(config.memDataWidth / 8, UInt(8.W))
+  val memDataRead  = Vec(config.mmInterfaceWidth / 8, UInt(8.W))
+  val memDataWrite = Vec(config.mmInterfaceWidth / 8, UInt(8.W))
   val rdTag        = UInt(config.tagWidth.W)
   val retired      = Bool()
   val wStrobe      = Vec(config.xlen / 8, Bool())
-  val exOp         = UInt(DecodeConfig.subWidths(8).W)
+  val lsOp         = UInt(DecodeConfig.subWidths(DecodeConfig.lsOpIdx).W)
   val inst         = UInt(32.W) // for testbench only
-  val pc           = UInt(config.pcWidth.W) // for testbench only
+  val pc           = UInt(config.xlen.W) // for testbench only
 }
 
 case class LSBus(config: WoodConfig) extends Bundle {
@@ -23,7 +37,7 @@ case class LSBus(config: WoodConfig) extends Bundle {
   val rs2Data    = UInt(config.xlen.W)
   val rdTag      = UInt(config.tagWidth.W)
   val inst       = UInt(32.W) // for testbench only
-  val pc         = UInt(config.pcWidth.W) // for testbench only
+  val pc         = UInt(config.xlen.W) // for testbench only
 }
 
 class LSOverrideRetire(config: WoodConfig) extends Module {
@@ -50,7 +64,7 @@ class LSUnit(config: WoodConfig) extends Module {
     val storeRetireBus = Flipped(Vec(config.nWide, ValidIO(new TagBus(config))))
     val lsOperandBus   = Flipped(Vec(config.nWide, ValidIO(new LSBus(config))))
     val flush          = Input(Bool())
-    val out            = ValidIO(new LSMI(config))
+    val out            = Vec(1, ValidIO(new DataBus(config)))
   })
 
   val lsscstage  = Module(new LSScheduleStage(config))

@@ -27,8 +27,8 @@ class IMUSpec extends AnyFlatSpec with ChiselScalatestTester with ParallelTestEx
           "rs2TagReady" -> 1.B,
           "retired"     -> 1.B,
           "arfValid"    -> 1.B,
-          "operand1"    -> Integer.parseInt(DecodeConfig.OPERAND1_IRF, 2).U,
-          "operand2"    -> Integer.parseInt(DecodeConfig.OPERAND2_IRF, 2).U,
+          "operand1"    -> Integer.parseInt(DecodeConfig.OPSRC1_IRF, 2).U,
+          "operand2"    -> Integer.parseInt(DecodeConfig.OPSRC2_IRF, 2).U,
           "exOp"        -> IMUOp.mul.litValue.U
         )
       )

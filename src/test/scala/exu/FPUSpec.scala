@@ -11,5 +11,3 @@ class FPUSpec extends AnyFlatSpec with ChiselScalatestTester with ParallelTestEx
     GenerateVerilog(new FPU(new WoodConfig))
   }
 }
-
-

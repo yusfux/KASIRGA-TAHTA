@@ -11,7 +11,7 @@ object IDUOp extends ChiselEnum {
   def toBitpat(op: IDUOp.Type): BitPat =
     BitPat(op.litValue.U(getWidth.W))
 
-  def toString(op: IDUOp.Type): String =
+  def str(op: IDUOp.Type): String =
     toBitpat(op).rawString
 }
 

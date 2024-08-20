@@ -3,14 +3,13 @@ package wood.exu
 import chisel3._
 import chisel3.util._
 import wood.WoodConfig
-import wood.lsu.LSMI
 import wood.std.DCCrossbar
 import wood.util.WoodMIPipelineRegister
 
 class RegisterReadStage(config: WoodConfig) extends Module {
   val io = IO(new Bundle {
     val in           = Flipped(Vec(config.nWide, Decoupled(new MI(config))))
-    val lsuIn        = Flipped(Vec(1, ValidIO(new LSMI(config))))
+    val lsuIn        = Flipped(Vec(1, ValidIO(new DataBus(config))))
     val flush        = Input(Bool())
     val writebackBus = Flipped(Vec(config.nWide, ValidIO(new DataBus(config))))
     val forwardBus   = Flipped(Vec(config.nWide, ValidIO(new DataBus(config))))
@@ -27,16 +26,13 @@ class RegisterReadStage(config: WoodConfig) extends Module {
   val imuPRegs          = Seq.fill(config.listExUnits(config.imuCrossbarIndex))(Module(new WoodMIPipelineRegister(config, 1)))
   val iduPRegs          = Seq.fill(config.listExUnits(config.iduCrossbarIndex))(Module(new WoodMIPipelineRegister(config, 1)))
 
-  val prf = RegInit(VecInit(Seq.fill(config.prfDepth)(0.U(config.dataWidth.W)))) // TODO: remove reset
+  val prf = RegInit(VecInit(Seq.fill(config.prfDepth)(0.U(config.xlen.W)))) // TODO: remove reset
 
   val overridenRFData = Wire(Vec(config.nWide, Decoupled(new MI(config))))
   overridenRFData <> io.in
 
   when(io.lsuIn(0).valid) {
-    val addrOffset  = (io.lsuIn(0).bits.addr(log2Ceil(config.memDataWidth / 8) - 1, 2))
-    val shiftAmount = addrOffset * (config.xlen).U
-    val data        = (io.lsuIn(0).bits.memDataRead.asUInt >> shiftAmount)(config.xlen, 0)
-    prf(io.lsuIn(0).bits.rdTag) := data
+    prf(io.lsuIn(0).bits.tag) := io.lsuIn(0).bits.data
   }
 
   (0 until config.nWide).foreach(j => {
@@ -93,13 +89,13 @@ class RegisterReadStage(config: WoodConfig) extends Module {
 
   (0 until config.nWide).foreach(j => {
     val rs1AdrX0      = io.in(j).bits.rs1 === 0.U
-    val rs1IndirectX0 = io.in(j).bits.operand1 === Integer.parseInt(DecodeConfig.OPERAND1_IRF, 2).U
-    val rs1DirectX0   = io.in(j).bits.operand1 === Integer.parseInt(DecodeConfig.OPERAND1_X0, 2).U
+    val rs1IndirectX0 = io.in(j).bits.operand1 === Integer.parseInt(DecodeConfig.OPSRC1_IRF, 2).U
+    val rs1DirectX0   = io.in(j).bits.operand1 === Integer.parseInt(DecodeConfig.OPSRC1_X0, 2).U
 
     val rs1ValidZero = (rs1AdrX0 && rs1IndirectX0) || (rs1DirectX0)
 
     val rs2AdrX0      = io.in(j).bits.rs2 === 0.U
-    val rs2IndirectX0 = io.in(j).bits.operand2 === Integer.parseInt(DecodeConfig.OPERAND2_IRF, 2).U
+    val rs2IndirectX0 = io.in(j).bits.operand2 === Integer.parseInt(DecodeConfig.OPSRC2_IRF, 2).U
     val rs2ValidZero  = (rs2AdrX0 && rs2IndirectX0)
 
     crossbar.io.in(j).bits.rs1Data := Mux(rs1ValidZero, 0.U, overrideForward.io.out(j).bits.rs1Data)

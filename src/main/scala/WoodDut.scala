@@ -8,13 +8,13 @@ class MainMemory(config: WoodConfig) extends Module {
     val memr = Flipped(new MemPortR(config))
     val memw = new MemPortW(config)
   })
-  val mem = SyncReadMem(config.memDepth, UInt(config.memDataWidth.W))
+  val mem = SyncReadMem(config.mmDepth, UInt(config.mmInterfaceWidth.W))
 
   when(io.memw.req.valid) {
     mem.write(io.memw.req.bits.addr >> (config.byteOffset + config.memOffset), io.memw.req.bits.data)
   }
-  io.memr.req.ready  := true.B
-  io.memw.req.ready  := true.B
+  io.memr.req.ready := true.B
+  io.memw.req.ready := true.B
 
   io.memr.resp.bits.data := mem.read(io.memr.req.bits.addr >> (config.byteOffset + config.memOffset))
   io.memr.resp.valid     := true.B
@@ -22,7 +22,7 @@ class MainMemory(config: WoodConfig) extends Module {
 
 class WoodDut(config: WoodConfig) extends Module {
   val io = IO(new Bundle {
-    val memw = new MemPortW(config)
+    val memw   = new MemPortW(config)
     val wreset = Input(Bool())
   })
 

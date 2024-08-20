@@ -11,16 +11,16 @@ class LSDummyCache(config: WoodConfig) extends Module {
     val out = Decoupled(new LSMI(config))
   })
 
-  val numBytes = config.dcacheDataWidth / 8
+  val numBytes = config.dCacheLineWidth / 8
 
   val pReg      = Module(new DCPipelineRegister(new LSMI(config))(1))
   val pRegCache = Module(new DCPipelineRegister(new LSMI(config))(1))
-  val sram      = dontTouch(SRAM(config.dcacheDepth, UInt(config.memDataWidth.W), 0, 0, 1))
+  val sram      = dontTouch(SRAM(config.dcacheDepth, UInt(config.mmInterfaceWidth.W), 0, 0, 1))
   val self      = Wire(Decoupled(new LSMI(config)))
 
-  val sramOut = Wire(UInt(config.memDataWidth.W))
+  val sramOut = Wire(UInt(config.mmInterfaceWidth.W))
 
-  sram.readwritePorts(0).address   := io.in.bits.addr(log2Ceil(config.dcacheDepth), log2Ceil(config.memDataWidth) - 3)
+  sram.readwritePorts(0).address   := io.in.bits.addr(log2Ceil(config.dcacheDepth), log2Ceil(config.mmInterfaceWidth) - 3)
   sram.readwritePorts(0).isWrite   := io.in.bits.wStrobe.asUInt.orR
   sram.readwritePorts(0).writeData := io.in.bits.memDataWrite.asUInt
   sram.readwritePorts(0).enable    := io.in.valid

@@ -14,8 +14,8 @@ class WritebackStage(config: WoodConfig) extends Module {
   })
 
   (0 until config.nWide).foreach(j => {
-    val isStore = (io.in(j).bits.lsType === Integer.parseInt(DecodeConfig.LS_TYPE_S, 2).U)
-    val isLoad  = (io.in(j).bits.lsType === Integer.parseInt(DecodeConfig.LS_TYPE_L, 2).U)
+    val isStore = (io.in(j).bits.lsType === Integer.parseInt(DecodeConfig.LS_T_S, 2).U)
+    val isLoad  = (io.in(j).bits.lsType === Integer.parseInt(DecodeConfig.LS_T_L, 2).U)
 
     io.exceptionBus(j).bits.tag       := io.in(j).bits.rdTag
     io.exceptionBus(j).bits.pc        := io.in(j).bits.targetPC

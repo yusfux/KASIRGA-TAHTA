@@ -6,7 +6,7 @@ import chisel3.util._
 import wood.WoodConfig
 import wood.exu.{DecodeConfig, DecodeStage}
 import wood.fru.PCInst
-import wood.lsu.{LSMI, LSUnit}
+import wood.lsu.LSUnit
 
 case class MI(config: WoodConfig) extends Bundle {
   val isFloat     = UInt(DecodeConfig.subWidths(DecodeConfig.isFloatIdx).W)
@@ -20,6 +20,7 @@ case class MI(config: WoodConfig) extends Bundle {
   val writeRf     = UInt(DecodeConfig.subWidths(DecodeConfig.writeRfIdx).W)
   val exEngine    = UInt(DecodeConfig.subWidths(DecodeConfig.exEngineIdx).W)
   val exOp        = UInt(DecodeConfig.subWidths(DecodeConfig.exOpIdx).W)
+  val lsOp        = UInt(DecodeConfig.subWidths(DecodeConfig.lsOpIdx).W)
   val exception   = Bool()
   val taken       = Bool()
   val imm         = UInt(32.W) // TODO
@@ -28,8 +29,8 @@ case class MI(config: WoodConfig) extends Bundle {
   val rs3         = UInt(5.W)
   val rd          = UInt(5.W)
   val rm          = UInt(3.W)
-  val pc          = UInt(config.pcWidth.W)
-  val targetPC    = UInt(config.pcWidth.W)
+  val pc          = UInt(config.xlen.W)
+  val targetPC    = UInt(config.xlen.W)
   val rs1Tag      = UInt(config.tagWidth.W)
   val rs1TagReady = Bool()
   val rs2Tag      = UInt(config.tagWidth.W)
@@ -37,10 +38,10 @@ case class MI(config: WoodConfig) extends Bundle {
   val rs3Tag      = UInt(config.tagWidth.W)
   val rs3TagReady = Bool()
   val rdTag       = UInt(config.tagWidth.W)
-  val rs1Data     = UInt(config.dataWidth.W)
-  val rs2Data     = UInt(config.dataWidth.W)
-  val rs3Data     = UInt(config.dataWidth.W)
-  val rdData      = UInt(config.dataWidth.W)
+  val rs1Data     = UInt(config.xlen.W)
+  val rs2Data     = UInt(config.xlen.W)
+  val rs3Data     = UInt(config.xlen.W)
+  val rdData      = UInt(config.xlen.W)
   val retired     = Bool()
   val flushed     = Bool()
   val arfTag      = UInt(config.tagWidth.W)
@@ -53,8 +54,8 @@ case class RetireMI(config: WoodConfig) extends Bundle {
   val isJAL    = UInt(DecodeConfig.subWidths(DecodeConfig.isJALIdx).W)
   val writeRf  = UInt(DecodeConfig.subWidths(DecodeConfig.writeRfIdx).W)
   val rd       = UInt(5.W)
-  val pc       = UInt(config.pcWidth.W)
-  val targetPC = UInt(config.pcWidth.W)
+  val pc       = UInt(config.xlen.W)
+  val targetPC = UInt(config.xlen.W)
   val rdTag    = UInt(config.tagWidth.W)
   val retired  = Bool()
   val flushed  = Bool()
@@ -111,7 +112,7 @@ object ExEngine extends ChiselEnum {
   def toBitpat(op: ExEngine.Type): BitPat =
     BitPat(op.litValue.U(getWidth.W))
 
-  def toString(op: ExEngine.Type): String =
+  def str(op: ExEngine.Type): String =
     toBitpat(op).rawString
 }
 
@@ -122,21 +123,21 @@ class Tag(config: WoodConfig) extends Bundle {
 class TagBus(config: WoodConfig) extends Tag(config) {}
 
 class DataBus(config: WoodConfig) extends TagBus(config) {
-  val data = UInt(config.dataWidth.W)
+  val data = UInt(config.xlen.W)
 }
 
 class ExceptionBus(config: WoodConfig) extends TagBus(config) {
-  val pc        = UInt(config.pcWidth.W)
+  val pc        = UInt(config.xlen.W)
   val taken     = Bool()
   val exception = Bool()
 }
 
 class BranchPredictorBus(config: WoodConfig) extends Bundle {
-  val pc         = UInt(config.pcWidth.W)
+  val pc         = UInt(config.xlen.W)
   val mispredict = Bool()
   val taken      = Bool()
   val exception  = Bool()
-  val targetPC   = UInt(config.pcWidth.W)
+  val targetPC   = UInt(config.xlen.W)
 }
 
 class ARFBus(config: WoodConfig) extends TagBus(config) {
@@ -150,8 +151,6 @@ class ExUnit(config: WoodConfig) extends Module {
   })
 
   val lsunit = Module(new LSUnit(config))
-  val lsOuts = Wire(Vec(1, ValidIO(new LSMI(config)))) // TODO: only 1 lsu
-  lsOuts(0) <> lsunit.io.out
 
   val destage = Module(new DecodeStage(config))
   val mistage = Module(new MIStage(config))
@@ -174,8 +173,10 @@ class ExUnit(config: WoodConfig) extends Module {
   scstage.io.in <> restage.io.out1
   lsunit.io.in  <> restage.io.out2
 
-  rsstage.io.lsuIn         <> lsOuts
-  rrstage.io.lsuIn         <> lsOuts
+  rsstage.io.lsuIn(0).valid    <> lsunit.io.out(0).valid
+  rsstage.io.lsuIn(0).bits.tag <> lsunit.io.out(0).bits.tag
+
+  rrstage.io.lsuIn         <> lsunit.io.out
   lsunit.io.storeRetireBus <> rsstage.io.storeRetireBus
   lsunit.io.lsOperandBus   <> wbstage.io.lsOperandBus
 
@@ -232,8 +233,8 @@ class ExUnit(config: WoodConfig) extends Module {
   }
 
   scstage.io.wakeupBus               <> rrstage.io.wakeupBus
-  scstage.io.lsWakeupBus(0).bits.tag := lsunit.io.out.bits.rdTag
-  scstage.io.lsWakeupBus(0).valid    := lsunit.io.out.valid
+  scstage.io.lsWakeupBus(0).bits.tag := lsunit.io.out(0).bits.tag
+  scstage.io.lsWakeupBus(0).valid    := lsunit.io.out(0).valid
 
   io.bpBus <> rsstage.io.bpBus
 }

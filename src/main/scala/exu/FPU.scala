@@ -5,6 +5,7 @@ import chisel3.util._
 import wood.WoodConfig
 import wood.exu.DecodeConfig._
 
+// format: off
 object FPUOp extends ChiselEnum {
   val fadd_s, fclass_s, fcvt_s_w, fcvt_s_wu, fcvt_w_s, fcvt_wu_s, fdiv_s,
       feq_s, fle_s, flt_s, fmadd_s, fmax_s, fmin_s, fmsub_s, fmul_s,
@@ -20,7 +21,7 @@ object FPUOp extends ChiselEnum {
   def toBitpat(op: FPUOp.Type): BitPat =
     BitPat(op.litValue.U(getWidth.W))
 
-  def toString(op: FPUOp.Type): String =
+  def str(op: FPUOp.Type): String =
     toBitpat(op).rawString
 }
 
@@ -47,33 +48,33 @@ class FPU(config: WoodConfig) extends Module {
   val data1 = MuxCase(
     io.in.bits.rs1Data,
     Array(
-      (io.in.bits.operand1 === Integer.parseInt(OPERAND1_IRF, 2).U) -> io.in.bits.rs1Data,
-      (io.in.bits.operand1 === Integer.parseInt(OPERAND1_FRF, 2).U) -> io.in.bits.rs1Data,
+      (io.in.bits.operand1 === Integer.parseInt(OPSRC1_IRF, 2).U) -> io.in.bits.rs1Data,
+      (io.in.bits.operand1 === Integer.parseInt(OPSRC1_FRF, 2).U) -> io.in.bits.rs1Data,
     ).toIndexedSeq
   )
 
   val data2 = MuxCase(
     io.in.bits.rs2Data,
     Array(
-      (io.in.bits.operand2 === Integer.parseInt(OPERAND2_IRF, 2).U) -> io.in.bits.rs2Data,
-      (io.in.bits.operand2 === Integer.parseInt(OPERAND2_FRF, 2).U) -> io.in.bits.rs2Data,
-      (io.in.bits.operand2 === Integer.parseInt(OPERAND2_IMM, 2).U) -> io.in.bits.imm,
+      (io.in.bits.operand2 === Integer.parseInt(OPSRC2_IRF, 2).U) -> io.in.bits.rs2Data,
+      (io.in.bits.operand2 === Integer.parseInt(OPSRC2_FRF, 2).U) -> io.in.bits.rs2Data,
+      (io.in.bits.operand2 === Integer.parseInt(OPSRC2_IMM, 2).U) -> io.in.bits.imm,
     ).toIndexedSeq
   )
 
   val data3 = MuxCase(
     io.in.bits.rs3Data,
     Array(
-      (io.in.bits.operand3 === Integer.parseInt(OPERAND3_FRF, 2).U) -> io.in.bits.rs3Data,
-      (io.in.bits.operand3 === Integer.parseInt(OPERAND3_IMM, 2).U) -> io.in.bits.imm,
+      (io.in.bits.operand3 === Integer.parseInt(OPSRC3_FRF, 2).U) -> io.in.bits.rs3Data,
+      (io.in.bits.operand3 === Integer.parseInt(OPSRC3_IMM, 2).U) -> io.in.bits.imm,
     ).toIndexedSeq
   )
 
-  val operands = WireInit(VecInit(Seq.fill(3)(0.U(config.dataWidth.W))))
+  val operands = WireInit(VecInit(Seq.fill(3)(0.U(config.xlen.W))))
   val rndMode  = WireInit(0.U(3.W))
   val op       = WireInit(0.U(4.W))
   val opMod    = WireInit(false.B)
-  val result   = WireInit(0.U(config.dataWidth.W))
+  val result   = WireInit(0.U(config.xlen.W))
   val status   = WireInit(0.U(5.W))
 
   //TODO: ik there is a better way to do this, just can't find it now
@@ -141,3 +142,4 @@ class FPU(config: WoodConfig) extends Module {
   io.out.bits := io.in.bits
   io.out.bits.rdData := result
 }
+// format: on

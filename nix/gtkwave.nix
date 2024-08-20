@@ -37,23 +37,26 @@ stdenv.mkDerivation rec {
     sha256 = "sha256-jNgtK/Av9RC9lYZ0QNj4j9Bbm0XNMm12sEoAuD09i64=";
   };
 
-  nativeBuildInputs = [pkg-config meson ninja wrapGAppsHook];
-  buildInputs =
-    [
-      bzip2
-      glib
-      gperf
-      gtk3
-      desktop-file-utils
-      judy
-      shared-mime-info
-      tcl
-      tk
-      xz
-      flex
-      gobject-introspection
-    ]
-    ++ lib.optional stdenv.isDarwin gtk-mac-integration;
+  nativeBuildInputs = [
+    pkg-config
+    meson
+    ninja
+    wrapGAppsHook
+  ];
+  buildInputs = [
+    bzip2
+    glib
+    gperf
+    gtk3
+    desktop-file-utils
+    judy
+    shared-mime-info
+    tcl
+    tk
+    xz
+    flex
+    gobject-introspection
+  ] ++ lib.optional stdenv.isDarwin gtk-mac-integration;
 
   enableParallelBuilding = true;
   configurePhase = ''
@@ -72,7 +75,10 @@ stdenv.mkDerivation rec {
     description = "VCD/Waveform viewer for Unix and Win32";
     homepage = "http://gtkwave.sourceforge.net";
     license = lib.licenses.gpl2Plus;
-    maintainers = with lib.maintainers; [thoughtpolice jiegec];
+    maintainers = with lib.maintainers; [
+      thoughtpolice
+      jiegec
+    ];
     platforms = lib.platforms.linux ++ lib.platforms.darwin;
   };
 }

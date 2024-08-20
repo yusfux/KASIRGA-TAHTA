@@ -31,36 +31,33 @@ class DCQueueWriterSpec extends AnyFlatSpec with ChiselScalatestTester with Para
 
   "DCQueueWriter" should s"work 1 port 32 depth and zero pattern" in {
     val pattern = "zero"
-    test(new DCQueueWriter(UInt(dataWidth.W))(numPorts, depth, pattern)).withAnnotations(GetBackendAnnotation()) {
-      dut =>
-        val outSinks = dut.io.out.map(_.initSink())
+    test(new DCQueueWriter(UInt(dataWidth.W))(numPorts, depth, pattern)).withAnnotations(GetBackendAnnotation()) { dut =>
+      val outSinks = dut.io.out.map(_.initSink())
 
-        fork {
-          outSinks(0).expectDequeueSeq(getTestSeq(depth, "zero"))
-        }.joinAndStep()
+      fork {
+        outSinks(0).expectDequeueSeq(getTestSeq(depth, "zero"))
+      }.joinAndStep()
     }
   }
   "DCQueueWriter" should s"work 1 port 32 depth and one pattern" in {
     val pattern = "one"
-    test(new DCQueueWriter(UInt(dataWidth.W))(numPorts, depth, pattern)).withAnnotations(GetBackendAnnotation()) {
-      dut =>
-        val outSinks = dut.io.out.map(_.initSink())
+    test(new DCQueueWriter(UInt(dataWidth.W))(numPorts, depth, pattern)).withAnnotations(GetBackendAnnotation()) { dut =>
+      val outSinks = dut.io.out.map(_.initSink())
 
-        fork {
-          outSinks(0).expectDequeueSeq(getTestSeq(depth, "one"))
-        }.joinAndStep()
+      fork {
+        outSinks(0).expectDequeueSeq(getTestSeq(depth, "one"))
+      }.joinAndStep()
     }
   }
 
   "DCQueueWriter" should s"work 1 port 32 depth and count pattern" in {
     val pattern = "count"
-    test(new DCQueueWriter(UInt(dataWidth.W))(numPorts, depth, pattern)).withAnnotations(GetBackendAnnotation()) {
-      dut =>
-        val outSinks = dut.io.out.map(_.initSink())
+    test(new DCQueueWriter(UInt(dataWidth.W))(numPorts, depth, pattern)).withAnnotations(GetBackendAnnotation()) { dut =>
+      val outSinks = dut.io.out.map(_.initSink())
 
-        fork {
-          outSinks(0).expectDequeueSeq(getTestSeq(depth, "count"))
-        }.joinAndStep()
+      fork {
+        outSinks(0).expectDequeueSeq(getTestSeq(depth, "count"))
+      }.joinAndStep()
     }
   }
 
