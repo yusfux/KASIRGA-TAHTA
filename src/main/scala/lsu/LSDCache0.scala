@@ -98,16 +98,16 @@ class StoreQueue(config: WoodConfig) extends Module {
     recencyArray(j) := j.U - deqPtr.value
   })
 
-  val numBytes = config.dataWidth / 8
+  val numBytes = config.xlen / 8
 
   val (finalWstrobe, finalData) =
     (0 until config.lssqDepth).foldLeft((0.U(numBytes.W), VecInit(Seq.fill(numBytes)(0.U(8.W))))) {
       case ((accWstrobe, accData), j) =>
         val currentWstrobe = rows(j).io.out.bits.wStrobe
-        val currentData    = rows(j).io.out.bits.data
+        val currentData    = rows(j).io.out.bits.rs2Data
         val currentRecency = recencyArray(j)
 
-        val newWstrobe = accWstrobe | (currentWstrobe.asUInt & Fill(4, valid(j)))
+        val newWstrobe = accWstrobe | (currentWstrobe.asUInt & Fill(numBytes, valid(j)))
 
         val addrMatch = VecInit(Seq.fill(config.lssqDepth)(0.B))
         addrMatch.zipWithIndex.foreach {
@@ -124,7 +124,7 @@ class StoreQueue(config: WoodConfig) extends Module {
         }
 
         val newData = VecInit(Seq.fill(numBytes)(0.U(8.W)))
-        newData := (0 until 4).map { byteIndex =>
+        newData := (0 until numBytes).map { byteIndex =>
           val isCurrentByteValid = currentWstrobe(byteIndex)
 
           val moreRecentValid = (0 until j).map(k => addrMatch(k) && wstrobeValid(k)(byteIndex) && recencyCompare(k)).foldLeft(true.B)(_ && _)
@@ -143,7 +143,7 @@ class StoreQueue(config: WoodConfig) extends Module {
 
   io.camReadOut         := DontCare
   io.camReadOut.wStrobe := tstrobe
-  io.camReadOut.data    := finalData
+  io.camReadOut.rs2Data := finalData
 }
 
 class LSDCache0Stage(config: WoodConfig) extends Module {
@@ -157,29 +157,33 @@ class LSDCache0Stage(config: WoodConfig) extends Module {
     val outPass        = Decoupled(new LSMI(config))
   })
 
-  val pReg     = Module(new DCPipelineRegister(new LSMI(config))(1))
-  val arbiter  = Module(new Arbiter(new LSMI(config), 2))
-  val sq       = Module(new StoreQueue(config))
-  val selfPass = Wire(Decoupled(new LSMI(config)))
+  val pReg            = Module(new DCPipelineRegister(new LSMI(config))(1))
+  val retireOverrider = Module(new LSOverrideRetire(config))
+  val arbiter         = Module(new Arbiter(new LSMI(config), 2))
+  val sq              = Module(new StoreQueue(config))
+  val selfPass        = Wire(Decoupled(new LSMI(config)))
 
-  selfPass             <> io.in
-  sq.io.camReadIn      := io.in.bits.addr
-  sq.io.flush          := io.flush
-  sq.io.in.valid       := io.in.fire
-  sq.io.storeRetireBus := io.storeRetireBus
-  sq.io.in             <> io.lsAtomBus
+  retireOverrider.io.storeRetireBus <> io.storeRetireBus
 
-  (0 until config.dataWidth / 8).foreach(j => {
+  retireOverrider.io.in <> io.in
+  selfPass              <> retireOverrider.io.out
+  sq.io.camReadIn       := io.in.bits.addr
+  sq.io.flush           := io.flush
+  sq.io.in.valid        := io.in.fire
+  sq.io.storeRetireBus  := io.storeRetireBus
+  sq.io.in              <> io.lsAtomBus
+
+  (0 until config.xlen / 8).foreach(j => {
     val atomByteUpdate   = io.lsAtomBus.bits.wStrobe(j) && (io.in.bits.addr === io.lsAtomBus.bits.addr)
     val dcacheByteUpdate = io.lsDCacheBus.bits.wStrobe(j) && (io.in.bits.addr === io.lsDCacheBus.bits.addr)
 
-    selfPass.bits.data(j) := MuxCase(
-      io.in.bits.data(j),
+    selfPass.bits.rs2Data(j) := MuxCase(
+      io.in.bits.rs2Data(j),
       Array(
-        (io.in.bits.wStrobe(j))       -> io.in.bits.data(j),
-        (atomByteUpdate)              -> io.lsAtomBus.bits.data(j),
-        (dcacheByteUpdate)            -> io.lsDCacheBus.bits.data(j),
-        (sq.io.camReadOut.wStrobe(j)) -> sq.io.camReadOut.data(j)
+        (io.in.bits.wStrobe(j))       -> io.in.bits.rs2Data(j),
+        (atomByteUpdate)              -> io.lsAtomBus.bits.rs2Data(j),
+        (dcacheByteUpdate)            -> io.lsDCacheBus.bits.rs2Data(j),
+        (sq.io.camReadOut.wStrobe(j)) -> sq.io.camReadOut.rs2Data(j)
       ).toIndexedSeq
     )
     selfPass.bits.wStrobe(j) := io.in.bits.wStrobe(j) | atomByteUpdate | dcacheByteUpdate

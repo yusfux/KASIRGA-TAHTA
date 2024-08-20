@@ -6,20 +6,20 @@ import chisel3.util._
 import wood.WoodConfig
 import wood.exu.{DecodeConfig, DecodeStage}
 import wood.fru.PCInst
-import wood.lsu.LSUnit
+import wood.lsu.{LSMI, LSUnit}
 
 case class MI(config: WoodConfig) extends Bundle {
-  val isFloat     = UInt(DecodeConfig.subWidths(0).W)
-  val isBranch    = UInt(DecodeConfig.subWidths(1).W)
-  val isJAL       = UInt(DecodeConfig.subWidths(2).W)
-  val isLS        = UInt(DecodeConfig.subWidths(3).W)
-  val wakeup      = UInt(DecodeConfig.subWidths(4).W)
-  val operand1    = UInt(DecodeConfig.subWidths(5).W)
-  val operand2    = UInt(DecodeConfig.subWidths(6).W)
-  val operand3    = UInt(DecodeConfig.subWidths(7).W)
-  val writeRf     = UInt(DecodeConfig.subWidths(8).W)
-  val exEngine    = UInt(DecodeConfig.subWidths(9).W)
-  val exOp        = UInt(DecodeConfig.subWidths(10).W)
+  val isFloat     = UInt(DecodeConfig.subWidths(DecodeConfig.isFloatIdx).W)
+  val isBranch    = UInt(DecodeConfig.subWidths(DecodeConfig.isBranchIdx).W)
+  val isJAL       = UInt(DecodeConfig.subWidths(DecodeConfig.isJALIdx).W)
+  val lsType      = UInt(DecodeConfig.subWidths(DecodeConfig.lsTypeIdx).W)
+  val wakeup      = UInt(DecodeConfig.subWidths(DecodeConfig.wakeupIdx).W)
+  val operand1    = UInt(DecodeConfig.subWidths(DecodeConfig.operand1Idx).W)
+  val operand2    = UInt(DecodeConfig.subWidths(DecodeConfig.operand2Idx).W)
+  val operand3    = UInt(DecodeConfig.subWidths(DecodeConfig.operand3Idx).W)
+  val writeRf     = UInt(DecodeConfig.subWidths(DecodeConfig.writeRfIdx).W)
+  val exEngine    = UInt(DecodeConfig.subWidths(DecodeConfig.exEngineIdx).W)
+  val exOp        = UInt(DecodeConfig.subWidths(DecodeConfig.exOpIdx).W)
   val exception   = Bool()
   val taken       = Bool()
   val imm         = UInt(32.W) // TODO
@@ -49,9 +49,9 @@ case class MI(config: WoodConfig) extends Bundle {
 }
 
 case class RetireMI(config: WoodConfig) extends Bundle {
-  val isBranch = UInt(DecodeConfig.subWidths(1).W)
-  val isJAL    = UInt(DecodeConfig.subWidths(2).W)
-  val writeRf  = UInt(DecodeConfig.subWidths(6).W)
+  val isBranch = UInt(DecodeConfig.subWidths(DecodeConfig.isBranchIdx).W)
+  val isJAL    = UInt(DecodeConfig.subWidths(DecodeConfig.isJALIdx).W)
+  val writeRf  = UInt(DecodeConfig.subWidths(DecodeConfig.writeRfIdx).W)
   val rd       = UInt(5.W)
   val pc       = UInt(config.pcWidth.W)
   val targetPC = UInt(config.pcWidth.W)
@@ -150,7 +150,7 @@ class ExUnit(config: WoodConfig) extends Module {
   })
 
   val lsunit = Module(new LSUnit(config))
-  val lsOuts = Wire(Vec(1, Decoupled(new MI(config)))) // only 1 LSU for now
+  val lsOuts = Wire(Vec(1, ValidIO(new LSMI(config)))) // TODO: only 1 lsu
   lsOuts(0) <> lsunit.io.out
 
   val destage = Module(new DecodeStage(config))
@@ -174,9 +174,9 @@ class ExUnit(config: WoodConfig) extends Module {
   scstage.io.in <> restage.io.out1
   lsunit.io.in  <> restage.io.out2
 
-  exstage.io.lsuIn         <> lsOuts
+  rrstage.io.lsuIn         <> lsOuts
   lsunit.io.storeRetireBus <> rsstage.io.storeRetireBus
-  lsunit.io.lsBus          <> wbstage.io.lsBus
+  lsunit.io.lsOperandBus   <> wbstage.io.lsOperandBus
 
   restage.io.archRF <> arstage.io.archRF
 

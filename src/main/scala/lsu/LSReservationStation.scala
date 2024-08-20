@@ -3,56 +3,71 @@ package wood.lsu
 import chisel3._
 import chisel3.util._
 import wood.WoodConfig
+import wood.exu.TagBus
 
 class LSReservationStationRow(config: WoodConfig) extends Module {
+  val numBytes = config.xlen / 8
+
   val io = IO(new Bundle {
-    val in    = Flipped(ValidIO(new LSMI(config)))
-    val flush = Input(Bool())
-    val lsBus = Flipped(Vec(config.nWide, ValidIO(new LSBus(config))))
-    val out   = ValidIO(new LSMI(config))
+    val in             = Flipped(ValidIO(new LSMI(config)))
+    val flush          = Input(Bool())
+    val lsOperandBus   = Flipped(Vec(config.nWide, ValidIO(new LSBus(config))))
+    val storeRetireBus = Flipped(Vec(config.nWide, ValidIO(new TagBus(config))))
+    val out            = ValidIO(new LSMI(config))
   })
 
-  val busRdMatches = Wire(Vec(config.nWide, Bool()))
+  val operandBusMatches = Wire(Vec(config.nWide, Bool()))
+  val retireBusMatches  = Wire(Vec(config.nWide, Bool()))
 
-  val rdTagReadyNext = Wire(Bool())
-  val rowNext        = Wire(new LSMI(config))
+  val rowNext          = Wire(new LSMI(config))
+  val operandReadyNext = Wire(Bool())
 
-  val row        = RegEnable(rowNext, 0.U.asTypeOf(new LSMI(config)), 1.B)
-  val rdTagReady = RegEnable(rdTagReadyNext, 0.U, 1.B)
+  val row          = RegEnable(rowNext, 0.U.asTypeOf(new LSMI(config)), 1.B)
+  val operandReady = RegEnable(operandReadyNext, 0.U, 1.B)
 
-  val matchIndex = PriorityEncoder(busRdMatches)
+  val operandBusMatchIndex = PriorityEncoder(operandBusMatches)
+  val retireBusMatchIndex  = PriorityEncoder(retireBusMatches)
+
   when(io.flush) {
-    rowNext        := 0.U.asTypeOf(new LSMI(config))
-    rdTagReadyNext := 0.U
+    rowNext          := 0.U.asTypeOf(new LSMI(config))
+    operandReadyNext := 0.U
   }.elsewhen(io.in.valid) {
-    rowNext        := 0.U.asTypeOf(new LSMI(config))
-    rdTagReadyNext := 0.U
-    rowNext.rdTag  := io.in.bits.rdTag
+    rowNext          := 0.U.asTypeOf(new LSMI(config))
+    operandReadyNext := 0.U
+    rowNext          := io.in.bits
   }.otherwise {
-    val targetAddr = io.lsBus(matchIndex).bits.addr
-    val tdata      = Wire(Vec(config.dataWidth / 8, UInt(8.W)))
-    tdata := VecInit(Seq.tabulate(4)(j => io.lsBus(matchIndex).bits.data(8 * j + 7, 8 * j)))
+    val operandTargetAddr = io.lsOperandBus(operandBusMatchIndex).bits.targetAddr
+    val tdata             = Wire(Vec(numBytes, UInt(8.W)))
+    tdata := VecInit(Seq.tabulate(numBytes)(j => io.lsOperandBus(operandBusMatchIndex).bits.rs2Data(8 * j + 7, 8 * j)))
 
-    rowNext        := row
-    rowNext.addr   := Mux(busRdMatches.asUInt.orR, targetAddr, row.addr)
-    rowNext.data   := Mux(busRdMatches.asUInt.orR, tdata, row.data)
-    rdTagReadyNext := rdTagReady | busRdMatches.asUInt.orR
+    rowNext          := row
+    rowNext.addr     := Mux(operandBusMatches.asUInt.orR, operandTargetAddr, row.addr)
+    rowNext.rs2Data  := Mux(operandBusMatches.asUInt.orR, tdata, row.rs2Data)
+    rowNext.retired  := row.retired | retireBusMatches.asUInt.orR
+    operandReadyNext := operandReady | operandBusMatches.asUInt.orR
   }
 
   io.out.bits  := row
-  io.out.valid := rdTagReady
+  io.out.valid := operandReady
 
   for (j <- 0 until config.nWide) {
-    busRdMatches(j) := io.lsBus(j).valid & (row.rdTag === io.lsBus(j).bits.tag)
+    operandBusMatches(j) := io.lsOperandBus(j).valid & (row.rdTag === io.lsOperandBus(j).bits.rdTag)
+    retireBusMatches(j)  := io.storeRetireBus(j).valid & (row.rdTag === io.storeRetireBus(j).bits.tag)
   }
+
+  dontTouch(row.inst) // only for debugging
+  dontTouch(row.pc) // only for debugging
+  dontTouch(io.in.bits.inst) // only for debugging
+  dontTouch(io.in.bits.pc) // only for debugging
 }
 
 class LSReservationStation(config: WoodConfig) extends Module {
   val io = IO(new Bundle {
-    val in    = Flipped(Decoupled(new LSMI(config)))
-    val flush = Input(Bool())
-    val lsBus = Flipped(Vec(config.nWide, ValidIO(new LSBus(config))))
-    val out   = Decoupled(new LSMI(config))
+    val in             = Flipped(Decoupled(new LSMI(config)))
+    val flush          = Input(Bool())
+    val lsOperandBus   = Flipped(Vec(config.nWide, ValidIO(new LSBus(config))))
+    val storeRetireBus = Flipped(Vec(config.nWide, ValidIO(new TagBus(config))))
+    val out            = Decoupled(new LSMI(config))
   })
 
   val rows     = Seq.fill(config.rsDepth)(Module(new LSReservationStationRow(config)))
@@ -78,7 +93,7 @@ class LSReservationStation(config: WoodConfig) extends Module {
   }
 
   io.in.ready  := !full
-  io.out.valid := !empty
+  io.out.valid := !empty & outValid.asUInt.orR
 
   when(io.flush) {
     valid.foreach(_ := 0.B)
@@ -88,10 +103,11 @@ class LSReservationStation(config: WoodConfig) extends Module {
 
   rows.zipWithIndex.foreach {
     case (row, i) =>
-      row.io.flush    := io.flush
-      row.io.in.valid := io.in.fire && (enqPtr.value === i.U)
-      row.io.in.bits  := io.in.bits
-      row.io.lsBus    := io.lsBus
-      outValid(i)     := row.io.out.valid && (enqPtr.value === i.U) && valid(deqPtr.value)
+      row.io.flush          := io.flush
+      row.io.in.valid       := io.in.valid && (enqPtr.value === i.U) && !full
+      row.io.in.bits        := io.in.bits
+      row.io.lsOperandBus   := io.lsOperandBus
+      row.io.storeRetireBus := io.storeRetireBus
+      outValid(i)           := row.io.out.valid && (deqPtr.value === i.U) && valid(deqPtr.value)
   }
 }

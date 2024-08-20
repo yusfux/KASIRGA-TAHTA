@@ -8,6 +8,7 @@ delete wave *
 # Define nWide parameter
 set nWide 2
 set rsDepth 2
+set lsrsDepth 2
 set prfDepth 99999
 
 ################################
@@ -235,6 +236,11 @@ for {set i 0} {$i < $nWide} {incr i 1} {
   add wave -noupdate -group exunit -group wbstage -group io_exceptionBus_$i $sig_name
 }
 
+for {set i 0} {$i < $nWide} {incr i 1} {
+  set sig_name [format "/ExUnit/wbstage/io_lsOperandBus_%d*" $i]
+  add wave -noupdate -group exunit -group wbstage -group io_lsOperandBus_$i $sig_name
+}
+
 ################################
 # RBSTAGE
 add wave -noupdate -group exunit -group rbstage io_flush
@@ -349,25 +355,57 @@ for {set i 0} {$i < $nWide} {incr i 1} {
 
 
 ################################
-# LSUnit
+# LSScheduleStage
 add wave -noupdate -group exunit -group lsunit io_flush
 for {set i 0} {$i < $nWide} {incr i 1} {
-  set sig_name [format "/ExUnit/mistage/io_in_%d_bits_inst" $i]
-  add wave -noupdate -group exunit -group lsunit -group -radix RISCV io_in_$i $sig_name
+  set sig_name [format "/ExUnit/lsunit/lsscstage/io_in_%d_bits_inst" $i]
+  add wave -noupdate -group exunit -group lsunit -group lsscstage -group -radix RISCV io_in_$i $sig_name
 }
 for {set i 0} {$i < $nWide} {incr i 1} {
-  set sig_name [format "/ExUnit/mistage/io_in_%d*" $i]
-  add wave -noupdate -group exunit -group lsunit -group io_in_$i $sig_name
+  set sig_name [format "/ExUnit/lsunit/lsscstage/io_in_%d*" $i]
+  add wave -noupdate -group exunit -group lsunit -group lsscstage -group  io_in_$i $sig_name
+}
+
+add wave -noupdate -group exunit -group lsunit -group lsscstage -group -radix RISCV io_out /ExUnit/lsunit/lsscstage/io_out_bits_inst
+add wave -noupdate -group exunit -group lsunit -group lsscstage -group io_out /ExUnit/lsunit/lsscstage/io_out*
+
+for {set i 0} {$i < $nWide} {incr i 1} {
+  add wave -noupdate -group exunit -group lsunit -group lsscstage -group reservationStations_$i /ExUnit/lsunit/lsscstage/reservationStations_$i/full
 }
 
 for {set i 0} {$i < $nWide} {incr i 1} {
-  set sig_name [format "/ExUnit/mistage/io_out_%d_bits_inst" $i]
-  add wave -noupdate -group exunit -group mistage -group -radix RISCV io_out_$i $sig_name
+    for {set j 0} {$j < $lsrsDepth} {incr j 1} {
+        set sig_name [format "/ExUnit/lsunit/lsscstage/reservationStations_%d/rows_%d/row_*" $i $j]
+        add wave -noupdate -group exunit -group lsunit -group lsscstage  -group reservationStations_$i -group rows_$j $sig_name
+        add wave -noupdate -group exunit -group lsunit -group lsscstage  -group reservationStations_$i -group rows_$j /ExUnit/lsunit/lsscstage/reservationStations_$i/rows_$j/operandReady
+    }
 }
-for {set i 0} {$i < $nWide} {incr i 1} {
-  set sig_name [format "/ExUnit/mistage/io_out_%d*" $i]
-  add wave -noupdate -group exunit -group mistage -group io_out_$i $sig_name
-}
+
+################################
+# LSDCache0Stage
+add wave -noupdate -group exunit -group lsunit -group lsdc0stage -group -radix RISCV io_out /ExUnit/lsunit/lsdc0stage/io_in_bits_inst
+add wave -noupdate -group exunit -group lsunit -group lsdc0stage -group io_in /ExUnit/lsunit/lsdc0stage/io_in*
+
+add wave -noupdate -group exunit -group lsunit -group lsdc0stage -group -radix RISCV io_out /ExUnit/lsunit/lsdc0stage/io_out_bits_inst
+add wave -noupdate -group exunit -group lsunit -group lsdc0stage -group io_out /ExUnit/lsunit/lsdc0stage/io_out*
+
+################################
+# LSDCache1Stage
+add wave -noupdate -group exunit -group lsunit -group lsdc1stage -group -radix RISCV io_out /ExUnit/lsunit/lsdc1stage/io_in_bits_inst
+add wave -noupdate -group exunit -group lsunit -group lsdc1stage -group io_in /ExUnit/lsunit/lsdc1stage/io_in*
+
+add wave -noupdate -group exunit -group lsunit -group lsdc1stage -group -radix RISCV io_out /ExUnit/lsunit/lsdc1stage/io_out_bits_inst
+add wave -noupdate -group exunit -group lsunit -group lsdc1stage -group io_out /ExUnit/lsunit/lsdc1stage/io_out*
+
+################################
+# LSAtomStage
+add wave -noupdate -group exunit -group lsunit -group lsatstage -group -radix RISCV io_out /ExUnit/lsunit/lsatstage/io_in_bits_inst
+add wave -noupdate -group exunit -group lsunit -group lsatstage -group io_in /ExUnit/lsunit/lsatstage/io_in*
+
+add wave -noupdate -group exunit -group lsunit -group lsatstage -group -radix RISCV io_out /ExUnit/lsunit/lsatstage/io_out_bits_inst
+add wave -noupdate -group exunit -group lsunit -group lsatstage -group io_out /ExUnit/lsunit/lsatstage/io_out*
+
+
 
 # After all signals are added, zoom out to full view
 wave zoom full

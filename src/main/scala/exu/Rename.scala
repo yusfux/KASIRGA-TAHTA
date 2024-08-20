@@ -100,9 +100,10 @@ class RenameStage(config: WoodConfig) extends Module {
       pRegs1(j).io.in.valid := self(j).valid & (out1Ready.asUInt.andR & out1Ready.asUInt.andR & out0Ready.asUInt.andR)
       io.out1(j)            <> pRegs1(j).io.out
 
-      val isLS = (self(j).bits.isLS === Integer.parseInt(DecodeConfig.IS_LS_1, 2).U)
+      val isStore = (self(j).bits.lsType === Integer.parseInt(DecodeConfig.LS_TYPE_S, 2).U)
+      val isLoad  = (self(j).bits.lsType === Integer.parseInt(DecodeConfig.LS_TYPE_L, 2).U)
       pRegs2(j).io.in       <> self(j)
-      pRegs2(j).io.in.valid := self(j).valid & (out1Ready.asUInt.andR & out1Ready.asUInt.andR & out0Ready.asUInt.andR) & isLS
+      pRegs2(j).io.in.valid := self(j).valid & (out1Ready.asUInt.andR & out1Ready.asUInt.andR & out0Ready.asUInt.andR) & (isLoad | isStore)
       io.out2(j)            <> pRegs2(j).io.out
     })
 

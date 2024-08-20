@@ -3,6 +3,7 @@ package wood.lsu
 import chisel3._
 import chisel3.util._
 import wood.WoodConfig
+import wood.std.DCPipelineRegister
 
 class LSDummyCache(config: WoodConfig) extends Module {
   val io = IO(new Bundle {
@@ -10,16 +11,25 @@ class LSDummyCache(config: WoodConfig) extends Module {
     val out = Decoupled(new LSMI(config))
   })
 
-  val sramOut = Wire(UInt(config.dataWidth.W))
+  val numBytes = config.dcacheDataWidth / 8
 
-  val sram = dontTouch(SRAM(config.dcacheDepth, UInt(config.dataWidth.W), 0, 0, 1))
+  val pReg = Module(new DCPipelineRegister(new LSMI(config))(1))
+  val sram = dontTouch(SRAM(config.dcacheDepth, UInt(config.memDataWidth.W), 0, 0, 1))
+  val self = Wire(Decoupled(new LSMI(config)))
 
-  sram.readwritePorts(0).address   := io.in.bits.addr
+  val sramOut = Wire(UInt(config.memDataWidth.W))
+
+  sram.readwritePorts(0).address   := io.in.bits.addr(log2Ceil(config.dcacheDepth), log2Ceil(config.memDataWidth) - 3)
   sram.readwritePorts(0).isWrite   := io.in.bits.wStrobe.asUInt.orR
-  sram.readwritePorts(0).writeData := io.in.bits.data.asUInt
+  sram.readwritePorts(0).writeData := io.in.bits.memDataWrite.asUInt
   sram.readwritePorts(0).enable    := io.in.valid
   sramOut                          := sram.readwritePorts(0).readData
 
-  io.out           <> io.in
-  io.out.bits.data := VecInit(Seq.tabulate(4)(j => sramOut(8 * j + 7, 8 * j)))
+  pReg.io.valids(0) := io.in.valid
+  pReg.io.flush     := 0.B // TODO: think
+
+  self                  <> io.in
+  self.bits.memDataRead := VecInit(Seq.tabulate(numBytes)(j => sramOut(8 * j + 7, 8 * j)))
+  pReg.io.in            <> self
+  io.out                <> pReg.io.out
 }

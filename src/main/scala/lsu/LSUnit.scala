@@ -6,32 +6,51 @@ import wood.WoodConfig
 import wood.exu.{DecodeConfig, MI, TagBus}
 
 case class LSMI(config: WoodConfig) extends Bundle {
-  val addr    = UInt(config.dataWidth.W)
-  val data    = Vec(config.dataWidth / 8, UInt(8.W))
-  val result  = Vec(config.dataWidth / 8, UInt(8.W))
-  val rdTag   = UInt(config.tagWidth.W)
-  val wStrobe = Vec(config.dataWidth / 8, Bool())
-  val retired = Bool()
-  val exOp    = UInt(DecodeConfig.subWidths(8).W)
-  val inst    = UInt(32.W) // for testbench only
-  val pc      = UInt(config.pcWidth.W) // for testbench only
+  val addr         = UInt(config.xlen.W)
+  val rs2Data      = Vec(config.xlen / 8, UInt(8.W))
+  val memDataRead  = Vec(config.memDataWidth / 8, UInt(8.W))
+  val memDataWrite = Vec(config.memDataWidth / 8, UInt(8.W))
+  val rdTag        = UInt(config.tagWidth.W)
+  val retired      = Bool()
+  val wStrobe      = Vec(config.xlen / 8, Bool())
+  val exOp         = UInt(DecodeConfig.subWidths(8).W)
+  val inst         = UInt(32.W) // for testbench only
+  val pc           = UInt(config.pcWidth.W) // for testbench only
 }
 
 case class LSBus(config: WoodConfig) extends Bundle {
-  val addr = UInt(config.dataWidth.W)
-  val data = UInt(config.dataWidth.W)
-  val tag  = UInt(config.tagWidth.W)
-  val inst = UInt(32.W) // for testbench only
-  val pc   = UInt(config.pcWidth.W) // for testbench only
+  val targetAddr = UInt(config.xlen.W)
+  val rs2Data    = UInt(config.xlen.W)
+  val rdTag      = UInt(config.tagWidth.W)
+  val inst       = UInt(32.W) // for testbench only
+  val pc         = UInt(config.pcWidth.W) // for testbench only
+}
+
+class LSOverrideRetire(config: WoodConfig) extends Module {
+  val io = IO(new Bundle {
+    val in             = Flipped(Decoupled(new LSMI(config)))
+    val storeRetireBus = Flipped(Vec(config.nWide, ValidIO(new TagBus(config))))
+    val out            = Decoupled(new LSMI(config))
+  })
+
+  io.out <> io.in
+
+  val retireBusMatches = Wire(Vec(config.nWide, Bool()))
+
+  for (j <- 0 until config.nWide) {
+    retireBusMatches(j) := io.storeRetireBus(j).valid & (io.in.bits.rdTag === io.storeRetireBus(j).bits.tag)
+  }
+
+  io.out.bits.retired := retireBusMatches.asUInt.orR
 }
 
 class LSUnit(config: WoodConfig) extends Module {
   val io = IO(new Bundle {
     val in             = Flipped(Vec(config.nWide, Decoupled(new MI(config))))
     val storeRetireBus = Flipped(Vec(config.nWide, ValidIO(new TagBus(config))))
-    val lsBus          = Flipped(Vec(config.nWide, ValidIO(new LSBus(config))))
+    val lsOperandBus   = Flipped(Vec(config.nWide, ValidIO(new LSBus(config))))
     val flush          = Input(Bool())
-    val out            = Decoupled(new MI(config))
+    val out            = ValidIO(new LSMI(config))
   })
 
   val lsscstage  = Module(new LSScheduleStage(config))
@@ -50,18 +69,22 @@ class LSUnit(config: WoodConfig) extends Module {
   lsatstage.io.inPass  <> lsdc1stage.io.out
   lsatstage.io.inCache <> lsducstage.io.out
 
-  lsscstage.io.flush  := io.flush
-  lsdc0stage.io.flush := io.flush
-  lsdc1stage.io.flush := io.flush
-
-  io.out                  <> lsatstage.io.outEx
+  io.out                  <> lsatstage.io.outRF
   lsdc0stage.io.lsAtomBus <> lsatstage.io.outSQ
 
-  lsscstage.io.lsBus           <> io.lsBus
+  lsscstage.io.lsOperandBus <> io.lsOperandBus
+
+  lsscstage.io.storeRetireBus  <> io.storeRetireBus
   lsdc0stage.io.storeRetireBus <> io.storeRetireBus
+  lsdc1stage.io.storeRetireBus <> io.storeRetireBus
+  lsatstage.io.storeRetireBus  <> io.storeRetireBus
 
   lsdc0stage.io.lsDCacheBus <> lsdc1stage.io.lsDCacheBus
 
   lsdc1stage.io.lsAtomBus.bits  := lsatstage.io.outSQ.bits
   lsdc1stage.io.lsAtomBus.valid := lsatstage.io.outSQ.valid
+
+  lsscstage.io.flush  := io.flush
+  lsdc0stage.io.flush := io.flush
+  lsdc1stage.io.flush := io.flush
 }

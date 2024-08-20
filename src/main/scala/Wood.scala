@@ -27,18 +27,25 @@ case class WoodConfig(
   // ExUnitConfig
   miQueueDepth: Int = 16,
   robDepth:     Int = 16,
-  rsDepth:      Int = 4, // Reservation station depth
+  rsDepth:      Int = 2, // Reservation station depth
   //--------------
   // LsUnitConfig
-  lssqDepth:   Int = 4, // LS Store Queue Depth
-  lsrsDepth:   Int = 4, // LS reservation station Depth
-  dcacheDepth: Int = 1024
+  lssqDepth: Int = 2, // LS Store Queue Depth
+  lsrsDepth: Int = 2 // LS reservation station Depth
+  // dcacheDepth: Int = 1024
   //--------------
 ) {
+  val dcacheDepth     = memDepth // TODO: connect the cache
+  val dcacheDataWidth = memDataWidth
 
   require(
     robDepth % nWide == 0,
     "RobDepth must be divisible by nWide"
+  )
+
+  require(
+    xlen == 32,
+    "Other xlen values are not tested"
   )
 
   val prfDepth = (32 + (rsDepth * nWide) + (8 * nWide) + (robDepth * nWide))
@@ -65,9 +72,8 @@ case class WoodConfig(
   val aluCrossbarIndex = 0 // NOTE: ALU has to be 0
   val imuCrossbarIndex = 1
   val iduCrossbarIndex = 2
-  val lsuCrossbarIndex = 3
   val listExCrossbarUnits: List[Int] = List(nWide, 1, 1) // alu, mdu, idu
-  val listExUnits:         List[Int] = List(nWide, 1, 1, 1) // alu, mdu, idu, lsu
+  val listExUnits:         List[Int] = List(nWide, 1, 1) // alu, mdu, idu
 }
 
 class ReqPort(addrWidth: Int, dataWidth: Int) extends Bundle {
