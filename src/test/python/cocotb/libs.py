@@ -218,6 +218,8 @@ async def diff_traces(
     await RisingEdge(dut.clock)
 
     while True:
+        isStore = [0 for _ in range(nwide)]
+
         in_valid = [0 for _ in range(nwide)]
         in_ready = [0 for _ in range(nwide)]
         in_wrf = [0 for _ in range(nwide)]
@@ -234,6 +236,8 @@ async def diff_traces(
         retired = [0 for _ in range(nwide)]
         flushed = [0 for _ in range(nwide)]
         for n in range(0, nwide):
+            isStore[n] = getattr(dut, f"{top}rwstage.isStore_{n}").value.integer
+
             arfBus_valid[n] = getattr(
                 dut, f"{top}rwstage.io_arfBus_{n}_valid"
             ).value.integer
@@ -290,19 +294,29 @@ async def diff_traces(
                 inst_p[n] = f"{inst_p[n]}".strip()
                 rd_data_p[n] = f"x{arfBus_adr[n]:>2} {rd_data_p[n]}"
 
+                golden_result = golden_reference[n]["result"]
+                golden_pc = golden_reference[n]["pc"]
+                golden_inst = golden_reference[n]["inst"]
+
                 # print(
                 #     f"{{'pc': '{pc_p[n]}', 'inst': '{inst_p[n]}','result': '{rd_data_p[n]}', 'time': {get_sim_time(units=time_unit)}{time_unit}, 'n': {n}}}"
                 # )
 
                 assert (
-                    pc_p[n] == golden_reference[n]["pc"]
-                ), f"PC is {color(pc_p[n], Color.GREEN)} but it should be {color(golden_reference[n]['pc'], Color.YELLOW)} at {get_sim_time(units=time_unit)}{time_unit}"
+                    pc_p[n] == golden_pc
+                ), f"PC is {color(pc_p[n], Color.GREEN)} but it should be {color(golden_pc, Color.YELLOW)} at {get_sim_time(units=time_unit)}{time_unit}"
+
+                if isStore[n]:
+                    # store happens unknown time after the rob, so dont validate write data, only addr
+                    addr = "0x" + rd_data_p[n].split("0x")[-1]
+                    is_correct_addr = addr in golden_result
+                    assert is_correct_addr, f"Store Addr is {color(rd_data_p[n], Color.GREEN)} but it should be {color(golden_result, Color.YELLOW)} at {get_sim_time(units=time_unit)}{time_unit}"
+                    continue
 
                 assert (
-                    inst_p[n] == golden_reference[n]["inst"]
-                ), f"Instruction is {color(inst_p[n], Color.GREEN)} but it should be {color(golden_reference[n]['inst'], Color.YELLOW)} at {get_sim_time(units=time_unit)}{time_unit}"
+                    inst_p[n] == golden_inst
+                ), f"Instruction is {color(inst_p[n], Color.GREEN)} but it should be {color(golden_inst, Color.YELLOW)} at {get_sim_time(units=time_unit)}{time_unit}"
 
-                golden_result = golden_reference[n]["result"]
                 if not golden_result:
                     golden_result = "x 0 0x00000000"
                 if "x 0" in rd_data_p[n]:
@@ -313,7 +327,7 @@ async def diff_traces(
 
                 assert (
                     rd_data_p[n] == golden_result
-                ), f"Result is {color(rd_data_p[n], Color.GREEN)} at tag {color(arfBus_tag[n], Color.GREEN)} but it should be {color(golden_reference[n]['result'], Color.YELLOW)} at {get_sim_time(units=time_unit)}{time_unit}"
+                ), f"Result is {color(rd_data_p[n], Color.GREEN)} at tag {color(arfBus_tag[n], Color.GREEN)} but it should be {color(golden_result, Color.YELLOW)} at {get_sim_time(units=time_unit)}{time_unit}"
 
         for n in range(0, nwide):
             if retired[n] and not flushed[n]:

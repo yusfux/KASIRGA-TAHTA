@@ -7,40 +7,39 @@ import wood.exu.TagBus
 
 class LSReservationStationRow(config: WoodConfig) extends Module {
   val io = IO(new Bundle {
-    val in             = Flipped(ValidIO(new LSMI(config)))
+    val in             = Flipped(ValidIO(new LSRSMI(config)))
     val flush          = Input(Bool())
-    val lsOperandBus   = Flipped(Vec(config.nWide, ValidIO(new LSBus(config))))
+    val lsOperandBus   = Flipped(Vec(config.nWide, ValidIO(new LSOperandBus(config))))
     val storeRetireBus = Flipped(Vec(config.nWide, ValidIO(new TagBus(config))))
-    val out            = ValidIO(new LSMI(config))
+    val out            = ValidIO(new LSRSMI(config))
   })
 
   val operandBusMatches = Wire(Vec(config.nWide, Bool()))
   val retireBusMatches  = Wire(Vec(config.nWide, Bool()))
 
-  val rowNext          = Wire(new LSMI(config))
+  val rowNext          = Wire(new LSRSMI(config))
   val operandReadyNext = Wire(Bool())
 
-  val row          = RegEnable(rowNext, 0.U.asTypeOf(new LSMI(config)), 1.B)
+  val row          = RegEnable(rowNext, 0.U.asTypeOf(new LSRSMI(config)), 1.B)
   val operandReady = RegEnable(operandReadyNext, 0.U, 1.B)
 
   val operandBusMatchIndex = PriorityEncoder(operandBusMatches)
   val retireBusMatchIndex  = PriorityEncoder(retireBusMatches)
 
   when(io.flush) {
-    rowNext          := 0.U.asTypeOf(new LSMI(config))
+    rowNext          := 0.U.asTypeOf(new LSRSMI(config))
     operandReadyNext := 0.U
   }.elsewhen(io.in.valid) {
-    rowNext          := 0.U.asTypeOf(new LSMI(config))
+    rowNext          := 0.U.asTypeOf(new LSRSMI(config))
     operandReadyNext := 0.U
     rowNext          := io.in.bits
   }.otherwise {
     val operandTargetAddr = io.lsOperandBus(operandBusMatchIndex).bits.targetAddr
-    val tdata             = Wire(Vec(config.numBytes, UInt(8.W)))
-    tdata := VecInit(Seq.tabulate(config.numBytes)(j => io.lsOperandBus(operandBusMatchIndex).bits.rs2Data(8 * j + 7, 8 * j)))
+    val operandRs2        = io.lsOperandBus(operandBusMatchIndex).bits.rs2Data
 
     rowNext          := row
     rowNext.addr     := Mux(operandBusMatches.asUInt.orR, operandTargetAddr, row.addr)
-    rowNext.rs2Data  := Mux(operandBusMatches.asUInt.orR, tdata, row.rs2Data)
+    rowNext.rs2Data  := Mux(operandBusMatches.asUInt.orR, operandRs2, row.rs2Data)
     rowNext.retired  := row.retired | retireBusMatches.asUInt.orR
     operandReadyNext := operandReady | operandBusMatches.asUInt.orR
   }
@@ -61,11 +60,11 @@ class LSReservationStationRow(config: WoodConfig) extends Module {
 
 class LSReservationStation(config: WoodConfig) extends Module {
   val io = IO(new Bundle {
-    val in             = Flipped(Decoupled(new LSMI(config)))
+    val in             = Flipped(Decoupled(new LSRSMI(config)))
     val flush          = Input(Bool())
-    val lsOperandBus   = Flipped(Vec(config.nWide, ValidIO(new LSBus(config))))
+    val lsOperandBus   = Flipped(Vec(config.nWide, ValidIO(new LSOperandBus(config))))
     val storeRetireBus = Flipped(Vec(config.nWide, ValidIO(new TagBus(config))))
-    val out            = Decoupled(new LSMI(config))
+    val out            = Decoupled(new LSRSMI(config))
   })
 
   val rows     = Seq.fill(config.rsDepth)(Module(new LSReservationStationRow(config)))

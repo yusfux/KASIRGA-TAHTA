@@ -110,6 +110,7 @@ pkgs.writers.writePython3Bin "asmgen" { } ''
                                         "clmulh", "clmulr"]
           self.branch_instructions = ["beq", "bne", "bge", "bgeu", "blt", "bltu"]
           self.load_instructions = ["lw", "lh", "lb", "lbu", "lhu"]
+          self.store_instructions = ["sw", "sh", "sb"]
 
       def init_regs(self) -> List[str]:
           asm_code = []
@@ -147,6 +148,8 @@ pkgs.writers.writePython3Bin "asmgen" { } ''
               return f"{inst_type} {register2}, {register1}"
           elif inst_type in self.load_instructions:
               return self.generate_load_inst(inst_type, num_data)
+          elif inst_type in self.store_instructions:
+              return self.generate_load_store_inst(inst_type, num_data)
           else:
               raise ValueError(f"Unsupported inst type: {inst_type}")
 
@@ -167,6 +170,21 @@ pkgs.writers.writePython3Bin "asmgen" { } ''
               load_test.append(f"la {reg1}, tdat{data_index}")
               load_test.append(f"{inst_type} {reg2}, 0({reg1})")
               return "\n".join(load_test)
+          else:
+              raise 1
+
+      def generate_load_store_inst(self, inst_type: str, num_data) -> str:
+          if inst_type in self.store_instructions:
+              registers = [f"x{i}" for i in range(1, 32)]
+              load_store_test = [""]
+              reg1 = random.choice(registers)
+              reg2 = random.choice(registers)
+              reg3 = random.choice(registers)
+              data_index = random.randint(1, num_data)
+              load_store_test.append(f"la {reg1}, tdat{data_index}")
+              load_store_test.append(f"{inst_type} {reg2}, 0({reg1})")
+              load_store_test.append(f"lw {reg3}, 0({reg1})")
+              return "\n".join(load_store_test)
           else:
               raise 1
 
@@ -268,6 +286,7 @@ pkgs.writers.writePython3Bin "asmgen" { } ''
                    "orn", "rol", "ror", "xnor", "bclr",
                    "bext", "binv", "bset", "clmul",
                    "lw", "lh", "lb", "lbu", "lhu",
+                   "sw", "sh", "sb",
                    "clmulh", "clmulr"],
           required=True,
           help="inst type to generate (li, add, sub, addi, xori, ori, or andi)",

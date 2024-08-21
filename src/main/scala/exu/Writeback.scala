@@ -3,13 +3,13 @@ package wood.exu
 import chisel3._
 import chisel3.util._
 import wood.WoodConfig
-import wood.lsu.LSBus
+import wood.lsu.LSOperandBus
 
 class WritebackStage(config: WoodConfig) extends Module {
   val io = IO(new Bundle {
     val in           = Flipped(Vec(config.nWide, Decoupled(new MI(config))))
     val writebackBus = Vec(config.nWide, ValidIO(new DataBus(config)))
-    val lsOperandBus = Vec(config.nWide, ValidIO(new LSBus(config)))
+    val lsOperandBus = Vec(config.nWide, ValidIO(new LSOperandBus(config)))
     val exceptionBus = Vec(config.nWide, ValidIO(new ExceptionBus(config)))
   })
 
@@ -26,13 +26,16 @@ class WritebackStage(config: WoodConfig) extends Module {
     io.writebackBus(j).bits.tag  := io.in(j).bits.rdTag
     io.writebackBus(j).bits.data := io.in(j).bits.rdData
     io.writebackBus(j).valid     := io.in(j).valid && !isLoad
-    io.in(j).ready               := 1.U // This stage is always ready
 
     io.lsOperandBus(j).bits.targetAddr := io.in(j).bits.rdData
     io.lsOperandBus(j).bits.rs2Data    := io.in(j).bits.rs2Data
     io.lsOperandBus(j).bits.rdTag      := io.in(j).bits.rdTag
-    io.lsOperandBus(j).bits.inst       := io.in(j).bits.inst // debug only
-    io.lsOperandBus(j).bits.pc         := io.in(j).bits.pc // debug only
     io.lsOperandBus(j).valid           := io.in(j).valid && (isLoad | isStore)
+
+    io.in(j).ready := 1.U // This stage is always ready
+
+    dontTouch(io.in(j).bits.inst) // debug only
+    dontTouch(io.in(j).bits.pc) // debug only
   })
+
 }

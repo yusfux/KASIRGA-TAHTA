@@ -52,6 +52,7 @@ case class MI(config: WoodConfig) extends Bundle {
 case class RetireMI(config: WoodConfig) extends Bundle {
   val isBranch = UInt(DecodeConfig.subWidths(DecodeConfig.isBranchIdx).W)
   val isJAL    = UInt(DecodeConfig.subWidths(DecodeConfig.isJALIdx).W)
+  val lsType   = UInt(DecodeConfig.subWidths(DecodeConfig.lsTypeIdx).W)
   val writeRf  = UInt(DecodeConfig.subWidths(DecodeConfig.writeRfIdx).W)
   val rd       = UInt(5.W)
   val pc       = UInt(config.xlen.W)

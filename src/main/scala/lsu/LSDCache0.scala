@@ -8,35 +8,29 @@ import wood.std.DCPipelineRegister
 
 class StoreQueueRow(config: WoodConfig) extends Module {
   val io = IO(new Bundle {
-    val in             = Flipped(ValidIO(new LSMI(config)))
+    val in             = Flipped(ValidIO(new LSCMI(config)))
     val flush          = Input(Bool())
     val storeRetireBus = Flipped(Vec(config.nWide, ValidIO(new TagBus(config))))
-    val out            = ValidIO(new LSMI(config))
+    val out            = ValidIO(new LSCMI(config))
   })
 
   val busRdMatches = Wire(Vec(config.nWide, Bool()))
+  val rowNext      = Wire(new LSCMI(config))
 
-  val commitableNext = Wire(Bool())
-  val rowNext        = Wire(new LSMI(config))
-
-  val row        = RegEnable(rowNext, 0.U.asTypeOf(new LSMI(config)), 1.B)
-  val commitable = RegEnable(commitableNext, 0.U, 1.B)
+  val row = RegEnable(rowNext, 0.U.asTypeOf(new LSCMI(config)), 1.B)
 
   val matchIndex = PriorityEncoder(busRdMatches)
   when(io.flush) {
-    rowNext        := 0.U.asTypeOf(new LSMI(config))
-    commitableNext := 0.U
+    rowNext := 0.U.asTypeOf(new LSCMI(config))
   }.elsewhen(io.in.valid) {
-    rowNext        := 0.U.asTypeOf(new LSMI(config))
-    commitableNext := 0.U
-    rowNext.rdTag  := io.in.bits.rdTag
+    rowNext := io.in.bits
   }.otherwise {
-    rowNext        := row
-    commitableNext := commitable | busRdMatches.asUInt.orR
+    rowNext         := row
+    rowNext.retired := row.retired | busRdMatches.asUInt.orR
   }
 
   io.out.bits  := row
-  io.out.valid := commitable
+  io.out.valid := row.retired
 
   for (j <- 0 until config.nWide) {
     busRdMatches(j) := io.storeRetireBus(j).valid & (row.rdTag === io.storeRetireBus(j).bits.tag)
@@ -45,12 +39,12 @@ class StoreQueueRow(config: WoodConfig) extends Module {
 
 class StoreQueue(config: WoodConfig) extends Module {
   val io = IO(new Bundle {
-    val in             = Flipped(Decoupled(new LSMI(config)))
+    val in             = Flipped(Decoupled(new LSCMI(config)))
     val camReadIn      = Input(UInt(config.xlen.W))
     val storeRetireBus = Input(Vec(config.nWide, ValidIO(new TagBus(config))))
     val flush          = Input(Bool())
-    val camReadOut     = Output(new LSMI(config))
-    val out            = Decoupled(new LSMI(config))
+    val camReadOut     = Output(new LSCMI(config))
+    val out            = Decoupled(new LSCMI(config))
   })
 
   val rows     = Seq.fill(config.lsSQDepth)(Module(new StoreQueueRow(config)))
@@ -99,18 +93,21 @@ class StoreQueue(config: WoodConfig) extends Module {
   })
 
   val (finalWstrobe, finalData) =
-    (0 until config.lsSQDepth).foldLeft((0.U(config.numBytes.W), VecInit(Seq.fill(config.numBytes)(0.U(8.W))))) {
+    (0 until config.lsSQDepth).foldLeft((0.U(config.numDCacheLineBytes.W), VecInit(Seq.fill(config.numDCacheLineBytes)(0.U(8.W))))) {
       case ((accWstrobe, accData), j) =>
         val currentWstrobe = rows(j).io.out.bits.wStrobe
-        val currentData    = rows(j).io.out.bits.rs2Data
+        val currentData    = rows(j).io.out.bits.cacheLine
         val currentRecency = recencyArray(j)
 
-        val newWstrobe = accWstrobe | (currentWstrobe.asUInt & Fill(config.numBytes, valid(j)))
+        val newWstrobe = accWstrobe | (currentWstrobe.asUInt & Fill(config.numDCacheLineBytes, valid(j)))
 
         val addrMatch = VecInit(Seq.fill(config.lsSQDepth)(0.B))
         addrMatch.zipWithIndex.foreach {
-          case (row, j) =>
-            addrMatch(j) := rows(j).io.out.bits.addr === io.camReadIn
+          case (row, j) => {
+            val rowAddr = rows(j).io.out.bits.addr(config.xlen - 1, config.dCacheAddrStartIndex)
+            val camAddr = io.camReadIn(config.xlen - 1, config.dCacheAddrStartIndex)
+            addrMatch(j) := rowAddr === camAddr
+          }
         }
 
         val wstrobeValid = VecInit(rows.map(_.io.out.bits.wStrobe))
@@ -121,8 +118,8 @@ class StoreQueue(config: WoodConfig) extends Module {
             recencyCompare(j) := currentRecency > recencyArray(j)
         }
 
-        val newData = VecInit(Seq.fill(config.numBytes)(0.U(8.W)))
-        newData := (0 until config.numBytes).map { byteIndex =>
+        val newData = VecInit(Seq.fill(config.numDCacheLineBytes)(0.U(8.W)))
+        newData := (0 until config.numDCacheLineBytes).map { byteIndex =>
           val isCurrentByteValid = currentWstrobe(byteIndex)
 
           val moreRecentValid = (0 until j).map(k => addrMatch(k) && wstrobeValid(k)(byteIndex) && recencyCompare(k)).foldLeft(true.B)(_ && _)
@@ -136,30 +133,30 @@ class StoreQueue(config: WoodConfig) extends Module {
         (newWstrobe, newData)
     }
 
-  val tstrobe = Wire(Vec(config.numBytes, Bool()))
-  tstrobe := VecInit(Seq.tabulate(config.numBytes)(j => finalWstrobe(j)))
+  val tstrobe = Wire(Vec(config.numDCacheLineBytes, Bool()))
+  tstrobe := VecInit(Seq.tabulate(config.numDCacheLineBytes)(j => finalWstrobe(j)))
 
-  io.camReadOut         := DontCare
-  io.camReadOut.wStrobe := tstrobe
-  io.camReadOut.rs2Data := finalData
+  io.camReadOut           := DontCare
+  io.camReadOut.wStrobe   := tstrobe
+  io.camReadOut.cacheLine := finalData
 }
 
 class LSDCache0Stage(config: WoodConfig) extends Module {
   val io = IO(new Bundle {
-    val in             = Flipped(Decoupled(new LSMI(config)))
-    val lsAtomBus      = Flipped(DecoupledIO(new LSMI(config)))
-    val lsDCacheBus    = Flipped(ValidIO(new LSMI(config)))
+    val in             = Flipped(Decoupled(new LSCMI(config)))
+    val lsAtomBus      = Flipped(DecoupledIO(new LSCMI(config)))
+    val lsDCache1Bus   = Flipped(ValidIO(new LSCMI(config)))
     val storeRetireBus = Flipped(Vec(config.nWide, ValidIO(new TagBus(config))))
     val flush          = Input(Bool())
-    val outCache       = Decoupled(new LSMI(config)) // comb out
-    val outPass        = Decoupled(new LSMI(config))
+    val outCache       = Decoupled(new LSCMI(config)) // comb out
+    val outPass        = Decoupled(new LSCMI(config))
   })
 
-  val pReg            = Module(new DCPipelineRegister(new LSMI(config))(1))
-  val retireOverrider = Module(new LSOverrideRetire(config))
-  val arbiter         = Module(new Arbiter(new LSMI(config), 2))
+  val pReg            = Module(new DCPipelineRegister(new LSCMI(config))(1))
+  val retireOverrider = Module(new LSOverrideRetire(new LSCMI(config))(config))
+  val arbiter         = Module(new Arbiter(new LSCMI(config), 2))
   val sq              = Module(new StoreQueue(config))
-  val selfPass        = Wire(Decoupled(new LSMI(config)))
+  val selfPass        = Wire(Decoupled(new LSCMI(config)))
 
   retireOverrider.io.storeRetireBus <> io.storeRetireBus
 
@@ -171,20 +168,24 @@ class LSDCache0Stage(config: WoodConfig) extends Module {
   sq.io.storeRetireBus  := io.storeRetireBus
   sq.io.in              <> io.lsAtomBus
 
-  (0 until config.xlen / 8).foreach(j => {
-    val atomByteUpdate   = io.lsAtomBus.bits.wStrobe(j) && (io.in.bits.addr === io.lsAtomBus.bits.addr)
-    val dcacheByteUpdate = io.lsDCacheBus.bits.wStrobe(j) && (io.in.bits.addr === io.lsDCacheBus.bits.addr)
+  (0 until config.numDCacheLineBytes).foreach(j => {
+    val selfAddr    = io.in.bits.addr(config.xlen - 1, config.dCacheAddrStartIndex)
+    val atomAddr    = io.lsAtomBus.bits.addr(config.xlen - 1, config.dCacheAddrStartIndex)
+    val dcache1Addr = io.lsAtomBus.bits.addr(config.xlen - 1, config.dCacheAddrStartIndex)
 
-    selfPass.bits.rs2Data(j) := MuxCase(
-      io.in.bits.rs2Data(j),
+    val atomByteUpdate    = io.lsAtomBus.bits.wStrobe(j) && (atomAddr === selfAddr)
+    val dcache1ByteUpdate = io.lsDCache1Bus.bits.wStrobe(j) && (dcache1Addr === selfAddr)
+
+    selfPass.bits.cacheLine(j) := MuxCase(
+      io.in.bits.cacheLine(j),
       Array(
-        (io.in.bits.wStrobe(j))       -> io.in.bits.rs2Data(j),
-        (atomByteUpdate)              -> io.lsAtomBus.bits.rs2Data(j),
-        (dcacheByteUpdate)            -> io.lsDCacheBus.bits.rs2Data(j),
-        (sq.io.camReadOut.wStrobe(j)) -> sq.io.camReadOut.rs2Data(j)
+        (io.in.bits.wStrobe(j))       -> io.in.bits.cacheLine(j),
+        (dcache1ByteUpdate)           -> io.lsDCache1Bus.bits.cacheLine(j),
+        (atomByteUpdate)              -> io.lsAtomBus.bits.cacheLine(j),
+        (sq.io.camReadOut.wStrobe(j)) -> sq.io.camReadOut.cacheLine(j)
       ).toIndexedSeq
     )
-    selfPass.bits.wStrobe(j) := io.in.bits.wStrobe(j) | atomByteUpdate | dcacheByteUpdate
+    selfPass.bits.wStrobe(j) := io.in.bits.wStrobe(j) | atomByteUpdate | dcache1ByteUpdate
   })
 
   io.in.ready := io.outPass.ready & io.outCache.ready & (arbiter.io.chosen === 1.U)

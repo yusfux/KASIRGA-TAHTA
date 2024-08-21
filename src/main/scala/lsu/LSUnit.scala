@@ -19,32 +19,36 @@ object LSOp extends ChiselEnum {
 }
 // format: on
 
-case class LSMI(config: WoodConfig) extends Bundle {
-  val addr         = UInt(config.xlen.W)
-  val rs2Data      = Vec(config.xlen / 8, UInt(8.W))
-  val memDataRead  = Vec(config.mmInterfaceWidth / 8, UInt(8.W))
-  val memDataWrite = Vec(config.mmInterfaceWidth / 8, UInt(8.W))
-  val rdTag        = UInt(config.tagWidth.W)
-  val retired      = Bool()
-  val wStrobe      = Vec(config.xlen / 8, Bool())
-  val lsOp         = UInt(DecodeConfig.subWidths(DecodeConfig.lsOpIdx).W)
-  val inst         = UInt(32.W) // for testbench only
-  val pc           = UInt(config.xlen.W) // for testbench only
+class LSINFO(config: WoodConfig) extends Bundle {
+  val retired = Bool()
+  val store   = Bool()
+  val addr    = UInt(config.xlen.W)
+  val rdTag   = UInt(config.tagWidth.W)
+  val inst    = UInt(32.W) // for testbench only
+  val pc      = UInt(config.xlen.W) // for testbench only
 }
 
-case class LSBus(config: WoodConfig) extends Bundle {
+class LSRSMI(config: WoodConfig) extends LSINFO(config) { // Load store reservation station micro instruction
+  val rs2Data = UInt(config.xlen.W)
+  val lsOp    = UInt(DecodeConfig.subWidths(DecodeConfig.lsOpIdx).W)
+}
+
+class LSCMI(config: WoodConfig) extends LSRSMI(config) { // Load store load micro instruction
+  val cacheLine = Vec(config.numDCacheLineBytes, UInt(8.W))
+  val wStrobe   = Vec(config.numDCacheLineBytes, Bool()) // Required for CAM reads only
+}
+
+case class LSOperandBus(config: WoodConfig) extends Bundle {
   val targetAddr = UInt(config.xlen.W)
   val rs2Data    = UInt(config.xlen.W)
   val rdTag      = UInt(config.tagWidth.W)
-  val inst       = UInt(32.W) // for testbench only
-  val pc         = UInt(config.xlen.W) // for testbench only
 }
 
-class LSOverrideRetire(config: WoodConfig) extends Module {
+class LSOverrideRetire[T <: LSINFO](gen: T)(config: WoodConfig) extends Module {
   val io = IO(new Bundle {
-    val in             = Flipped(Decoupled(new LSMI(config)))
+    val in             = Flipped(Decoupled(gen.cloneType))
     val storeRetireBus = Flipped(Vec(config.nWide, ValidIO(new TagBus(config))))
-    val out            = Decoupled(new LSMI(config))
+    val out            = Decoupled(gen.cloneType)
   })
 
   io.out <> io.in
@@ -62,7 +66,7 @@ class LSUnit(config: WoodConfig) extends Module {
   val io = IO(new Bundle {
     val in             = Flipped(Vec(config.nWide, Decoupled(new MI(config))))
     val storeRetireBus = Flipped(Vec(config.nWide, ValidIO(new TagBus(config))))
-    val lsOperandBus   = Flipped(Vec(config.nWide, ValidIO(new LSBus(config))))
+    val lsOperandBus   = Flipped(Vec(config.nWide, ValidIO(new LSOperandBus(config))))
     val flush          = Input(Bool())
     val out            = Vec(1, ValidIO(new DataBus(config)))
   })
@@ -93,7 +97,7 @@ class LSUnit(config: WoodConfig) extends Module {
   lsdc1stage.io.storeRetireBus <> io.storeRetireBus
   lsatstage.io.storeRetireBus  <> io.storeRetireBus
 
-  lsdc0stage.io.lsDCacheBus <> lsdc1stage.io.lsDCacheBus
+  lsdc0stage.io.lsDCache1Bus <> lsdc1stage.io.lsDCache1Bus
 
   lsdc1stage.io.lsAtomBus.bits  := lsatstage.io.outSQ.bits
   lsdc1stage.io.lsAtomBus.valid := lsatstage.io.outSQ.valid

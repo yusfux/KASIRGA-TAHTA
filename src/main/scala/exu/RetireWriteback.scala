@@ -62,5 +62,11 @@ class RetireWritebackStage(config: WoodConfig) extends Module {
     dontTouch(io.in(j).bits.inst) // for testbench only
     dontTouch(io.in(j).bits.pc) // for testbench only
     dontTouch(io.in(j).bits.flushed) // for testbench only
+    dontTouch(io.in(j).bits.lsType) // for testbench only
+    val isStore = Wire(Vec(config.nWide, Bool()))
+    (0 until config.nWide).foreach(j => {
+      isStore(j) := (io.in(j).bits.lsType === Integer.parseInt(DecodeConfig.LS_T_S, 2).U)
+    })
+    dontTouch(isStore) // for testbench only
   })
 }

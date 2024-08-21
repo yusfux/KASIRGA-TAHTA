@@ -33,17 +33,17 @@ class LSExtend(config: WoodConfig) extends Module {
 
 class LSAtom(config: WoodConfig) extends Module {
   val io = IO(new Bundle {
-    val inPass         = Flipped(Decoupled(new LSMI(config)))
-    val inCache        = Flipped(Decoupled(new LSMI(config)))
+    val inPass         = Flipped(Decoupled(new LSCMI(config)))
+    val inCache        = Flipped(Decoupled(new LSCMI(config)))
     val storeRetireBus = Flipped(Vec(config.nWide, ValidIO(new TagBus(config))))
-    val outSQ          = Decoupled(new LSMI(config)) // TODO ready
+    val outSQ          = Decoupled(new LSCMI(config)) // TODO ready
     val outRF          = Vec(1, ValidIO(new DataBus(config)))
   })
 
   val extender        = Module(new LSExtend(config))
-  val retireOverrider = Module(new LSOverrideRetire(config))
+  val retireOverrider = Module(new LSOverrideRetire(new LSCMI(config))(config))
   val alu             = Module(new ALUAtom(config))
-  val selfMerged      = Wire(Decoupled(new LSMI(config)))
+  val selfMerged      = Wire(Decoupled(new LSCMI(config)))
 
   selfMerged       <> io.inCache
   selfMerged.ready := io.outSQ.ready
@@ -51,17 +51,17 @@ class LSAtom(config: WoodConfig) extends Module {
 
   val isWriteOperation = selfMerged.bits.wStrobe.asUInt.orR
 
-  (0 until config.xlen / 8).foreach(j => {
-    val atomByteUpdate = io.inPass.bits.wStrobe(j) && (io.inPass.bits.addr === io.inCache.bits.addr)
+  // apply accumulated writes to the data read from cache
+  (0 until config.numDCacheLineBytes).foreach(j => {
+    // assert(io.inPass.bits.addr === io.inCache.bits.addr) //  https://github.com/llvm/circt/issues/6970
 
-    selfMerged.bits.memDataRead(j) := MuxCase(
-      io.inCache.bits.memDataRead(j),
+    selfMerged.bits.cacheLine(j) := MuxCase(
+      io.inCache.bits.cacheLine(j),
       Array(
-        (io.inCache.bits.wStrobe(j)) -> io.inCache.bits.memDataRead(j),
-        (atomByteUpdate)             -> io.inPass.bits.memDataRead(j)
+        (io.inPass.bits.wStrobe(j)) -> io.inPass.bits.cacheLine(j)
       ).toIndexedSeq
     )
-    selfMerged.bits.wStrobe(j) := io.inCache.bits.wStrobe(j) | atomByteUpdate
+    selfMerged.bits.wStrobe(j) := io.inPass.bits.wStrobe(j)
   })
 
   retireOverrider.io.storeRetireBus := io.storeRetireBus
@@ -75,9 +75,9 @@ class LSAtom(config: WoodConfig) extends Module {
   io.outSQ              <> retireOverrider.io.out
   io.outSQ.valid        := retireOverrider.io.out.valid & isWriteOperation
 
-  val addrOffset  = (selfMerged.bits.addr(log2Ceil(config.mmInterfaceWidth / 8) - 1, 2))
+  val addrOffset  = (selfMerged.bits.addr(log2Ceil(config.numDCacheLineBytes) - 1, 2))
   val shiftAmount = addrOffset * (config.xlen).U
-  val data        = (selfMerged.bits.memDataRead.asUInt >> shiftAmount)(config.xlen, 0)
+  val data        = (selfMerged.bits.cacheLine.asUInt >> shiftAmount)(config.xlen, 0)
 
   extender.io.inData    := data
   extender.io.lsOp      := selfMerged.bits.lsOp

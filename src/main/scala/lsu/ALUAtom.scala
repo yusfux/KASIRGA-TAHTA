@@ -6,8 +6,8 @@ import wood.WoodConfig
 
 class ALUAtom(config: WoodConfig) extends Module {
   val io = IO(new Bundle {
-    val in  = Flipped(Decoupled(new LSMI(config)))
-    val out = Decoupled(new LSMI(config))
+    val in  = Flipped(Decoupled(new LSCMI(config)))
+    val out = Decoupled(new LSCMI(config))
   })
 
   val rawOp = Wire(UInt(LSOp.getWidth.W))
@@ -15,7 +15,7 @@ class ALUAtom(config: WoodConfig) extends Module {
   val (control, valid) = LSOp.safe(rawOp)
 
   val data1   = io.in.bits.rs2Data.asUInt
-  val memData = io.in.bits.memDataRead.asUInt
+  val memData = io.in.bits.cacheLine.asUInt
 
   val addrOffset  = (io.in.bits.addr(log2Ceil(config.mmInterfaceWidth / 8) - 1, 2))
   val shiftAmount = addrOffset * (config.xlen).U
@@ -37,19 +37,19 @@ class ALUAtom(config: WoodConfig) extends Module {
     is(LSOp.amomin)  { result := Mux((data1.asSInt < data2.asSInt),data1,data2)}
     is(LSOp.amominu) { result := Mux((data1        < data2       ),data1,data2)}
   }
+// format: on
 
   // Prepare the output data
   val outputData = Wire(Vec(config.mmInterfaceWidth / 8, UInt(8.W)))
-  outputData := io.in.bits.memDataRead
+  outputData := io.in.bits.cacheLine
 
   // Update only the relevant 32-bit segment
-  val mask = ("b" + ("1" * config.xlen)).U << shiftAmount
+  val mask           = ("b" + ("1" * config.xlen)).U << shiftAmount
   val updatedMemData = (memData & ~mask) | (result.asUInt << shiftAmount)
   outputData := updatedMemData.asTypeOf(Vec(config.mmInterfaceWidth / 8, UInt(8.W)))
 
-  io.out.bits              := io.in.bits
-  io.out.bits.memDataWrite := outputData
-  io.out.valid             := io.in.valid
-  io.in.ready              := io.out.ready
-// format: on
+  io.out.bits           := io.in.bits
+  io.out.bits.cacheLine := outputData
+  io.out.valid          := io.in.valid
+  io.in.ready           := io.out.ready
 }

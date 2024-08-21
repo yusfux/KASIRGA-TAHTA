@@ -45,7 +45,8 @@ class ROBStage(config: WoodConfig) extends Module {
     remi.bits.flushed  := mi.bits.flushed | io.flush
     remi.bits.arfTag   := mi.bits.arfTag
     remi.bits.arfValid := mi.bits.arfValid
-    remi.bits.inst     := mi.bits.inst
+    remi.bits.lsType   := mi.bits.lsType // debug only
+    remi.bits.inst     := mi.bits.inst // debug only
     remi
   }
 

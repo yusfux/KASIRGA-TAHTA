@@ -31,9 +31,13 @@ case class WoodConfig(
   lsRSDepth: Int = 2 // LS reservation station Depth
   //--------------
 ) {
-  val dcacheDepth     = mmDepth // TODO: connect the cache
-  val dCacheLineWidth = mmInterfaceWidth
-  val iCacheLineWidth = mmInterfaceWidth // TODO set or use this
+  val dcacheDepth          = mmDepth // TODO: connect the cache
+  val dCacheLineWidth      = mmInterfaceWidth
+  val iCacheLineWidth      = mmInterfaceWidth // TODO set or use this
+  val numDCacheLineBytes   = dCacheLineWidth / 8
+  val dCacheAddrStartIndex = log2Ceil(numDCacheLineBytes) - 1
+
+  val numBytes = xlen / 8
 
   require(
     robDepth % nWide == 0,
@@ -71,7 +75,6 @@ case class WoodConfig(
   val listExCrossbarUnits: List[Int] = List(nWide, 1, 1) // alu, mdu, idu
   val listExUnits:         List[Int] = List(nWide, 1, 1) // alu, mdu, idu
 
-  val numBytes = xlen / 8
 }
 
 class ReqPort(addrWidth: Int, dataWidth: Int) extends Bundle {
