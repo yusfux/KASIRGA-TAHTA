@@ -48,25 +48,25 @@ class FPU(config: WoodConfig) extends Module {
   val data1 = MuxCase(
     io.in.bits.rs1Data,
     Array(
-      (io.in.bits.operand1 === Integer.parseInt(OPSRC1_IRF, 2).U) -> io.in.bits.rs1Data,
-      (io.in.bits.operand1 === Integer.parseInt(OPSRC1_FRF, 2).U) -> io.in.bits.rs1Data,
+      (io.in.bits.opsrc1 === Integer.parseInt(OPSRC1_IRF, 2).U) -> io.in.bits.rs1Data,
+      (io.in.bits.opsrc1 === Integer.parseInt(OPSRC1_FRF, 2).U) -> io.in.bits.rs1Data,
     ).toIndexedSeq
   )
 
   val data2 = MuxCase(
     io.in.bits.rs2Data,
     Array(
-      (io.in.bits.operand2 === Integer.parseInt(OPSRC2_IRF, 2).U) -> io.in.bits.rs2Data,
-      (io.in.bits.operand2 === Integer.parseInt(OPSRC2_FRF, 2).U) -> io.in.bits.rs2Data,
-      (io.in.bits.operand2 === Integer.parseInt(OPSRC2_IMM, 2).U) -> io.in.bits.imm,
+      (io.in.bits.opsrc2 === Integer.parseInt(OPSRC2_IRF, 2).U) -> io.in.bits.rs2Data,
+      (io.in.bits.opsrc2 === Integer.parseInt(OPSRC2_FRF, 2).U) -> io.in.bits.rs2Data,
+      (io.in.bits.opsrc2 === Integer.parseInt(OPSRC2_IMM, 2).U) -> io.in.bits.imm,
     ).toIndexedSeq
   )
 
   val data3 = MuxCase(
     io.in.bits.rs3Data,
     Array(
-      (io.in.bits.operand3 === Integer.parseInt(OPSRC3_FRF, 2).U) -> io.in.bits.rs3Data,
-      (io.in.bits.operand3 === Integer.parseInt(OPSRC3_IMM, 2).U) -> io.in.bits.imm,
+      (io.in.bits.opsrc3 === Integer.parseInt(OPSRC3_FRF, 2).U) -> io.in.bits.rs3Data,
+      (io.in.bits.opsrc3 === Integer.parseInt(OPSRC3_IMM, 2).U) -> io.in.bits.imm,
     ).toIndexedSeq
   )
 

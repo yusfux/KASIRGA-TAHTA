@@ -40,15 +40,19 @@ class ALU(config: WoodConfig) extends Module {
   val data1 = MuxCase(
     io.in.bits.rs1Data,
     Array(
-      (io.in.bits.operand1 === Integer.parseInt(OPSRC1_IRF, 2).U) -> io.in.bits.rs1Data,
-      (io.in.bits.operand1 === Integer.parseInt(OPSRC1_PC, 2).U)  -> io.in.bits.pc
+      (io.in.bits.opsrc1 === Integer.parseInt(OPSRC1_IRF, 2).U) -> io.in.bits.rs1Data,
+      (io.in.bits.opsrc1 === Integer.parseInt(OPSRC1_PC, 2).U)  -> io.in.bits.pc
     ).toIndexedSeq
   )
+
+  val isStore = (io.in.bits.lsType === Integer.parseInt(DecodeConfig.LS_T_S, 2).U)
+
   val data2 = MuxCase(
     io.in.bits.rs2Data,
     Array(
-      (io.in.bits.operand2 === Integer.parseInt(OPSRC2_IRF, 2).U) -> io.in.bits.rs2Data,
-      (io.in.bits.operand2 === Integer.parseInt(OPSRC2_IMM, 2).U) -> io.in.bits.imm
+      (isStore)                                                 -> io.in.bits.imm,
+      (io.in.bits.opsrc2 === Integer.parseInt(OPSRC2_IRF, 2).U) -> io.in.bits.rs2Data,
+      (io.in.bits.opsrc2 === Integer.parseInt(OPSRC2_IMM, 2).U) -> io.in.bits.imm
     ).toIndexedSeq
   )
 

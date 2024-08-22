@@ -58,6 +58,7 @@ object DecodeConfig {
   val LS_T_N = "00" // nothing
   val LS_T_L = "01" // load
   val LS_T_S = "10" // store
+  val LS_T_A = "11" // atom
 
   val OPSRC3_IMM   = "00"
   val OPSRC3_FRF   = "01"
@@ -139,10 +140,10 @@ object DecodeConfig {
    OR         -> Seq(op.e(LSOp.str(LSOp.nop)),     op.e(ALUOp.str(ALUOp.or))        ,ExEngine.str(ExEngine.alu),W_RF_I,OPSRC1_IRF,OPSRC2_IRF,OPSRC3_IMM,WAKEUP_1,LS_T_N,IS_JAL_0,IS_BRANCH_0,T_I),
    ORI        -> Seq(op.e(LSOp.str(LSOp.nop)),     op.e(ALUOp.str(ALUOp.or))        ,ExEngine.str(ExEngine.alu),W_RF_I,OPSRC1_IRF,OPSRC2_IMM,OPSRC3_IMM,WAKEUP_1,LS_T_N,IS_JAL_0,IS_BRANCH_0,T_I),
    PAUSE      -> Seq(op.e(LSOp.str(LSOp.nop)),     op.e(ALUOp.str(ALUOp.add))       ,ExEngine.str(ExEngine.alu),W_RF_I,OPSRC1_IRF,OPSRC2_IMM,OPSRC3_IMM,WAKEUP_1,LS_T_N,IS_JAL_0,IS_BRANCH_0,T_I),
-   SB         -> Seq(op.e(LSOp.str(LSOp.sb)),      op.e(ALUOp.str(ALUOp.add))       ,ExEngine.str(ExEngine.alu),W_RF_0,OPSRC1_IRF,OPSRC2_IMM,OPSRC3_IMM,WAKEUP_0,LS_T_S,IS_JAL_0,IS_BRANCH_0,T_I),
+   SB         -> Seq(op.e(LSOp.str(LSOp.sb)),      op.e(ALUOp.str(ALUOp.add))       ,ExEngine.str(ExEngine.alu),W_RF_0,OPSRC1_IRF,OPSRC2_IRF,OPSRC3_IMM,WAKEUP_0,LS_T_S,IS_JAL_0,IS_BRANCH_0,T_I),
    SBREAK     -> Seq(op.e(LSOp.str(LSOp.nop)),     op.e(ALUOp.str(ALUOp.add))       ,ExEngine.str(ExEngine.alu),W_RF_I,OPSRC1_IRF,OPSRC2_IMM,OPSRC3_IMM,WAKEUP_1,LS_T_N,IS_JAL_0,IS_BRANCH_0,T_I),
    SCALL      -> Seq(op.e(LSOp.str(LSOp.nop)),     op.e(ALUOp.str(ALUOp.add))       ,ExEngine.str(ExEngine.alu),W_RF_I,OPSRC1_IRF,OPSRC2_IMM,OPSRC3_IMM,WAKEUP_1,LS_T_N,IS_JAL_0,IS_BRANCH_0,T_I),
-   SH         -> Seq(op.e(LSOp.str(LSOp.sh)),      op.e(ALUOp.str(ALUOp.add))       ,ExEngine.str(ExEngine.alu),W_RF_0,OPSRC1_IRF,OPSRC2_IMM,OPSRC3_IMM,WAKEUP_0,LS_T_S,IS_JAL_0,IS_BRANCH_0,T_I),
+   SH         -> Seq(op.e(LSOp.str(LSOp.sh)),      op.e(ALUOp.str(ALUOp.add))       ,ExEngine.str(ExEngine.alu),W_RF_0,OPSRC1_IRF,OPSRC2_IRF,OPSRC3_IMM,WAKEUP_0,LS_T_S,IS_JAL_0,IS_BRANCH_0,T_I),
    SLL        -> Seq(op.e(LSOp.str(LSOp.nop)),     op.e(ALUOp.str(ALUOp.sll))       ,ExEngine.str(ExEngine.alu),W_RF_I,OPSRC1_IRF,OPSRC2_IRF,OPSRC3_IMM,WAKEUP_1,LS_T_N,IS_JAL_0,IS_BRANCH_0,T_I),
    SLT        -> Seq(op.e(LSOp.str(LSOp.nop)),     op.e(ALUOp.str(ALUOp.slt))       ,ExEngine.str(ExEngine.alu),W_RF_I,OPSRC1_IRF,OPSRC2_IRF,OPSRC3_IMM,WAKEUP_1,LS_T_N,IS_JAL_0,IS_BRANCH_0,T_I),
    SLTI       -> Seq(op.e(LSOp.str(LSOp.nop)),     op.e(ALUOp.str(ALUOp.slt))       ,ExEngine.str(ExEngine.alu),W_RF_I,OPSRC1_IRF,OPSRC2_IMM,OPSRC3_IMM,WAKEUP_1,LS_T_N,IS_JAL_0,IS_BRANCH_0,T_I),
@@ -151,7 +152,7 @@ object DecodeConfig {
    SRA        -> Seq(op.e(LSOp.str(LSOp.nop)),     op.e(ALUOp.str(ALUOp.sra))       ,ExEngine.str(ExEngine.alu),W_RF_I,OPSRC1_IRF,OPSRC2_IRF,OPSRC3_IMM,WAKEUP_1,LS_T_N,IS_JAL_0,IS_BRANCH_0,T_I),
    SRL        -> Seq(op.e(LSOp.str(LSOp.nop)),     op.e(ALUOp.str(ALUOp.srl))       ,ExEngine.str(ExEngine.alu),W_RF_I,OPSRC1_IRF,OPSRC2_IRF,OPSRC3_IMM,WAKEUP_1,LS_T_N,IS_JAL_0,IS_BRANCH_0,T_I),
    SUB        -> Seq(op.e(LSOp.str(LSOp.nop)),     op.e(ALUOp.str(ALUOp.sub))       ,ExEngine.str(ExEngine.alu),W_RF_I,OPSRC1_IRF,OPSRC2_IRF,OPSRC3_IMM,WAKEUP_1,LS_T_N,IS_JAL_0,IS_BRANCH_0,T_I),
-   SW         -> Seq(op.e(LSOp.str(LSOp.sw)),      op.e(ALUOp.str(ALUOp.add))       ,ExEngine.str(ExEngine.alu),W_RF_0,OPSRC1_IRF,OPSRC2_IMM,OPSRC3_IMM,WAKEUP_0,LS_T_S,IS_JAL_0,IS_BRANCH_0,T_I),
+   SW         -> Seq(op.e(LSOp.str(LSOp.sw)),      op.e(ALUOp.str(ALUOp.add))       ,ExEngine.str(ExEngine.alu),W_RF_0,OPSRC1_IRF,OPSRC2_IRF,OPSRC3_IMM,WAKEUP_0,LS_T_S,IS_JAL_0,IS_BRANCH_0,T_I),
    XOR        -> Seq(op.e(LSOp.str(LSOp.nop)),     op.e(ALUOp.str(ALUOp.xor))       ,ExEngine.str(ExEngine.alu),W_RF_I,OPSRC1_IRF,OPSRC2_IRF,OPSRC3_IMM,WAKEUP_1,LS_T_N,IS_JAL_0,IS_BRANCH_0,T_I),
    XORI       -> Seq(op.e(LSOp.str(LSOp.nop)),     op.e(ALUOp.str(ALUOp.xor))       ,ExEngine.str(ExEngine.alu),W_RF_I,OPSRC1_IRF,OPSRC2_IMM,OPSRC3_IMM,WAKEUP_1,LS_T_N,IS_JAL_0,IS_BRANCH_0,T_I),
 
@@ -160,17 +161,17 @@ object DecodeConfig {
    SRAI       -> Seq(op.e(LSOp.str(LSOp.nop)),     op.e(ALUOp.str(ALUOp.sra))       ,ExEngine.str(ExEngine.alu),W_RF_I,OPSRC1_IRF,OPSRC2_IMM,OPSRC3_IMM,WAKEUP_1,LS_T_N,IS_JAL_0,IS_BRANCH_0,T_I),
    SRLI       -> Seq(op.e(LSOp.str(LSOp.nop)),     op.e(ALUOp.str(ALUOp.srl))       ,ExEngine.str(ExEngine.alu),W_RF_I,OPSRC1_IRF,OPSRC2_IMM,OPSRC3_IMM,WAKEUP_1,LS_T_N,IS_JAL_0,IS_BRANCH_0,T_I),
 
-   AMOADD_W   -> Seq(op.e(LSOp.str(LSOp.amoadd)),  op.e(ALUOp.str(ALUOp.add))       ,ExEngine.str(ExEngine.alu),W_RF_I,OPSRC1_IRF,OPSRC2_IMM,OPSRC3_IMM,WAKEUP_1,LS_T_N,IS_JAL_0,IS_BRANCH_0,T_I),
-   AMOAND_W   -> Seq(op.e(LSOp.str(LSOp.amoand)),  op.e(ALUOp.str(ALUOp.add))       ,ExEngine.str(ExEngine.alu),W_RF_I,OPSRC1_IRF,OPSRC2_IMM,OPSRC3_IMM,WAKEUP_1,LS_T_N,IS_JAL_0,IS_BRANCH_0,T_I),
-   AMOMAX_W   -> Seq(op.e(LSOp.str(LSOp.amomax)),  op.e(ALUOp.str(ALUOp.add))       ,ExEngine.str(ExEngine.alu),W_RF_I,OPSRC1_IRF,OPSRC2_IMM,OPSRC3_IMM,WAKEUP_1,LS_T_N,IS_JAL_0,IS_BRANCH_0,T_I),
-   AMOMAXU_W  -> Seq(op.e(LSOp.str(LSOp.amomaxu)), op.e(ALUOp.str(ALUOp.add))       ,ExEngine.str(ExEngine.alu),W_RF_I,OPSRC1_IRF,OPSRC2_IMM,OPSRC3_IMM,WAKEUP_1,LS_T_N,IS_JAL_0,IS_BRANCH_0,T_I),
-   AMOMIN_W   -> Seq(op.e(LSOp.str(LSOp.amomin)),  op.e(ALUOp.str(ALUOp.add))       ,ExEngine.str(ExEngine.alu),W_RF_I,OPSRC1_IRF,OPSRC2_IMM,OPSRC3_IMM,WAKEUP_1,LS_T_N,IS_JAL_0,IS_BRANCH_0,T_I),
-   AMOMINU_W  -> Seq(op.e(LSOp.str(LSOp.amominu)), op.e(ALUOp.str(ALUOp.add))       ,ExEngine.str(ExEngine.alu),W_RF_I,OPSRC1_IRF,OPSRC2_IMM,OPSRC3_IMM,WAKEUP_1,LS_T_N,IS_JAL_0,IS_BRANCH_0,T_I),
-   AMOOR_W    -> Seq(op.e(LSOp.str(LSOp.amoor)),   op.e(ALUOp.str(ALUOp.add))       ,ExEngine.str(ExEngine.alu),W_RF_I,OPSRC1_IRF,OPSRC2_IMM,OPSRC3_IMM,WAKEUP_1,LS_T_N,IS_JAL_0,IS_BRANCH_0,T_I),
-   AMOSWAP_W  -> Seq(op.e(LSOp.str(LSOp.amoswap)), op.e(ALUOp.str(ALUOp.add))       ,ExEngine.str(ExEngine.alu),W_RF_I,OPSRC1_IRF,OPSRC2_IMM,OPSRC3_IMM,WAKEUP_1,LS_T_N,IS_JAL_0,IS_BRANCH_0,T_I),
-   AMOXOR_W   -> Seq(op.e(LSOp.str(LSOp.amoxor)),  op.e(ALUOp.str(ALUOp.add))       ,ExEngine.str(ExEngine.alu),W_RF_I,OPSRC1_IRF,OPSRC2_IMM,OPSRC3_IMM,WAKEUP_1,LS_T_N,IS_JAL_0,IS_BRANCH_0,T_I),
-   LR_W       -> Seq(op.e(LSOp.str(LSOp.lrw)),     op.e(ALUOp.str(ALUOp.add))       ,ExEngine.str(ExEngine.alu),W_RF_I,OPSRC1_IRF,OPSRC2_IMM,OPSRC3_IMM,WAKEUP_1,LS_T_N,IS_JAL_0,IS_BRANCH_0,T_I),
-   SC_W       -> Seq(op.e(LSOp.str(LSOp.scw)),     op.e(ALUOp.str(ALUOp.add))       ,ExEngine.str(ExEngine.alu),W_RF_I,OPSRC1_IRF,OPSRC2_IMM,OPSRC3_IMM,WAKEUP_1,LS_T_N,IS_JAL_0,IS_BRANCH_0,T_I),
+   AMOADD_W   -> Seq(op.e(LSOp.str(LSOp.amoadd)),  op.e(ALUOp.str(ALUOp.pass))       ,ExEngine.str(ExEngine.alu),W_RF_I,OPSRC1_IRF,OPSRC2_IMM,OPSRC3_IMM,WAKEUP_1,LS_T_A,IS_JAL_0,IS_BRANCH_0,T_I),
+   AMOAND_W   -> Seq(op.e(LSOp.str(LSOp.amoand)),  op.e(ALUOp.str(ALUOp.pass))       ,ExEngine.str(ExEngine.alu),W_RF_I,OPSRC1_IRF,OPSRC2_IMM,OPSRC3_IMM,WAKEUP_1,LS_T_A,IS_JAL_0,IS_BRANCH_0,T_I),
+   AMOMAX_W   -> Seq(op.e(LSOp.str(LSOp.amomax)),  op.e(ALUOp.str(ALUOp.pass))       ,ExEngine.str(ExEngine.alu),W_RF_I,OPSRC1_IRF,OPSRC2_IMM,OPSRC3_IMM,WAKEUP_1,LS_T_A,IS_JAL_0,IS_BRANCH_0,T_I),
+   AMOMAXU_W  -> Seq(op.e(LSOp.str(LSOp.amomaxu)), op.e(ALUOp.str(ALUOp.pass))       ,ExEngine.str(ExEngine.alu),W_RF_I,OPSRC1_IRF,OPSRC2_IMM,OPSRC3_IMM,WAKEUP_1,LS_T_A,IS_JAL_0,IS_BRANCH_0,T_I),
+   AMOMIN_W   -> Seq(op.e(LSOp.str(LSOp.amomin)),  op.e(ALUOp.str(ALUOp.pass))       ,ExEngine.str(ExEngine.alu),W_RF_I,OPSRC1_IRF,OPSRC2_IMM,OPSRC3_IMM,WAKEUP_1,LS_T_A,IS_JAL_0,IS_BRANCH_0,T_I),
+   AMOMINU_W  -> Seq(op.e(LSOp.str(LSOp.amominu)), op.e(ALUOp.str(ALUOp.pass))       ,ExEngine.str(ExEngine.alu),W_RF_I,OPSRC1_IRF,OPSRC2_IMM,OPSRC3_IMM,WAKEUP_1,LS_T_A,IS_JAL_0,IS_BRANCH_0,T_I),
+   AMOOR_W    -> Seq(op.e(LSOp.str(LSOp.amoor)),   op.e(ALUOp.str(ALUOp.pass))       ,ExEngine.str(ExEngine.alu),W_RF_I,OPSRC1_IRF,OPSRC2_IMM,OPSRC3_IMM,WAKEUP_1,LS_T_A,IS_JAL_0,IS_BRANCH_0,T_I),
+   AMOSWAP_W  -> Seq(op.e(LSOp.str(LSOp.amoswap)), op.e(ALUOp.str(ALUOp.pass))       ,ExEngine.str(ExEngine.alu),W_RF_I,OPSRC1_IRF,OPSRC2_IMM,OPSRC3_IMM,WAKEUP_1,LS_T_A,IS_JAL_0,IS_BRANCH_0,T_I),
+   AMOXOR_W   -> Seq(op.e(LSOp.str(LSOp.amoxor)),  op.e(ALUOp.str(ALUOp.pass))       ,ExEngine.str(ExEngine.alu),W_RF_I,OPSRC1_IRF,OPSRC2_IMM,OPSRC3_IMM,WAKEUP_1,LS_T_A,IS_JAL_0,IS_BRANCH_0,T_I),
+   LR_W       -> Seq(op.e(LSOp.str(LSOp.lrw)),     op.e(ALUOp.str(ALUOp.pass))       ,ExEngine.str(ExEngine.alu),W_RF_I,OPSRC1_IRF,OPSRC2_IMM,OPSRC3_IMM,WAKEUP_1,LS_T_A,IS_JAL_0,IS_BRANCH_0,T_I),
+   SC_W       -> Seq(op.e(LSOp.str(LSOp.scw)),     op.e(ALUOp.str(ALUOp.pass))       ,ExEngine.str(ExEngine.alu),W_RF_I,OPSRC1_IRF,OPSRC2_IMM,OPSRC3_IMM,WAKEUP_1,LS_T_A,IS_JAL_0,IS_BRANCH_0,T_I),
 
    ANDN       -> Seq(op.e(LSOp.str(LSOp.nop)),     op.e(ALUOp.str(ALUOp.andn))      ,ExEngine.str(ExEngine.alu),W_RF_I,OPSRC1_IRF,OPSRC2_IRF,OPSRC3_IMM,WAKEUP_1,LS_T_N,IS_JAL_0,IS_BRANCH_0,T_I),
    CLZ        -> Seq(op.e(LSOp.str(LSOp.nop)),     op.e(ALUOp.str(ALUOp.clz))       ,ExEngine.str(ExEngine.alu),W_RF_I,OPSRC1_IRF,OPSRC2_IMM,OPSRC3_IMM,WAKEUP_1,LS_T_N,IS_JAL_0,IS_BRANCH_0,T_I),
@@ -263,9 +264,9 @@ class Decoder(config: WoodConfig) extends Module {
     io.out.isJAL    -> DecodeConfig.bitRanges(DecodeConfig.isJALIdx),
     io.out.lsType   -> DecodeConfig.bitRanges(DecodeConfig.lsTypeIdx),
     io.out.wakeup   -> DecodeConfig.bitRanges(DecodeConfig.wakeupIdx),
-    io.out.operand3 -> DecodeConfig.bitRanges(DecodeConfig.operand3Idx),
-    io.out.operand2 -> DecodeConfig.bitRanges(DecodeConfig.operand2Idx),
-    io.out.operand1 -> DecodeConfig.bitRanges(DecodeConfig.operand1Idx),
+    io.out.opsrc3   -> DecodeConfig.bitRanges(DecodeConfig.operand3Idx),
+    io.out.opsrc2   -> DecodeConfig.bitRanges(DecodeConfig.operand2Idx),
+    io.out.opsrc1   -> DecodeConfig.bitRanges(DecodeConfig.operand1Idx),
     io.out.writeRf  -> DecodeConfig.bitRanges(DecodeConfig.writeRfIdx),
     io.out.exEngine -> DecodeConfig.bitRanges(DecodeConfig.exEngineIdx),
     io.out.exOp     -> DecodeConfig.bitRanges(DecodeConfig.exOpIdx),
@@ -289,24 +290,24 @@ class Decoder(config: WoodConfig) extends Module {
   io.out.rs3TagReady := MuxCase(
     0.U,
     Array(
-      ((io.out.operand3 === Integer.parseInt(DecodeConfig.OPSRC3_IMM, 2).U)) -> 1.U
+      ((io.out.opsrc3 === Integer.parseInt(DecodeConfig.OPSRC3_IMM, 2).U)) -> 1.U
     ).toIndexedSeq
   )
 
   io.out.rs2TagReady := MuxCase(
     0.U,
     Array(
-      ((io.out.operand2 === Integer.parseInt(DecodeConfig.OPSRC2_IMM, 2).U))                        -> 1.U,
-      ((io.out.operand2 === Integer.parseInt(DecodeConfig.OPSRC2_IRF, 2).U) & (io.out.rs2 === 0.U)) -> 1.U
+      ((io.out.opsrc2 === Integer.parseInt(DecodeConfig.OPSRC2_IMM, 2).U))                        -> 1.U,
+      ((io.out.opsrc2 === Integer.parseInt(DecodeConfig.OPSRC2_IRF, 2).U) & (io.out.rs2 === 0.U)) -> 1.U
     ).toIndexedSeq
   )
 
   io.out.rs1TagReady := MuxCase(
     0.U,
     Array(
-      ((io.out.operand1 === Integer.parseInt(DecodeConfig.OPSRC1_X0, 2).U))                         -> 1.U,
-      ((io.out.operand1 === Integer.parseInt(DecodeConfig.OPSRC1_IRF, 2).U) & (io.out.rs1 === 0.U)) -> 1.U,
-      (io.out.operand1 === Integer.parseInt(DecodeConfig.OPSRC1_PC, 2).U)                           -> 1.U
+      ((io.out.opsrc1 === Integer.parseInt(DecodeConfig.OPSRC1_X0, 2).U))                         -> 1.U,
+      ((io.out.opsrc1 === Integer.parseInt(DecodeConfig.OPSRC1_IRF, 2).U) & (io.out.rs1 === 0.U)) -> 1.U,
+      (io.out.opsrc1 === Integer.parseInt(DecodeConfig.OPSRC1_PC, 2).U)                           -> 1.U
     ).toIndexedSeq
   )
 
@@ -318,9 +319,10 @@ class Decoder(config: WoodConfig) extends Module {
   io.out.rm       := io.in(14, 12)
   // format: on
 
-  io.out.exception := 0.B
-  io.out.taken     := 0.B
-  io.out.retired   := 0.B
+  io.out.exception    := 0.B
+  io.out.taken        := 0.B
+  io.out.retired      := 0.B
+  io.out.operandReady := 0.B
 
   io.out.targetPC := DontCare
   io.out.pc       := DontCare

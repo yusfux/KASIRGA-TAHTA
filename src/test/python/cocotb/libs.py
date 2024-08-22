@@ -294,7 +294,7 @@ async def diff_traces(
                 inst_p[n] = f"{inst_p[n]}".strip()
                 rd_data_p[n] = f"x{arfBus_adr[n]:>2} {rd_data_p[n]}"
 
-                golden_result = golden_reference[n]["result"]
+                golden_result = golden_reference[n]["result"].strip()
                 golden_pc = golden_reference[n]["pc"]
                 golden_inst = golden_reference[n]["inst"]
 
@@ -308,9 +308,9 @@ async def diff_traces(
 
                 if isStore[n]:
                     # store happens unknown time after the rob, so dont validate write data, only addr
-                    addr = "0x" + rd_data_p[n].split("0x")[-1]
+                    addr = rd_data_p[n].split(" ")[-1]
                     is_correct_addr = addr in golden_result
-                    assert is_correct_addr, f"Store Addr is {color(rd_data_p[n], Color.GREEN)} but it should be {color(golden_result, Color.YELLOW)} at {get_sim_time(units=time_unit)}{time_unit}"
+                    assert is_correct_addr, f"Store Addr is {color(addr, Color.GREEN)} but it should be {color(golden_result, Color.YELLOW)} at {get_sim_time(units=time_unit)}{time_unit}"
                     continue
 
                 assert (

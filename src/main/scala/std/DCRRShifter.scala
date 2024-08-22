@@ -20,21 +20,26 @@ class DCRRShifter[T <: Data](gen: T)(numPorts: Int) extends Module {
     val out   = Vec(numPorts, Decoupled(gen.cloneType))
   })
 
-  val shifter                = Module(new DCShifter(gen.cloneType)(numPorts))
-  val shamt                  = RegInit(0.U(log2Ceil(numPorts).W))
+  val arbiter = Module(new DCArbiter(gen.cloneType)(numPorts, numPorts))
+  val shifter = Module(new DCShifter(gen.cloneType)(numPorts))
+
+  val shamt_next = Wire(UInt(log2Ceil(numPorts).W))
+  val shamt      = RegEnable(shamt_next, 0.U, 1.B)
+
   val in_valid               = Wire(Vec(numPorts, Bool()))
   val stall                  = Wire(Bool())
-  val shamt_next             = Wire(UInt(log2Ceil(numPorts).W))
   val tmp_var                = Wire(UInt((log2Ceil(numPorts) + 1).W)) // Overflows if size is inferred
   val number_of_valid_inputs = Mux(io.in.count(_.valid) === numPorts.U, 0.U, io.in.count(_.valid))
 
   in_valid := io.in.map(_.valid)
   stall    := !(in_valid.asUInt.orR) // at least one input has to be valid
-  // Reset the shamt register when the flush signal is asserted
+
   when(io.flush) {
     shamt := 0.U
+  }.elsewhen(stall) {
+    shamt := shamt
   }.otherwise {
-    shamt := RegEnable(shamt_next, 0.U, !stall)
+    shamt := shamt_next
   }
 
   tmp_var := (number_of_valid_inputs +& shamt) // Addition (with width expansion)
@@ -44,7 +49,8 @@ class DCRRShifter[T <: Data](gen: T)(numPorts: Int) extends Module {
     shamt_next := (tmp_var) % numPorts.U
   }
 
+  arbiter.io.in    <> io.in
   shifter.io.shamt := shamt
-  shifter.io.in    <> io.in
+  shifter.io.in    <> arbiter.io.out
   shifter.io.out   <> io.out
 }

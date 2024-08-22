@@ -6,6 +6,8 @@ pkgs.writers.writePython3Bin "spiketrace2json" { } ''
   import re
   from pathlib import Path
 
+  PAD_SIZE=28
+
 
   def remove_after_loop(lines):
       """Removes all lines after encountering 'pc + 0x0' substring."""
@@ -104,7 +106,7 @@ pkgs.writers.writePython3Bin "spiketrace2json" { } ''
               result_dict = {
                   "pc": pc,
                   "inst": inst,
-                  "result": result if result else "",
+                  "result": result.ljust(PAD_SIZE) if result else " " * PAD_SIZE,
               }
               result_list.append(result_dict)
 
@@ -116,7 +118,9 @@ pkgs.writers.writePython3Bin "spiketrace2json" { } ''
           raise ValueError("Lengths does not match.")
 
       for i in range(len(dict_list)):
-          dict_list[i]["alias"] = aliases[i]
+          alias = aliases[i]
+          alias = alias.ljust(PAD_SIZE) if alias else " " * PAD_SIZE,
+          dict_list[i]["alias"] = "".join(alias)
 
       return dict_list
 
@@ -126,7 +130,9 @@ pkgs.writers.writePython3Bin "spiketrace2json" { } ''
           raise ValueError("Lengths does not match.")
 
       for i in range(len(dict_list)):
-          dict_list[i]["alias_numeric"] = aliases[i]
+          alias = aliases[i]
+          alias = alias.ljust(PAD_SIZE) if alias else " " * PAD_SIZE,
+          dict_list[i]["alias_numeric"] = "".join(alias)
 
       return dict_list
 

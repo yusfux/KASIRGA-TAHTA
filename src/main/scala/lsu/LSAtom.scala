@@ -3,53 +3,63 @@ package wood.lsu
 import chisel3._
 import chisel3.util._
 import wood.WoodConfig
-import wood.exu.{DataBus, DecodeConfig, TagBus}
-
-class LSExtend(config: WoodConfig) extends Module {
-  val io = IO(new Bundle {
-    val inData = Input(UInt(config.xlen.W))
-    val lsOp   = Input(UInt(DecodeConfig.subWidths(DecodeConfig.lsOpIdx).W))
-    val out    = Output(UInt(config.xlen.W))
-  })
-
-  val rawOp = Wire(UInt(LSOp.getWidth.W))
-  rawOp := io.lsOp
-  val (control, valid) = LSOp.safe(rawOp)
-
-  val result = Wire(UInt(config.xlen.W))
-
-  result := DontCare
-// format: off
-  switch(control) {
-    is(LSOp.lb)  { result := Cat(Fill(24,io.inData( 7)),io.inData( 7,0)) }
-    is(LSOp.lh)  { result := Cat(Fill(16,io.inData(15)),io.inData(15,0)) }
-    is(LSOp.lw)  { result :=                            io.inData        }
-    is(LSOp.lbu) { result := Cat(Fill(24,          0.U),io.inData( 7,0)) }
-    is(LSOp.lhu) { result := Cat(Fill(16,          0.U),io.inData(15,0)) }
-  }
-// format: on
-  io.out := result
-}
+import wood.exu.{DataBus, TagBus}
 
 class LSAtom(config: WoodConfig) extends Module {
   val io = IO(new Bundle {
     val inPass         = Flipped(Decoupled(new LSCMI(config)))
     val inCache        = Flipped(Decoupled(new LSCMI(config)))
     val storeRetireBus = Flipped(Vec(config.nWide, ValidIO(new TagBus(config))))
+    val selfRetired    = Output(Bool())
     val outSQ          = Decoupled(new LSCMI(config)) // TODO ready
-    val outRF          = Vec(1, ValidIO(new DataBus(config)))
+    val outRF          = Output(Vec(1, ValidIO(new DataBus(config))))
   })
 
-  val extender        = Module(new LSExtend(config))
-  val retireOverrider = Module(new LSOverrideRetire(new LSCMI(config))(config))
-  val alu             = Module(new ALUAtom(config))
-  val selfMerged      = Wire(Decoupled(new LSCMI(config)))
+  val extender           = Module(new LSExtend(config))
+  val retireOverrider    = Module(new LSOverrideRetire(new LSCMI(config))(config))
+  val alu                = Module(new ALUAtom(config))
+  val selfMerged         = Wire(Decoupled(new LSCMI(config)))
+  val rs2                = Wire(UInt(config.xlen.W))
+  val mem                = Wire(UInt(config.xlen.W))
+  val mergedMem          = Wire(UInt(config.xlen.W))
+  val storeCacheLine     = Wire(Vec(config.numDCacheLineBytes, UInt(8.W)))
+  val storeCacheLineMask = Wire(UInt(config.dCacheLineWidth.W))
+  val storeDataShifted   = Wire(UInt(config.dCacheLineWidth.W))
 
-  selfMerged       <> io.inCache
-  selfMerged.ready := io.outSQ.ready
-  alu.io.out.ready := selfMerged.ready
+  selfMerged                <> io.inPass
+  selfMerged.bits.cacheLine := io.inCache.bits.cacheLine
 
-  val isWriteOperation = selfMerged.bits.wStrobe.asUInt.orR
+  io.inPass.ready  := io.outSQ.ready
+  io.inCache.ready := io.outSQ.ready
+
+  val storeMask   = Fill(config.xlen, 0.B)
+  val shiftAmount = selfMerged.bits.addr(log2Ceil(config.numDCacheLineBytes) - 1, 0) * 8.U
+  mem                := (io.inCache.bits.cacheLine.asUInt >> shiftAmount)(config.xlen - 1, 0)
+  rs2                := (selfMerged.bits.cacheLine.asUInt >> shiftAmount)(config.xlen - 1, 0)
+  mergedMem          := (selfMerged.bits.cacheLine.asUInt >> shiftAmount)(config.xlen - 1, 0)
+  storeCacheLineMask := (storeMask << shiftAmount)(config.dCacheLineWidth - 1, 0)
+  storeDataShifted   := (alu.io.out << shiftAmount)(config.dCacheLineWidth - 1, 0)
+
+  val tmpStoreCacheline = (selfMerged.bits.cacheLine.asUInt & storeCacheLineMask) | storeDataShifted
+  storeCacheLine := tmpStoreCacheline.asTypeOf(Vec(config.numDCacheLineBytes, UInt(8.W)))
+
+  alu.io.rs2            := rs2
+  alu.io.mem            := mem
+  alu.io.lsOp           := selfMerged.bits.lsOp
+  extender.io.inData    := mergedMem
+  extender.io.lsOp      := selfMerged.bits.lsOp
+  io.outRF(0).bits.data := extender.io.out
+  io.outRF(0).bits.tag  := selfMerged.bits.rdTag
+  io.outRF(0).valid     := selfMerged.valid && !selfMerged.bits.store // TODO: let the atoms go
+
+  retireOverrider.io.storeRetireBus    <> io.storeRetireBus
+  retireOverrider.io.in                <> selfMerged
+  retireOverrider.io.in.bits.cacheLine <> storeCacheLine
+  io.outSQ                             <> retireOverrider.io.out
+  io.outSQ.valid                       := retireOverrider.io.out.valid & selfMerged.bits.store
+  io.outSQ.bits.commitable             := 1.B
+
+  io.selfRetired := retireOverrider.io.out.bits.retired
 
   // apply accumulated writes to the data read from cache
   (0 until config.numDCacheLineBytes).foreach(j => {
@@ -63,27 +73,6 @@ class LSAtom(config: WoodConfig) extends Module {
     )
     selfMerged.bits.wStrobe(j) := io.inPass.bits.wStrobe(j)
   })
-
-  retireOverrider.io.storeRetireBus := io.storeRetireBus
-
-  alu.io.in <> selfMerged
-
-  io.inPass.ready  := alu.io.in.ready
-  io.inCache.ready := alu.io.in.ready
-
-  retireOverrider.io.in <> alu.io.out
-  io.outSQ              <> retireOverrider.io.out
-  io.outSQ.valid        := retireOverrider.io.out.valid & isWriteOperation
-
-  val addrOffset  = (selfMerged.bits.addr(log2Ceil(config.numDCacheLineBytes) - 1, 2))
-  val shiftAmount = addrOffset * (config.xlen).U
-  val data        = (selfMerged.bits.cacheLine.asUInt >> shiftAmount)(config.xlen, 0)
-
-  extender.io.inData    := data
-  extender.io.lsOp      := selfMerged.bits.lsOp
-  io.outRF(0).bits.data := extender.io.out
-  io.outRF(0).bits.tag  := selfMerged.bits.rdTag
-  io.outRF(0).valid     := selfMerged.valid
 
   dontTouch(io.inPass.bits.inst) //  testbench only
   dontTouch(io.inPass.bits.pc) //  testbench only

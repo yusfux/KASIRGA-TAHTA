@@ -17,35 +17,31 @@ class LSReservationStationRow(config: WoodConfig) extends Module {
   val operandBusMatches = Wire(Vec(config.nWide, Bool()))
   val retireBusMatches  = Wire(Vec(config.nWide, Bool()))
 
-  val rowNext          = Wire(new LSRSMI(config))
-  val operandReadyNext = Wire(Bool())
+  val rowNext = Wire(new LSRSMI(config))
 
-  val row          = RegEnable(rowNext, 0.U.asTypeOf(new LSRSMI(config)), 1.B)
-  val operandReady = RegEnable(operandReadyNext, 0.U, 1.B)
+  val row = RegEnable(rowNext, 0.U.asTypeOf(new LSRSMI(config)), 1.B)
 
   val operandBusMatchIndex = PriorityEncoder(operandBusMatches)
   val retireBusMatchIndex  = PriorityEncoder(retireBusMatches)
 
   when(io.flush) {
-    rowNext          := 0.U.asTypeOf(new LSRSMI(config))
-    operandReadyNext := 0.U
+    rowNext := 0.U.asTypeOf(new LSRSMI(config))
   }.elsewhen(io.in.valid) {
-    rowNext          := 0.U.asTypeOf(new LSRSMI(config))
-    operandReadyNext := 0.U
-    rowNext          := io.in.bits
+    rowNext := 0.U.asTypeOf(new LSRSMI(config))
+    rowNext := io.in.bits
   }.otherwise {
     val operandTargetAddr = io.lsOperandBus(operandBusMatchIndex).bits.targetAddr
     val operandRs2        = io.lsOperandBus(operandBusMatchIndex).bits.rs2Data
 
-    rowNext          := row
-    rowNext.addr     := Mux(operandBusMatches.asUInt.orR, operandTargetAddr, row.addr)
-    rowNext.rs2Data  := Mux(operandBusMatches.asUInt.orR, operandRs2, row.rs2Data)
-    rowNext.retired  := row.retired | retireBusMatches.asUInt.orR
-    operandReadyNext := operandReady | operandBusMatches.asUInt.orR
+    rowNext              := row
+    rowNext.addr         := Mux(operandBusMatches.asUInt.orR, operandTargetAddr, row.addr)
+    rowNext.rs2Data      := Mux(operandBusMatches.asUInt.orR, operandRs2, row.rs2Data)
+    rowNext.retired      := row.retired | retireBusMatches.asUInt.orR
+    rowNext.operandReady := row.operandReady | operandBusMatches.asUInt.orR
   }
 
   io.out.bits  := row
-  io.out.valid := operandReady
+  io.out.valid := row.operandReady
 
   for (j <- 0 until config.nWide) {
     operandBusMatches(j) := io.lsOperandBus(j).valid & (row.rdTag === io.lsOperandBus(j).bits.rdTag)

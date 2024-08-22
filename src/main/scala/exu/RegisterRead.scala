@@ -89,13 +89,13 @@ class RegisterReadStage(config: WoodConfig) extends Module {
 
   (0 until config.nWide).foreach(j => {
     val rs1AdrX0      = io.in(j).bits.rs1 === 0.U
-    val rs1IndirectX0 = io.in(j).bits.operand1 === Integer.parseInt(DecodeConfig.OPSRC1_IRF, 2).U
-    val rs1DirectX0   = io.in(j).bits.operand1 === Integer.parseInt(DecodeConfig.OPSRC1_X0, 2).U
+    val rs1IndirectX0 = io.in(j).bits.opsrc1 === Integer.parseInt(DecodeConfig.OPSRC1_IRF, 2).U
+    val rs1DirectX0   = io.in(j).bits.opsrc1 === Integer.parseInt(DecodeConfig.OPSRC1_X0, 2).U
 
     val rs1ValidZero = (rs1AdrX0 && rs1IndirectX0) || (rs1DirectX0)
 
     val rs2AdrX0      = io.in(j).bits.rs2 === 0.U
-    val rs2IndirectX0 = io.in(j).bits.operand2 === Integer.parseInt(DecodeConfig.OPSRC2_IRF, 2).U
+    val rs2IndirectX0 = io.in(j).bits.opsrc2 === Integer.parseInt(DecodeConfig.OPSRC2_IRF, 2).U
     val rs2ValidZero  = (rs2AdrX0 && rs2IndirectX0)
 
     crossbar.io.in(j).bits.rs1Data := Mux(rs1ValidZero, 0.U, overrideForward.io.out(j).bits.rs1Data)

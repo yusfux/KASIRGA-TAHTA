@@ -70,9 +70,13 @@ class ExecuteStage(config: WoodConfig) extends Module {
   })
 
   (0 until config.nWide).foreach(j => {
+    val isStore = (arbiter.io.out(j).bits.lsType === Integer.parseInt(DecodeConfig.LS_T_S, 2).U)
+    val isLoad  = (arbiter.io.out(j).bits.lsType === Integer.parseInt(DecodeConfig.LS_T_L, 2).U)
+    val isAtom  = (arbiter.io.out(j).bits.lsType === Integer.parseInt(DecodeConfig.LS_T_A, 2).U)
+
     io.forwardBus(j).bits.data := arbiter.io.out(j).bits.rdData
     io.forwardBus(j).bits.tag  := arbiter.io.out(j).bits.rdTag
-    io.forwardBus(j).valid     := arbiter.io.out(j).valid
+    io.forwardBus(j).valid     := arbiter.io.out(j).valid & !isLoad & !isAtom
 
     pRegs(j).io.valids(0) := io.aluIn(j).valid // TODO: BUG: BUG: BUG:
 

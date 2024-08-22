@@ -3,21 +3,21 @@ package wood.exu
 import chisel3._
 import chisel3.util._
 import wood.WoodConfig
-import wood.util.WoodMIPipelineRegister
+import wood.util.{WoodLSRetireMIPipelineRegister, WoodMIPipelineRegister}
 
 class RenameStage(config: WoodConfig) extends Module {
   val io = IO(new Bundle {
-    val in     = Flipped(Vec(config.nWide, Decoupled(new MI(config))))
-    val flush  = Input(Bool())
-    val archRF = Input(Vec(32, UInt(config.tagWidth.W)))
-
-    val out0 = Vec(config.nWide, Decoupled(new MI(config)))
-    val out1 = Vec(config.nWide, Decoupled(new MI(config)))
-    val out2 = Vec(config.nWide, Decoupled(new MI(config)))
+    val in           = Flipped(Vec(config.nWide, Decoupled(new MI(config))))
+    val flush        = Input(Bool())
+    val archRF       = Input(Vec(32, UInt(config.tagWidth.W)))
+    val frontRetired = Input(Vec(config.nWide, Bool()))
+    val out0         = Vec(config.nWide, Decoupled(new MI(config)))
+    val out1         = Vec(config.nWide, Decoupled(new MI(config)))
+    val out2         = Vec(config.nWide, Decoupled(new MI(config)))
   })
   val pRegs0 = Seq.fill(config.nWide)(Module(new WoodMIPipelineRegister(config, 1)))
   val pRegs1 = Seq.fill(config.nWide)(Module(new WoodMIPipelineRegister(config, 1)))
-  val pRegs2 = Seq.fill(config.nWide)(Module(new WoodMIPipelineRegister(config, 1)))
+  val pRegs2 = Seq.fill(config.nWide)(Module(new WoodLSRetireMIPipelineRegister(config)))
 
   val frontEndRegisterFile = RegInit(VecInit(Seq.fill(32)(0.U(config.tagWidth.W))))
   val self                 = Wire(Vec(config.nWide, Decoupled(new MI(config))))
@@ -45,7 +45,7 @@ class RenameStage(config: WoodConfig) extends Module {
 
       val (rs1HasOverride, overrideRs1Tag) = (0 until j).foldLeft((0.B, 0.U)) { (acc, k) =>
         val rs1Match = (io.in(j).bits.rs1 === io.in(k).bits.rd)
-        val rs1Valid = (io.in(j).bits.operand1 === Integer.parseInt(DecodeConfig.OPSRC1_IRF, 2).U)
+        val rs1Valid = (io.in(j).bits.opsrc1 === Integer.parseInt(DecodeConfig.OPSRC1_IRF, 2).U)
 
         val rdValid    = (io.in(k).bits.writeRf === Integer.parseInt(DecodeConfig.W_RF_I, 2).U)
         val matchFound = rs1Match & rs1Valid & rdValid
@@ -61,7 +61,7 @@ class RenameStage(config: WoodConfig) extends Module {
 
       val (rs2HasOverride, overrideRs2Tag) = (0 until j).foldLeft((0.B, 0.U)) { (acc, k) =>
         val rs2Match = (io.in(j).bits.rs2 === io.in(k).bits.rd)
-        val rs2Valid = (io.in(j).bits.operand2 === Integer.parseInt(DecodeConfig.OPSRC2_IRF, 2).U)
+        val rs2Valid = (io.in(j).bits.opsrc2 === Integer.parseInt(DecodeConfig.OPSRC2_IRF, 2).U)
 
         val rdValid    = (io.in(k).bits.writeRf === Integer.parseInt(DecodeConfig.W_RF_I, 2).U)
         val matchFound = rs2Match & rs2Valid & rdValid
@@ -79,7 +79,7 @@ class RenameStage(config: WoodConfig) extends Module {
 
       pRegs0(j).io.valids(0) := io.in(j).valid
       pRegs1(j).io.valids(0) := io.in(j).valid
-      pRegs2(j).io.valids(0) := io.in(j).valid
+      // pRegs2(j).io.valids(0) := io.in(j).valid
 
       io.in(j).ready := out2Ready.asUInt.andR & out1Ready.asUInt.andR & out0Ready.asUInt.andR
 
@@ -89,21 +89,22 @@ class RenameStage(config: WoodConfig) extends Module {
       pRegs1(j).io.flush      := 0.U // never lose tags
       pRegs1(j).io.setflushed := io.flush
 
-      pRegs2(j).io.flush      := 0.U // never lose tags
-      pRegs2(j).io.setflushed := io.flush
+      pRegs2(j).io.flush := 0.U // never lose tags
+      // pRegs2(j).io.setflushed := io.flush
+      pRegs2(j).io.frontRetired := io.frontRetired(j)
 
       pRegs0(j).io.in       <> self(j)
-      pRegs0(j).io.in.valid := self(j).valid & (out1Ready.asUInt.andR & out1Ready.asUInt.andR & out0Ready.asUInt.andR)
+      pRegs0(j).io.in.valid := self(j).valid & (out2Ready.asUInt.andR & out1Ready.asUInt.andR & out0Ready.asUInt.andR)
       io.out0(j)            <> pRegs0(j).io.out
 
       pRegs1(j).io.in       <> self(j)
-      pRegs1(j).io.in.valid := self(j).valid & (out1Ready.asUInt.andR & out1Ready.asUInt.andR & out0Ready.asUInt.andR)
+      pRegs1(j).io.in.valid := self(j).valid & (out2Ready.asUInt.andR & out1Ready.asUInt.andR & out0Ready.asUInt.andR)
       io.out1(j)            <> pRegs1(j).io.out
 
       val isStore = (self(j).bits.lsType === Integer.parseInt(DecodeConfig.LS_T_S, 2).U)
       val isLoad  = (self(j).bits.lsType === Integer.parseInt(DecodeConfig.LS_T_L, 2).U)
       pRegs2(j).io.in       <> self(j)
-      pRegs2(j).io.in.valid := self(j).valid & (out1Ready.asUInt.andR & out1Ready.asUInt.andR & out0Ready.asUInt.andR) & (isLoad | isStore)
+      pRegs2(j).io.in.valid := self(j).valid & (out2Ready.asUInt.andR & out1Ready.asUInt.andR & out0Ready.asUInt.andR) & (isLoad | isStore)
       io.out2(j)            <> pRegs2(j).io.out
     })
 

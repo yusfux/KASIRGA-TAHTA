@@ -8,15 +8,20 @@ import wood.exu.{DecodeConfig, DecodeStage}
 import wood.fru.PCInst
 import wood.lsu.LSUnit
 
-case class MI(config: WoodConfig) extends Bundle {
+class Retirable(config: WoodConfig) extends Bundle {
+  val retired = Bool()
+  val rdTag   = UInt(config.tagWidth.W)
+}
+
+case class MI(config: WoodConfig) extends Retirable(config) {
   val isFloat     = UInt(DecodeConfig.subWidths(DecodeConfig.isFloatIdx).W)
   val isBranch    = UInt(DecodeConfig.subWidths(DecodeConfig.isBranchIdx).W)
   val isJAL       = UInt(DecodeConfig.subWidths(DecodeConfig.isJALIdx).W)
   val lsType      = UInt(DecodeConfig.subWidths(DecodeConfig.lsTypeIdx).W)
   val wakeup      = UInt(DecodeConfig.subWidths(DecodeConfig.wakeupIdx).W)
-  val operand1    = UInt(DecodeConfig.subWidths(DecodeConfig.operand1Idx).W)
-  val operand2    = UInt(DecodeConfig.subWidths(DecodeConfig.operand2Idx).W)
-  val operand3    = UInt(DecodeConfig.subWidths(DecodeConfig.operand3Idx).W)
+  val opsrc1      = UInt(DecodeConfig.subWidths(DecodeConfig.operand1Idx).W)
+  val opsrc2      = UInt(DecodeConfig.subWidths(DecodeConfig.operand2Idx).W)
+  val opsrc3      = UInt(DecodeConfig.subWidths(DecodeConfig.operand3Idx).W)
   val writeRf     = UInt(DecodeConfig.subWidths(DecodeConfig.writeRfIdx).W)
   val exEngine    = UInt(DecodeConfig.subWidths(DecodeConfig.exEngineIdx).W)
   val exOp        = UInt(DecodeConfig.subWidths(DecodeConfig.exOpIdx).W)
@@ -37,16 +42,17 @@ case class MI(config: WoodConfig) extends Bundle {
   val rs2TagReady = Bool()
   val rs3Tag      = UInt(config.tagWidth.W)
   val rs3TagReady = Bool()
-  val rdTag       = UInt(config.tagWidth.W)
-  val rs1Data     = UInt(config.xlen.W)
-  val rs2Data     = UInt(config.xlen.W)
-  val rs3Data     = UInt(config.xlen.W)
-  val rdData      = UInt(config.xlen.W)
-  val retired     = Bool()
-  val flushed     = Bool()
-  val arfTag      = UInt(config.tagWidth.W)
-  val arfValid    = Bool()
-  val inst        = UInt(32.W) // for testbench only
+  // val rdTag       = UInt(config.tagWidth.W)
+  val rs1Data = UInt(config.xlen.W)
+  val rs2Data = UInt(config.xlen.W)
+  val rs3Data = UInt(config.xlen.W)
+  val rdData  = UInt(config.xlen.W)
+  // val retired  = Bool()
+  val operandReady = Bool() // For on the flight operand override after rename
+  val flushed      = Bool()
+  val arfTag       = UInt(config.tagWidth.W)
+  val arfValid     = Bool()
+  val inst         = UInt(32.W) // for testbench only
 }
 
 case class RetireMI(config: WoodConfig) extends Bundle {
@@ -72,9 +78,9 @@ object MI { // for testbench only, set all to value except overrides
       _.isBranch    -> overrides.getOrElse("isBranch", value),
       _.isJAL       -> overrides.getOrElse("isJAL", value),
       _.wakeup      -> overrides.getOrElse("wakeup", value),
-      _.operand3    -> overrides.getOrElse("operand3", value),
-      _.operand2    -> overrides.getOrElse("operand2", value),
-      _.operand1    -> overrides.getOrElse("operand1", value),
+      _.opsrc3      -> overrides.getOrElse("operand3", value),
+      _.opsrc2      -> overrides.getOrElse("operand2", value),
+      _.opsrc1      -> overrides.getOrElse("operand1", value),
       _.writeRf     -> overrides.getOrElse("writeRf", value),
       _.exEngine    -> overrides.getOrElse("exEngine", value),
       _.exOp        -> overrides.getOrElse("exOp", value),
@@ -167,19 +173,23 @@ class ExUnit(config: WoodConfig) extends Module {
   val arstage = Module(new ArchRegisterFileStage(config))
   val rwstage = Module(new RetireWritebackStage(config))
 
-  destage.io.in <> io.in
-  mistage.io.in <> destage.io.out
-  restage.io.in <> mistage.io.out
-  rbstage.io.in <> restage.io.out0
-  scstage.io.in <> restage.io.out1
-  lsunit.io.in  <> restage.io.out2
+  destage.io.in           <> io.in
+  mistage.io.in           <> destage.io.out
+  restage.io.in           <> mistage.io.out
+  rbstage.io.in           <> restage.io.out0
+  scstage.io.in           <> restage.io.out1
+  lsunit.io.in            <> restage.io.out2
+  restage.io.frontRetired <> lsunit.io.selfRetired
 
-  rsstage.io.lsuIn(0).valid    <> lsunit.io.out(0).valid
-  rsstage.io.lsuIn(0).bits.tag <> lsunit.io.out(0).bits.tag
+  rsstage.io.lsuIn(0).valid    := lsunit.io.out(0).valid
+  rsstage.io.lsuIn(0).bits.tag := lsunit.io.out(0).bits.tag
 
-  rrstage.io.lsuIn         <> lsunit.io.out
-  lsunit.io.storeRetireBus <> rsstage.io.storeRetireBus
-  lsunit.io.lsOperandBus   <> wbstage.io.lsOperandBus
+  scstage.io.lsWakeupBus(0).bits.tag := lsunit.io.out(0).bits.tag
+  scstage.io.lsWakeupBus(0).valid    := lsunit.io.out(0).valid
+
+  rrstage.io.lsuIn          <> lsunit.io.out
+  rsstage.io.storeRetireBus <> lsunit.io.storeRetireBus
+  lsunit.io.lsOperandBus    <> wbstage.io.lsOperandBus
 
   restage.io.archRF <> arstage.io.archRF
 
@@ -233,9 +243,7 @@ class ExUnit(config: WoodConfig) extends Module {
     tBus
   }
 
-  scstage.io.wakeupBus               <> rrstage.io.wakeupBus
-  scstage.io.lsWakeupBus(0).bits.tag := lsunit.io.out(0).bits.tag
-  scstage.io.lsWakeupBus(0).valid    := lsunit.io.out(0).valid
+  scstage.io.wakeupBus <> rrstage.io.wakeupBus
 
   io.bpBus <> rsstage.io.bpBus
 }

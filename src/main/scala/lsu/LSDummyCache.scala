@@ -19,7 +19,7 @@ class LSDummyCache(config: WoodConfig) extends Module {
   val sramOut = Wire(UInt(config.mmInterfaceWidth.W))
 
   sram.readwritePorts(0).address   := io.in.bits.addr(log2Ceil(config.dcacheDepth), log2Ceil(config.mmInterfaceWidth) - 3)
-  sram.readwritePorts(0).isWrite   := io.in.bits.wStrobe.asUInt.orR
+  sram.readwritePorts(0).isWrite   := io.in.valid && io.in.bits.commitable
   sram.readwritePorts(0).writeData := io.in.bits.cacheLine.asUInt
   sram.readwritePorts(0).enable    := io.in.valid
   sramOut                          := sram.readwritePorts(0).readData
@@ -29,9 +29,12 @@ class LSDummyCache(config: WoodConfig) extends Module {
   pRegCache.io.flush     := 0.B // TODO: think
   pReg.io.flush          := 0.B // TODO: think
 
-  pRegCache.io.in     <> io.in
-  self                <> pRegCache.io.out
-  self.bits.cacheLine := VecInit(Seq.tabulate(config.numDCacheLineBytes)(j => sramOut(8 * j + 7, 8 * j)))
-  pReg.io.in          <> self
-  io.out              <> pReg.io.out
+  pRegCache.io.in       <> io.in
+  pRegCache.io.in.valid := io.in.valid && !(io.in.bits.commitable) // not write req
+  self                  <> pRegCache.io.out
+  self.bits.cacheLine   := VecInit(Seq.tabulate(config.numDCacheLineBytes)(j => sramOut(8 * j + 7, 8 * j)))
+  pReg.io.in            <> self
+  io.out                <> pReg.io.out
+
+  io.in.ready := 1.B // always ready, always hit
 }

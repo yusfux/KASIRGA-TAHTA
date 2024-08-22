@@ -3,7 +3,7 @@ package wood.lsu
 import chisel3._
 import chisel3.util._
 import wood.WoodConfig
-import wood.exu.{DataBus, DecodeConfig, MI, TagBus}
+import wood.exu.{DataBus, DecodeConfig, MI, Retirable, TagBus}
 
 // format: off
 object LSOp extends ChiselEnum {
@@ -19,23 +19,27 @@ object LSOp extends ChiselEnum {
 }
 // format: on
 
-class LSINFO(config: WoodConfig) extends Bundle {
-  val retired = Bool()
-  val store   = Bool()
-  val addr    = UInt(config.xlen.W)
-  val rdTag   = UInt(config.tagWidth.W)
-  val inst    = UInt(32.W) // for testbench only
-  val pc      = UInt(config.xlen.W) // for testbench only
+class LSINFO(config: WoodConfig) extends Retirable(config) {
+  // val retired = Bool()
+  val store = Bool()
+  val atom  = Bool()
+  val addr  = UInt(config.xlen.W)
+  // val rdTag = UInt(config.tagWidth.W)
+  val inst = UInt(32.W) // for testbench only
+  val pc   = UInt(config.xlen.W) // for testbench only
 }
 
 class LSRSMI(config: WoodConfig) extends LSINFO(config) { // Load store reservation station micro instruction
-  val rs2Data = UInt(config.xlen.W)
-  val lsOp    = UInt(DecodeConfig.subWidths(DecodeConfig.lsOpIdx).W)
+  val rs2Data      = UInt(config.xlen.W)
+  val lsOp         = UInt(DecodeConfig.subWidths(DecodeConfig.lsOpIdx).W)
+  val operandReady = Bool()
 }
 
-class LSCMI(config: WoodConfig) extends LSRSMI(config) { // Load store load micro instruction
-  val cacheLine = Vec(config.numDCacheLineBytes, UInt(8.W))
-  val wStrobe   = Vec(config.numDCacheLineBytes, Bool()) // Required for CAM reads only
+class LSCMI(config: WoodConfig) extends LSINFO(config) { // Load store commit micro instruction
+  val cacheLine  = Vec(config.numDCacheLineBytes, UInt(8.W))
+  val wStrobe    = Vec(config.numDCacheLineBytes, Bool()) // Required for CAM reads only
+  val lsOp       = UInt(DecodeConfig.subWidths(DecodeConfig.lsOpIdx).W)
+  val commitable = Bool() // cache line has been read and is from store queue
 }
 
 case class LSOperandBus(config: WoodConfig) extends Bundle {
@@ -44,31 +48,33 @@ case class LSOperandBus(config: WoodConfig) extends Bundle {
   val rdTag      = UInt(config.tagWidth.W)
 }
 
-class LSOverrideRetire[T <: LSINFO](gen: T)(config: WoodConfig) extends Module {
-  val io = IO(new Bundle {
-    val in             = Flipped(Decoupled(gen.cloneType))
-    val storeRetireBus = Flipped(Vec(config.nWide, ValidIO(new TagBus(config))))
-    val out            = Decoupled(gen.cloneType)
-  })
-
-  io.out <> io.in
-
-  val retireBusMatches = Wire(Vec(config.nWide, Bool()))
-
-  for (j <- 0 until config.nWide) {
-    retireBusMatches(j) := io.storeRetireBus(j).valid & (io.in.bits.rdTag === io.storeRetireBus(j).bits.tag)
-  }
-
-  io.out.bits.retired := retireBusMatches.asUInt.orR
-}
-
 class LSUnit(config: WoodConfig) extends Module {
   val io = IO(new Bundle {
     val in             = Flipped(Vec(config.nWide, Decoupled(new MI(config))))
     val storeRetireBus = Flipped(Vec(config.nWide, ValidIO(new TagBus(config))))
     val lsOperandBus   = Flipped(Vec(config.nWide, ValidIO(new LSOperandBus(config))))
     val flush          = Input(Bool())
+    val selfRetired    = Output(Vec(config.nWide, Bool()))
     val out            = Vec(1, ValidIO(new DataBus(config)))
+  })
+
+  val inOverridenOperands = Wire(Vec(config.nWide, Decoupled(new MI(config))))
+  val inputOperandsOverrider = Seq.tabulate(config.nWide) { _ =>
+    Module(new LSOverrideOperands(config))
+  }
+
+  inOverridenOperands <> io.in
+
+  (0 until config.nWide).foreach(j => {
+    inputOperandsOverrider(j).io.lsOperandBus  <> io.lsOperandBus
+    inputOperandsOverrider(j).io.targetAddrI   := io.in(j).bits.opsrc1
+    inputOperandsOverrider(j).io.rs2DataI      := io.in(j).bits.opsrc2
+    inputOperandsOverrider(j).io.rdTagI        := io.in(j).bits.rdTag
+    inputOperandsOverrider(j).io.operandReadyI := io.in(j).bits.operandReady
+
+    inOverridenOperands(j).bits.operandReady := inputOperandsOverrider(j).io.operandReadyO
+    inOverridenOperands(j).bits.rdData       := inputOperandsOverrider(j).io.targetAddrO
+    inOverridenOperands(j).bits.rs2Data      := inputOperandsOverrider(j).io.rs2DataO
   })
 
   val lsscstage  = Module(new LSScheduleStage(config))
@@ -77,7 +83,8 @@ class LSUnit(config: WoodConfig) extends Module {
   val lsducstage = Module(new LSDummyCache(config))
   val lsatstage  = Module(new LSAtom(config))
 
-  lsscstage.io.in <> io.in
+  lsscstage.io.in          <> inOverridenOperands
+  lsscstage.io.selfRetired <> io.selfRetired
 
   lsdc0stage.io.in <> lsscstage.io.out
   lsducstage.io.in <> lsdc0stage.io.outCache
@@ -96,6 +103,10 @@ class LSUnit(config: WoodConfig) extends Module {
   lsdc0stage.io.storeRetireBus <> io.storeRetireBus
   lsdc1stage.io.storeRetireBus <> io.storeRetireBus
   lsatstage.io.storeRetireBus  <> io.storeRetireBus
+
+  lsscstage.io.frontRetired  <> lsdc0stage.io.selfRetired
+  lsdc0stage.io.frontRetired <> lsdc1stage.io.selfRetired
+  lsdc1stage.io.frontRetired <> lsatstage.io.selfRetired
 
   lsdc0stage.io.lsDCache1Bus <> lsdc1stage.io.lsDCache1Bus
 
