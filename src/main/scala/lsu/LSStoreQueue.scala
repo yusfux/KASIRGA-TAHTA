@@ -91,6 +91,17 @@ class LSStoreQueue(config: WoodConfig) extends Module {
     recencyArray(j) := j.U - deqPtr.value
   })
 
+  val addrMatch = VecInit(
+    rows.map(row =>
+      row.io.out.bits.addr(config.xlen - 1, config.dCacheAddrStartIndex) ===
+        io.camReadIn(config.xlen - 1, config.dCacheAddrStartIndex)
+    )
+  )
+
+  val validAndMatch = VecInit(valid.zip(addrMatch).map { case (v, m) => v && m })
+
+  val matchingEntries = validAndMatch.asUInt
+
   val (finalWstrobe, finalData) =
     (0 until config.lsSQDepth).foldLeft((0.U(config.numDCacheLineBytes.W), VecInit(Seq.fill(config.numDCacheLineBytes)(0.U(8.W))))) {
       case ((accWstrobe, accData), j) =>
@@ -98,36 +109,14 @@ class LSStoreQueue(config: WoodConfig) extends Module {
         val currentData    = rows(j).io.out.bits.cacheLine
         val currentRecency = recencyArray(j)
 
-        val newWstrobe = accWstrobe | (currentWstrobe.asUInt & Fill(config.numDCacheLineBytes, valid(j)))
+        val newWstrobe = accWstrobe | (currentWstrobe.asUInt & Fill(config.numDCacheLineBytes, validAndMatch(j)))
 
-        val addrMatch = VecInit(Seq.fill(config.lsSQDepth)(0.B))
-        addrMatch.zipWithIndex.foreach {
-          case (row, j) => {
-            val rowAddr = rows(j).io.out.bits.addr(config.xlen - 1, config.dCacheAddrStartIndex)
-            val camAddr = io.camReadIn(config.xlen - 1, config.dCacheAddrStartIndex)
-            addrMatch(j) := rowAddr === camAddr
-          }
-        }
+        val moreRecentMatch = (0 until j).map(k => validAndMatch(k) && (recencyArray(k) < currentRecency)).foldLeft(false.B)(_ || _)
 
-        val wstrobeValid = VecInit(rows.map(_.io.out.bits.wStrobe))
-
-        val recencyCompare = VecInit(Seq.fill(config.lsSQDepth)(0.B))
-        recencyCompare.zipWithIndex.foreach {
-          case (row, j) =>
-            recencyCompare(j) := currentRecency > recencyArray(j)
-        }
-
-        val newData = VecInit(Seq.fill(config.numDCacheLineBytes)(0.U(8.W)))
-        newData := (0 until config.numDCacheLineBytes).map { byteIndex =>
+        val newData = VecInit((0 until config.numDCacheLineBytes).map { byteIndex =>
           val isCurrentByteValid = currentWstrobe(byteIndex)
-
-          val moreRecentValid = (0 until j).map(k => addrMatch(k) && wstrobeValid(k)(byteIndex) && recencyCompare(k)).foldLeft(true.B)(_ && _)
-
-          val selectedData =
-            Mux(isCurrentByteValid && moreRecentValid, currentData(byteIndex), accData(byteIndex))
-
-          selectedData
-        }
+          Mux(isCurrentByteValid && !moreRecentMatch, currentData(byteIndex), accData(byteIndex))
+        })
 
         (newWstrobe, newData)
     }

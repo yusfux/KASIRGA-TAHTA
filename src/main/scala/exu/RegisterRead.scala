@@ -19,8 +19,8 @@ class RegisterReadStage(config: WoodConfig) extends Module {
     val iduOut       = Vec(config.listExUnits(config.iduCrossbarIndex), Decoupled(new MI(config)))
   })
 
-  val overrideForward   = Module(new OverrideRsFromBuses(config))
-  val overrideWriteBack = Module(new OverrideRsFromBuses(config))
+  val overrideForward   = Module(new OverrideRsFromBuses(config, config.nWide))
+  val overrideWriteBack = Module(new OverrideRsFromBuses(config, config.nWide))
   val crossbar          = Module(new DCCrossbar(new MI(config))(config.nWide, config.listExCrossbarUnits))
   val aluPRegs          = Seq.fill(config.listExUnits(config.aluCrossbarIndex))(Module(new WoodMIPipelineRegister(config, 1)))
   val imuPRegs          = Seq.fill(config.listExUnits(config.imuCrossbarIndex))(Module(new WoodMIPipelineRegister(config, 1)))

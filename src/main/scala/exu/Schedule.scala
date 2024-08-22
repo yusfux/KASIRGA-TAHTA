@@ -31,8 +31,9 @@ class ReadyList(val config: WoodConfig) extends Module {
   }
 
   // No need to forward the commitedBus, there is a 2 cycle delay between tag being added to the free list and ready list is being read.
-  val overrideForward = Module(new OverrideRsFromBuses(config))
-  val overrideWakeup  = Module(new OverrideRsFromBuses(config))
+  val overrideForward  = Module(new OverrideRsFromBuses(config, config.nWide))
+  val overrideWakeup   = Module(new OverrideRsFromBuses(config, config.nWide))
+  val overrideLSWakeup = Module(new OverrideRsFromBuses(config, 1))
 
   overrideForward.io.inBus := io.forwardBus.map { bus =>
     val dBus = Wire(ValidIO(new DataBus(config)))
@@ -48,6 +49,13 @@ class ReadyList(val config: WoodConfig) extends Module {
     dBus.bits.data := DontCare
     dBus
   }
+  overrideLSWakeup.io.inBus := io.lsWakeupBus.map { bus =>
+    val dBus = Wire(ValidIO(new DataBus(config)))
+    dBus.bits.tag  := bus.bits.tag
+    dBus.valid     := bus.valid
+    dBus.bits.data := DontCare
+    dBus
+  }
 
   val overridenRsTagReady = Wire(Vec(config.nWide, Decoupled(new MI(config))))
   overridenRsTagReady <> io.in
@@ -55,9 +63,10 @@ class ReadyList(val config: WoodConfig) extends Module {
     overridenRsTagReady(j).bits.rs1TagReady := io.in(j).bits.rs1TagReady | readyList(io.in(j).bits.rs1Tag)
     overridenRsTagReady(j).bits.rs2TagReady := io.in(j).bits.rs2TagReady | readyList(io.in(j).bits.rs2Tag)
   })
-  overrideForward.io.in <> overridenRsTagReady
-  overrideWakeup.io.in  <> overrideForward.io.out
-  io.out                <> overrideWakeup.io.out
+  overrideForward.io.in  <> overridenRsTagReady
+  overrideWakeup.io.in   <> overrideForward.io.out
+  overrideLSWakeup.io.in <> overrideWakeup.io.out
+  io.out                 <> overrideLSWakeup.io.out
 }
 
 class ScheduleStage(val config: WoodConfig) extends Module {

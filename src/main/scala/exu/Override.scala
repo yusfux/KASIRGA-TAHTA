@@ -4,17 +4,17 @@ import chisel3._
 import chisel3.util._
 import wood.WoodConfig
 
-class OverrideRsFromBus(val config: WoodConfig) extends Module {
+class OverrideRsFromBus(val config: WoodConfig, val numBuses: Int) extends Module {
   val io = IO(new Bundle {
     val in    = Flipped(Decoupled(new MI(config)))
-    val inBus = Input(Vec(config.nWide, ValidIO(new DataBus(config))))
+    val inBus = Input(Vec(numBuses, ValidIO(new DataBus(config))))
     val out   = Decoupled(new MI(config))
   })
 
-  val rs1TagMatches = Wire(Vec(config.nWide, Bool()))
-  val rs2TagMatches = Wire(Vec(config.nWide, Bool()))
+  val rs1TagMatches = Wire(Vec(numBuses, Bool()))
+  val rs2TagMatches = Wire(Vec(numBuses, Bool()))
 
-  (0 until config.nWide).foreach { i =>
+  (0 until numBuses).foreach { i =>
     rs1TagMatches(i) := (io.in.bits.rs1Tag === io.inBus(i).bits.tag) & io.inBus(i).valid
     rs2TagMatches(i) := (io.in.bits.rs2Tag === io.inBus(i).bits.tag) & io.inBus(i).valid
   }
@@ -33,15 +33,15 @@ class OverrideRsFromBus(val config: WoodConfig) extends Module {
   io.out <> overriden
 }
 
-class OverrideRsFromBuses(val config: WoodConfig) extends Module {
+class OverrideRsFromBuses(val config: WoodConfig, val numBuses: Int) extends Module {
   val io = IO(new Bundle {
     val in    = Flipped(Vec(config.nWide, Decoupled(new MI(config))))
-    val inBus = Input(Vec(config.nWide, ValidIO(new DataBus(config))))
+    val inBus = Input(Vec(numBuses, ValidIO(new DataBus(config))))
     val out   = Vec(config.nWide, Decoupled(new MI(config)))
   })
 
   val overriders = Seq.tabulate(config.nWide) { _ =>
-    Module(new OverrideRsFromBus(config))
+    Module(new OverrideRsFromBus(config, numBuses))
   }
 
   (0 until config.nWide).foreach(j => {

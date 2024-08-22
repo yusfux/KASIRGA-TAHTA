@@ -12,13 +12,13 @@ class OverrideSpec extends AnyFlatSpec with ChiselScalatestTester with ParallelT
   (1 to tconfig.maxWidth).foreach(j => {
     val config = new WoodConfig(nWide = j)
     "OverrideFromBus" should s"emit Verilog ${j} wide" in {
-      TestGenerateVerilog(new OverrideRsFromBus(config), testNames.filter(_.contains("emit Verilog")), j)
+      TestGenerateVerilog(new OverrideRsFromBus(config, config.nWide), testNames.filter(_.contains("emit Verilog")), j)
     }
   })
   (1 to tconfig.maxWidth).foreach(j => {
     val config = new WoodConfig(nWide = j)
     "OverrideFromBuses" should s"emit Verilog ${j} wide" in {
-      TestGenerateVerilog(new OverrideRsFromBuses(config), testNames.filter(_.contains("emit Verilog")), j)
+      TestGenerateVerilog(new OverrideRsFromBuses(config, config.nWide), testNames.filter(_.contains("emit Verilog")), j)
     }
   })
 }
