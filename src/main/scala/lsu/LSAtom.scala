@@ -58,6 +58,7 @@ class LSAtom(config: WoodConfig) extends Module {
   io.outSQ                             <> retireOverrider.io.out
   io.outSQ.valid                       := retireOverrider.io.out.valid & selfMerged.bits.store
   io.outSQ.bits.commitable             := 1.B
+  io.outSQ.bits.cacheLine              := selfMerged.bits.cacheLine
 
   io.selfRetired := retireOverrider.io.out.bits.retired
 

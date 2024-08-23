@@ -18,7 +18,7 @@ class LSDummyCache(config: WoodConfig) extends Module {
 
   val sramOut = Wire(UInt(config.mmInterfaceWidth.W))
 
-  sram.readwritePorts(0).address   := io.in.bits.addr(log2Ceil(config.dcacheDepth), log2Ceil(config.mmInterfaceWidth) - 3)
+  sram.readwritePorts(0).address   := io.in.bits.addr(config.xlen - 1, log2Ceil(config.mmInterfaceWidth) - 3)
   sram.readwritePorts(0).isWrite   := io.in.valid && io.in.bits.commitable
   sram.readwritePorts(0).writeData := io.in.bits.cacheLine.asUInt
   sram.readwritePorts(0).enable    := io.in.valid
