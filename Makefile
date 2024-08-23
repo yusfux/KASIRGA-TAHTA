@@ -30,6 +30,16 @@ wood_asm_test:
 	grouphex -f src/test/c/build/$(inst)_main.hex -g $(nWide) -o src/test/c/build/
 	python3 src/test/python/cocotb/main.py --inst $(inst) --width $(nWide) --test tb_wood --top WoodDut --waves true --sim questa --dir ./test_run_dir/WoodDut_should_emit_for_cocotb/
 
+.PHONY: exunit_csmith_test
+exunit_csmith_test:
+	csmith --seed 69420 --no-argc --no-arrays --concise --no-divs --no-jumps --no-float --no-longlong --no-math64 --no-muls --safe-math --no-pointers --quiet --no-builtins --max-block-size 10 --no-checksum  --inline-function  --inline-function-prob 100 --no-unions  --no-global-variables --no-hash-value-printf > src/test/c/src/$(inst).c
+	sed -i 's/^.*platform_main/\/\/&/' src/test/c/src/$(inst).c
+	genstarts -f src/test/c/src/$(inst).S
+	+@$(SUBMAKE) src/test/c/
+	grouphex -f src/test/c/build/$(inst)_main.hex -g $(nWide) -o src/test/c/build/
+	python3 src/test/python/cocotb/main.py --inst $(inst) --width $(nWide) --test tb_exunit --top ExUnit --waves true --sim questa --dir ./test_run_dir/ExUnit_should_emit_for_cocotb/
+
+
 
 .PHONY: clean
 clean:

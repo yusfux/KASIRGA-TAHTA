@@ -6,7 +6,7 @@ pkgs.writers.writePython3Bin "spiketrace2json" { } ''
   import re
   from pathlib import Path
 
-  PAD_SIZE=28
+  PAD_SIZE = 28
 
 
   def remove_after_loop(lines):
@@ -83,7 +83,7 @@ pkgs.writers.writePython3Bin "spiketrace2json" { } ''
       alias_numeric_list = []
       for line in lines:
           for alias, xnum in register_aliases.items():
-              line = re.sub(r'\b' + re.escape(alias) + r'\b(?!\d)', xnum, line)
+              line = re.sub(r"\b" + re.escape(alias) + r"\b(?!\d)", xnum, line)
           alias_numeric_list.append(line)
 
       return alias_numeric_list
@@ -114,24 +114,32 @@ pkgs.writers.writePython3Bin "spiketrace2json" { } ''
 
 
   def add_alias(dict_list, aliases):
-      if len(dict_list) != len(aliases):
-          raise ValueError("Lengths does not match.")
+      len_dict = len(dict_list)
+      len_aliases = len(dict_list)
+      if len_dict != len_aliases:
+          raise ValueError(
+              f"Lengths does not match. len_aliases: {len_aliases}, len_dict: {len_dict}"
+          )
 
       for i in range(len(dict_list)):
           alias = aliases[i]
-          alias = alias.ljust(PAD_SIZE) if alias else " " * PAD_SIZE,
+          alias = (alias.ljust(PAD_SIZE) if alias else " " * PAD_SIZE,)
           dict_list[i]["alias"] = "".join(alias)
 
       return dict_list
 
 
   def add_alias_numeric(dict_list, aliases):
-      if len(dict_list) != len(aliases):
-          raise ValueError("Lengths does not match.")
+      len_dict = len(dict_list)
+      len_aliases = len(dict_list)
+      if len_dict != len_aliases:
+          raise ValueError(
+              f"Numeric Lengths does not match. len_aliases: {len_aliases}, len_dict: {len_dict}"
+          )
 
       for i in range(len(dict_list)):
           alias = aliases[i]
-          alias = alias.ljust(PAD_SIZE) if alias else " " * PAD_SIZE,
+          alias = (alias.ljust(PAD_SIZE) if alias else " " * PAD_SIZE,)
           dict_list[i]["alias_numeric"] = "".join(alias)
 
       return dict_list
@@ -148,6 +156,12 @@ pkgs.writers.writePython3Bin "spiketrace2json" { } ''
 
       alias_list = remove_before_parenthesis_and_strip(alias_list)
       numeric_alias_list = create_alias_numeric(alias_list)
+
+      # with Path("alis_list").open("w") as output_file:
+      #     output_file.write(str(alias_list))
+
+      # with Path("reg_list").open("w") as output_file:
+      #     output_file.write(str(reg_list))
 
       trace = add_alias(reg_list, alias_list)
       trace = add_alias_numeric(trace, numeric_alias_list)
@@ -183,7 +197,9 @@ pkgs.writers.writePython3Bin "spiketrace2json" { } ''
       # Writing to file
       with args.output_file.open("w") as output_file:
           output_file.write("[\n")
-          output_file.write(",\n".join([json.dumps(entry, separators=(",", ":")) for entry in trace]))
+          output_file.write(
+              ",\n".join([json.dumps(entry, separators=(",", ":")) for entry in trace])
+          )
           output_file.write("]\n")
 
 
