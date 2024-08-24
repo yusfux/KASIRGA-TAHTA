@@ -8,7 +8,7 @@ pkgs.writers.writePython3Bin "asmgen" { } ''
   simple_ls_0 = """
     la	x7, tdat1
     li      x1,0
-    li      x2,3
+    li      x2,30
 
 
     stores:
@@ -19,6 +19,37 @@ pkgs.writers.writePython3Bin "asmgen" { } ''
 
     la	x7, tdat1
     li      x1,0
+
+    loads:
+    lw      x3,(x7)
+    addi    x1, x1, 1
+    addi    x7, x7, 4
+    bne     x1,x2,loads
+  """
+
+  just_store_0 = """
+    la	x7, tdat1
+    li      x1,0
+    li      x2,30
+    addi    x10, x7, 0
+    addi    x11, x7, 4
+    addi    x12, x7, 8
+    addi    x13, x7, 12
+    addi    x14, x7, 16
+    addi    x15, x7, 20
+    addi    x16, x7, 24
+    addi    x17, x7, 28
+
+    sw      x1,(x10)
+    sw      x1,(x11)
+    sw      x1,(x12)
+    sw      x1,(x13)
+    sw      x1,(x14)
+    sw      x1,(x15)
+    sw      x1,(x16)
+    sw      x1,(x17)
+    sw      x1,(x17)
+    sw      x1,(x17)
 
     loads:
     lw      x3,(x7)
@@ -133,7 +164,7 @@ pkgs.writers.writePython3Bin "asmgen" { } ''
           self.branch_instructions = ["beq", "bne", "bge", "bgeu", "blt", "bltu"]
           self.load_instructions = ["lw", "lh", "lb", "lbu", "lhu"]
           self.store_instructions = ["sw", "sh", "sb"]
-          self.custom_tests = ["simple_ls_0"]
+          self.custom_tests = ["simple_ls_0", "just_store_0"]
 
       def init_regs(self) -> List[str]:
           asm_code = []
@@ -294,6 +325,8 @@ pkgs.writers.writePython3Bin "asmgen" { } ''
       ) -> str:
           if inst_type == "simple_ls_0":
               return simple_ls_0
+          elif inst_type == "just_store_0":
+              return just_store_0
           else:
               raise ValueError(f"Unknown custom test type: {args.type}")
 
@@ -319,7 +352,7 @@ pkgs.writers.writePython3Bin "asmgen" { } ''
                    "lw", "lh", "lb", "lbu", "lhu",
                    "sw", "sh", "sb",
                    "clmulh", "clmulr",
-                   "simple_ls_0"],
+                   "simple_ls_0", "just_store_0"],
           required=True,
           help="inst type to generate (li, add, sub, addi, xori, ori, or andi)",
       )

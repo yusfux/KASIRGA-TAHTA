@@ -20,7 +20,7 @@ class LSWriteback(config: WoodConfig) extends Module {
     mergedData(j) := MuxCase(
       io.in.bits.cacheData(j),
       Array(
-        (io.in.bits.wStrobe(j)) -> io.in.bits.sqData(j)
+        (io.in.bits.sqwStrobe(j)) -> io.in.bits.sqData(j)
       ).toIndexedSeq
     )
   })

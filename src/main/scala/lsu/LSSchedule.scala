@@ -84,6 +84,7 @@ class LSScheduleStage(val config: WoodConfig) extends Module {
       remi.bits.rs2Data      := mi.bits.rs2Data
       remi.bits.lsOp         := mi.bits.lsOp
       remi.bits.operandReady := mi.bits.operandReady
+      remi.bits.flushed      := mi.bits.flushed
       remi
     }(j)
     inputRRShifter.io.out(j).ready := reservationStations(j).io.in.ready
@@ -103,7 +104,8 @@ class LSScheduleStage(val config: WoodConfig) extends Module {
   self.bits.cacheData := lsarbiter.io.out.bits.rs2Data.asTypeOf(Vec(config.numBytes, UInt(8.W)))
   self.bits.sqData    := DontCare
   self.bits.lsOp      := lsarbiter.io.out.bits.lsOp
-  self.bits.wStrobe   := DontCare
+  self.bits.sqwStrobe := DontCare
+  self.bits.flushed   := lsarbiter.io.out.bits.flushed
 
   self.valid             := lsarbiter.io.out.valid
   lsarbiter.io.out.ready := self.ready
@@ -111,10 +113,10 @@ class LSScheduleStage(val config: WoodConfig) extends Module {
   getWStrobe.io.addr := self.bits.addr
   getWStrobe.io.lsOp := self.bits.lsOp
 
-  retireOverrider.io.in              <> self
-  retireOverrider.io.in.bits.wStrobe := getWStrobe.io.out
+  retireOverrider.io.in                <> self
+  retireOverrider.io.in.bits.sqwStrobe := getWStrobe.io.out
 
-  pReg.io.flush <> io.flush
-  pReg.io.in    <> retireOverrider.io.out
-  io.out        <> pReg.io.out
+  pReg.io.setflushed <> io.flush
+  pReg.io.in         <> retireOverrider.io.out
+  io.out             <> pReg.io.out
 }

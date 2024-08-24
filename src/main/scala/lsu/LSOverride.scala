@@ -55,5 +55,5 @@ class LSOverrideOperands(config: WoodConfig) extends Module {
     io.rs2DataO    := io.rs2DataI
   }
 
-  io.operandReadyO := (io.operandReadyI | operandBusMatches.asUInt.orR)
+  io.operandReadyO := operandBusMatches.asUInt.orR
 }

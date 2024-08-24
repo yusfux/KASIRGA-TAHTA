@@ -25,21 +25,21 @@ class LSINFO(config: WoodConfig) extends Retirable(config) {
   val atom  = Bool()
   val addr  = UInt(config.xlen.W)
   // val rdTag = UInt(config.tagWidth.W)
-  val inst = UInt(32.W) // for testbench only
-  val pc   = UInt(config.xlen.W) // for testbench only
+  val inst    = UInt(32.W) // for testbench only
+  val pc      = UInt(config.xlen.W) // for testbench only
+  val flushed = Bool()
+  val lsOp    = UInt(DecodeConfig.subWidths(DecodeConfig.lsOpIdx).W)
 }
 
 class LSRSMI(config: WoodConfig) extends LSINFO(config) { // Load store reservation station micro instruction
   val rs2Data      = UInt(config.xlen.W)
-  val lsOp         = UInt(DecodeConfig.subWidths(DecodeConfig.lsOpIdx).W)
   val operandReady = Bool()
 }
 
 class LSCMI(config: WoodConfig) extends LSINFO(config) { // Load store commit micro instruction
   val cacheData = Vec(config.numBytes, UInt(8.W))
   val sqData    = Vec(config.numBytes, UInt(8.W)) // only used for load update after read
-  val wStrobe   = Vec(config.numBytes, Bool()) // Required for CAM reads only
-  val lsOp      = UInt(DecodeConfig.subWidths(DecodeConfig.lsOpIdx).W)
+  val sqwStrobe = Vec(config.numBytes, Bool()) // only used for CAM merge at writeback
 }
 
 case class LSOperandBus(config: WoodConfig) extends Bundle {
@@ -72,9 +72,21 @@ class LSUnit(config: WoodConfig) extends Module {
     inputOperandsOverrider(j).io.rdTagI        := io.in(j).bits.rdTag
     inputOperandsOverrider(j).io.operandReadyI := io.in(j).bits.operandReady
 
-    inOverridenOperands(j).bits.operandReady := inputOperandsOverrider(j).io.operandReadyO
-    inOverridenOperands(j).bits.rdData       := inputOperandsOverrider(j).io.targetAddrO
-    inOverridenOperands(j).bits.rs2Data      := inputOperandsOverrider(j).io.rs2DataO
+    inOverridenOperands(j).bits.operandReady := Mux(
+      inputOperandsOverrider(j).io.operandReadyO,
+      inputOperandsOverrider(j).io.operandReadyO,
+      io.in(j).bits.operandReady
+    )
+    inOverridenOperands(j).bits.rdData := Mux(
+      inputOperandsOverrider(j).io.operandReadyO,
+      inputOperandsOverrider(j).io.targetAddrO,
+      io.in(j).bits.rdData
+    )
+    inOverridenOperands(j).bits.rs2Data := Mux(
+      inputOperandsOverrider(j).io.operandReadyO,
+      inputOperandsOverrider(j).io.rs2DataO,
+      io.in(j).bits.rs2Data
+    )
   })
 
   val lsscstage  = Module(new LSScheduleStage(config))

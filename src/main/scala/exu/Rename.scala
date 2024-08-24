@@ -91,8 +91,8 @@ class RenameStage(config: WoodConfig) extends Module {
       pRegs1(j).io.flush      := 0.U // never lose tags
       pRegs1(j).io.setflushed := io.flush
 
-      pRegs2(j).io.flush := 0.U // never lose tags
-      // pRegs2(j).io.setflushed := io.flush
+      // pRegs2(j).io.flush        := 0.U // never lose tags
+      pRegs2(j).io.setflushed   := io.flush
       pRegs2(j).io.frontRetired := io.frontRetired(j)
       pRegs2(j).io.lsOperandBus <> io.lsOperandBus
 

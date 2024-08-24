@@ -4,6 +4,7 @@ import chisel3._
 import chisel3.util._
 import wood.WoodConfig
 import wood.exu.TagBus
+import wood.std.DCDemux
 
 class LSSQStage(config: WoodConfig) extends Module {
   val io = IO(new Bundle {
@@ -15,29 +16,27 @@ class LSSQStage(config: WoodConfig) extends Module {
   })
 
   val retireOverrider = Module(new LSOverrideRetire(new LSCMI(config))(config))
+  val demux           = Module(new DCDemux(new LSCMI(config))(1, 2))
   val arbiter         = Module(new Arbiter(new LSCMI(config), 2))
   val sq              = Module(new LSStoreQueue(config))
-  val sqArbIndex      = 0
-  val inArbIndex      = 1
+  val sqIndex         = 1
+  val inIndex         = 0
 
-  io.in.ready := sq.io.in.ready && io.out.ready && (arbiter.io.chosen === inArbIndex.U)
+  demux.io.sel(0) := Mux(io.in.bits.store, sqIndex.U, inIndex.U)
 
   retireOverrider.io.storeRetireBus <> io.storeRetireBus
   retireOverrider.io.in             <> io.in
-  sq.io.in                          <> retireOverrider.io.out
-  sq.io.in.valid                    := io.in.bits.store && retireOverrider.io.out.fire
+  demux.io.in(0)                    <> retireOverrider.io.out
+  sq.io.in                          <> demux.io.out(sqIndex)(0)
+  arbiter.io.in(inIndex)            <> demux.io.out(inIndex)(0)
+  arbiter.io.in(sqIndex)            <> sq.io.out
+  io.out                            <> arbiter.io.out
 
   sq.io.camReadIn      := io.in.bits.addr
   sq.io.flush          := io.flush
   sq.io.storeRetireBus := io.storeRetireBus
 
-  arbiter.io.in(sqArbIndex)       <> sq.io.out
-  arbiter.io.in(inArbIndex)       <> io.in
-  arbiter.io.in(inArbIndex).valid := (!io.in.bits.store & io.in.valid)
-  io.out                          <> arbiter.io.out
-
-  io.out.bits.sqData  := sq.io.camReadOut.bits.sqData
-  io.out.bits.wStrobe := sq.io.camReadOut.bits.wStrobe
-  io.selfRetired      := retireOverrider.io.out.bits.retired
-
+  io.out.bits.sqData    := sq.io.camReadOut.bits.sqData
+  io.out.bits.sqwStrobe := sq.io.camReadOut.bits.sqwStrobe
+  io.selfRetired        := retireOverrider.io.out.bits.retired
 }

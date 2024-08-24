@@ -8,31 +8,47 @@ import wood.exu.TagBus
 class LSStoreQueueRow(config: WoodConfig) extends Module {
   val io = IO(new Bundle {
     val in             = Flipped(ValidIO(new LSCMI(config)))
-    val flush          = Input(Bool())
+    val setflushed     = Input(Bool())
     val storeRetireBus = Flipped(Vec(config.nWide, ValidIO(new TagBus(config))))
     val out            = ValidIO(new LSCMI(config))
   })
 
-  val busRdMatches = Wire(Vec(config.nWide, Bool()))
-  val rowNext      = Wire(new LSCMI(config))
+  val retireBusMatches = Wire(Vec(config.nWide, Bool()))
+
+  val rowNext = Wire(new LSCMI(config))
 
   val row = RegEnable(rowNext, 0.U.asTypeOf(new LSCMI(config)), 1.B)
 
-  val matchIndex = PriorityEncoder(busRdMatches)
-  when(io.flush) {
-    rowNext := 0.U.asTypeOf(new LSCMI(config))
+  val matchIndex = PriorityEncoder(retireBusMatches)
+  when(io.setflushed && !(row.retired | retireBusMatches.asUInt.orR) && !io.in.valid) {
+    rowNext         := DontCare
+    rowNext.flushed := 1.B
+    // debug only
+    rowNext.inst := row.inst
+    rowNext.pc   := row.pc
+  }.elsewhen(io.setflushed && !(io.in.bits.retired) && io.in.valid) {
+    rowNext         := DontCare
+    rowNext.flushed := 1.B
+    // debug only
+    rowNext.inst := io.in.bits.inst
+    rowNext.pc   := io.in.bits.pc
+  }.elsewhen(io.setflushed & (io.in.valid & io.in.bits.retired)) {
+    rowNext := io.in.bits
+  }.elsewhen(io.setflushed & (row.retired | retireBusMatches.asUInt.orR)) {
+    rowNext         := row
+    rowNext.retired := row.retired | retireBusMatches.asUInt.orR
   }.elsewhen(io.in.valid) {
     rowNext := io.in.bits
   }.otherwise {
     rowNext         := row
-    rowNext.retired := row.retired | busRdMatches.asUInt.orR
+    rowNext.retired := row.retired | retireBusMatches.asUInt.orR
   }
 
   io.out.bits  := row
-  io.out.valid := row.retired
+  io.out.valid := row.retired | row.flushed
 
   for (j <- 0 until config.nWide) {
-    busRdMatches(j) := io.storeRetireBus(j).valid & (row.rdTag === io.storeRetireBus(j).bits.tag)
+    retireBusMatches(j) := io.storeRetireBus(j).valid & (row.rdTag === io.storeRetireBus(j).bits.tag)
   }
 }
 
@@ -71,15 +87,9 @@ class LSStoreQueue(config: WoodConfig) extends Module {
   io.in.ready  := !full
   io.out.valid := !empty & outValid(deqPtr.value) & valid(deqPtr.value)
 
-  when(io.flush) {
-    valid.foreach(_ := 0.B)
-    enqPtr.reset()
-    deqPtr.reset()
-  }
-
   (0 until config.lsSQDepth).foreach(j => {
-    rows(j).io.flush          := io.flush
-    rows(j).io.in.valid       := io.in.fire && (enqPtr.value === j.U) && !full
+    rows(j).io.setflushed     := io.flush
+    rows(j).io.in.valid       := io.in.fire && (enqPtr.value === j.U) && !full && !io.in.bits.flushed
     rows(j).io.in.bits        := io.in.bits
     rows(j).io.storeRetireBus := io.storeRetireBus
     outValid(j)               := rows(j).io.out.valid && (deqPtr.value === j.U) && valid(deqPtr.value)
@@ -105,7 +115,7 @@ class LSStoreQueue(config: WoodConfig) extends Module {
   val (finalWstrobe, finalData) =
     (0 until config.lsSQDepth).foldLeft((0.U(config.numBytes.W), VecInit(Seq.fill(config.numBytes)(0.U(8.W))))) {
       case ((accWstrobe, accData), j) =>
-        val currentWstrobe = rows(j).io.out.bits.wStrobe
+        val currentWstrobe = rows(j).io.out.bits.sqwStrobe.asUInt & Fill(config.numBytes, !rows(j).io.out.bits.flushed)
         val currentData    = rows(j).io.out.bits.cacheData
         val currentRecency = recencyArray(j)
 
@@ -126,8 +136,8 @@ class LSStoreQueue(config: WoodConfig) extends Module {
 
   dontTouch(tstrobe)
 
-  io.camReadOut              := DontCare
-  io.camReadOut.bits.wStrobe := tstrobe
-  io.camReadOut.bits.sqData  := finalData
-  io.camReadOut.valid        := io.in.valid
+  io.camReadOut                := DontCare
+  io.camReadOut.bits.sqwStrobe := tstrobe
+  io.camReadOut.bits.sqData    := finalData
+  io.camReadOut.valid          := io.in.valid
 }

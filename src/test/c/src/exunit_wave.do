@@ -383,9 +383,6 @@ for {set i 0} {$i < $nWide} {incr i 1} {
   add wave -noupdate -group exunit -group lsunit -group lsscstage -group  io_in_$i $sig_name
 }
 
-add wave -noupdate -group exunit -group lsunit -group lsscstage -group -radix RISCV io_out /ExUnit/lsunit/lsscstage/io_out_bits_inst
-add wave -noupdate -group exunit -group lsunit -group lsscstage -group io_out /ExUnit/lsunit/lsscstage/io_out*
-
 for {set i 0} {$i < $nWide} {incr i 1} {
   add wave -noupdate -group exunit -group lsunit -group lsscstage -group reservationStations_$i /ExUnit/lsunit/lsscstage/reservationStations_$i/full
 }
@@ -396,6 +393,9 @@ for {set i 0} {$i < $nWide} {incr i 1} {
         add wave -noupdate -group exunit -group lsunit -group lsscstage  -group reservationStations_$i -group rows_$j $sig_name
     }
 }
+
+add wave -noupdate -group exunit -group lsunit -group lsscstage -group -radix RISCV io_out /ExUnit/lsunit/lsscstage/io_out_bits_inst
+add wave -noupdate -group exunit -group lsunit -group lsscstage -group io_out /ExUnit/lsunit/lsscstage/io_out*
 
 ################################
 # LSSQStage
@@ -409,11 +409,14 @@ add wave -noupdate -group exunit -group lsunit -group lssqstage -group io_out /E
 add wave -noupdate -group exunit -group lsunit -group lssqstage -group sq /ExUnit/lsunit/lssqstage/sq/full
 add wave -noupdate -group exunit -group lsunit -group lssqstage -group sq -group -radix RISCV io_in /ExUnit/lsunit/lssqstage/sq/io_in_bits_inst
 add wave -noupdate -group exunit -group lsunit -group lssqstage -group sq -group io_in /ExUnit/lsunit/lssqstage/sq/io_in*
-add wave -noupdate -group exunit -group lsunit -group lssqstage -group sq -group io_out /ExUnit/lsunit/lssqstage/sq/io_out*
+
 for {set i 0} {$i < $sqDepth} {incr i 1} {
     set sig_name [format "/ExUnit/lsunit/lssqstage/sq/rows_%d/row_*" $i]
     add wave -noupdate -group exunit -group lsunit -group lssqstage  -group sq -group rows_$i $sig_name
 }
+
+add wave -noupdate -group exunit -group lsunit -group lssqstage -group sq -group -radix RISCV io_out /ExUnit/lsunit/lssqstage/sq/io_out_bits_inst
+add wave -noupdate -group exunit -group lsunit -group lssqstage -group sq -group io_out /ExUnit/lsunit/lssqstage/sq/io_out*
 
 ################################
 # LSWBStage

@@ -8,7 +8,7 @@ import wood.exu.TagBus
 class LSReservationStationRow(config: WoodConfig) extends Module {
   val io = IO(new Bundle {
     val in             = Flipped(ValidIO(new LSRSMI(config)))
-    val flush          = Input(Bool())
+    val setflushed     = Input(Bool())
     val lsOperandBus   = Flipped(Vec(config.nWide, ValidIO(new LSOperandBus(config))))
     val storeRetireBus = Flipped(Vec(config.nWide, ValidIO(new TagBus(config))))
     val out            = ValidIO(new LSRSMI(config))
@@ -24,11 +24,21 @@ class LSReservationStationRow(config: WoodConfig) extends Module {
   val operandBusMatchIndex = PriorityEncoder(operandBusMatches)
   val retireBusMatchIndex  = PriorityEncoder(retireBusMatches)
 
-  when(io.flush & !(row.retired | retireBusMatches.asUInt.orR | io.in.bits.retired)) {
-    rowNext := 0.U.asTypeOf(new LSRSMI(config))
-  }.elsewhen(io.flush & (io.in.valid & io.in.bits.retired)) {
+  when(io.setflushed && !(row.retired | retireBusMatches.asUInt.orR) && !io.in.valid) {
+    rowNext         := DontCare
+    rowNext.flushed := 1.B
+    // debug only
+    rowNext.inst := row.inst
+    rowNext.pc   := row.pc
+  }.elsewhen(io.setflushed && !(io.in.bits.retired) && io.in.valid) {
+    rowNext         := DontCare
+    rowNext.flushed := 1.B
+    // debug only
+    rowNext.inst := io.in.bits.inst
+    rowNext.pc   := io.in.bits.pc
+  }.elsewhen(io.setflushed & (io.in.valid & io.in.bits.retired)) {
     rowNext := io.in.bits
-  }.elsewhen(io.flush & (row.retired | retireBusMatches.asUInt.orR)) {
+  }.elsewhen(io.setflushed & (row.retired | retireBusMatches.asUInt.orR)) {
     val operandTargetAddr = io.lsOperandBus(operandBusMatchIndex).bits.targetAddr
     val operandRs2        = io.lsOperandBus(operandBusMatchIndex).bits.rs2Data
 
@@ -51,7 +61,7 @@ class LSReservationStationRow(config: WoodConfig) extends Module {
   }
 
   io.out.bits  := row
-  io.out.valid := row.operandReady
+  io.out.valid := row.operandReady | row.flushed
 
   for (j <- 0 until config.nWide) {
     operandBusMatches(j) := io.lsOperandBus(j).valid & (row.rdTag === io.lsOperandBus(j).bits.rdTag)
@@ -100,7 +110,7 @@ class LSReservationStation(config: WoodConfig) extends Module {
 
   rows.zipWithIndex.foreach {
     case (row, i) =>
-      row.io.flush          := io.flush
+      row.io.setflushed     := io.flush
       row.io.in.valid       := io.in.valid && (enqPtr.value === i.U) && !full
       row.io.in.bits        := io.in.bits
       row.io.lsOperandBus   := io.lsOperandBus

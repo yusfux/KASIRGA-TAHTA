@@ -9,7 +9,7 @@ import wood.lsu.LSOperandBus
 class WoodLSRetireMIPipelineRegister(config: WoodConfig) extends Module {
   val io = IO(new Bundle {
     val in           = Flipped(Decoupled(new MI(config)))
-    val flush        = Input(Bool())
+    val setflushed   = Input(Bool())
     val frontRetired = Input(Bool()) // retired status of the next stage
     val lsOperandBus = Flipped(Vec(config.nWide, ValidIO(new LSOperandBus(config))))
     val out          = Decoupled(new MI(config))
@@ -27,56 +27,68 @@ class WoodLSRetireMIPipelineRegister(config: WoodConfig) extends Module {
   val operandTargetAddr    = io.lsOperandBus(operandBusMatchIndex).bits.targetAddr
   val operandRs2           = io.lsOperandBus(operandBusMatchIndex).bits.rs2Data
 
+  // debug only
+  dontTouch(operandBusMatches)
+  dontTouch(operandBusMatchIndex)
+  dontTouch(regData.rdData)
+
   regDataNextInvalidForwards := MuxCase(
     regData,
     Seq(
-      (io.flush & io.out.ready & io.in.bits.retired)  -> io.in.bits, // ignore flush
-      (io.flush & io.out.ready & !io.in.bits.retired) -> 0.U.asTypeOf(new MI(config)),
-      (io.flush & !io.out.ready & io.frontRetired)    -> regData, // ignore flush but save operands and the retired
-      (io.flush & !io.out.ready & !io.frontRetired)   -> 0.U.asTypeOf(new MI(config)),
-      (!io.flush & io.out.ready)                      -> io.in.bits,
-      (!io.flush & !io.out.ready)                     -> regData //  save operands and the retired
+      (io.setflushed & io.out.ready & io.in.bits.retired)  -> io.in.bits, // ignore flush
+      (io.setflushed & io.out.ready & !io.in.bits.retired) -> io.in.bits, // but set flushed=1
+      (io.setflushed & !io.out.ready & io.frontRetired)    -> regData, // ignore flush but save operands and the retired
+      (io.setflushed & !io.out.ready & !io.frontRetired)   -> regData, // but set flushed=1
+      (!io.setflushed & io.out.ready)                      -> io.in.bits,
+      (!io.setflushed & !io.out.ready)                     -> regData //  save operands and the retired
     )
   )
   regDataNext := regDataNextInvalidForwards
+  regDataNext.flushed := MuxCase(
+    regDataNextInvalidForwards.flushed,
+    Seq(
+      (io.setflushed & io.out.ready & !io.in.bits.retired) -> 1.B, // but set flushed=1
+      (io.setflushed & !io.out.ready & !io.frontRetired)   -> 1.B // but set flushed=1
+    )
+  )
   regDataNext.retired := MuxCase(
     regDataNextInvalidForwards.retired,
     Seq(
-      (io.flush & !io.out.ready & io.frontRetired) -> (regData.retired | io.frontRetired),
-      (!io.flush & !io.out.ready)                  -> (regData.retired | io.frontRetired)
+      (io.setflushed & !io.out.ready & io.frontRetired) -> (regData.retired | io.frontRetired),
+      (!io.setflushed & !io.out.ready)                  -> (regData.retired | io.frontRetired)
     )
   )
-  regDataNext.rs1Data := MuxCase(
-    regDataNextInvalidForwards.rs1Data,
+  regDataNext.rdData := MuxCase(
+    regDataNextInvalidForwards.rdData,
     Seq(
-      (io.flush & !io.out.ready & io.frontRetired) -> Mux(operandBusMatches.asUInt.orR, operandTargetAddr, regData.rs1Data),
-      (!io.flush & !io.out.ready)                  -> Mux(operandBusMatches.asUInt.orR, operandTargetAddr, regData.rs1Data)
+      (io.setflushed & !io.out.ready & io.frontRetired) -> Mux(operandBusMatches.asUInt.orR, operandTargetAddr, regData.rdData),
+      (!io.setflushed & !io.out.ready)                  -> Mux(operandBusMatches.asUInt.orR, operandTargetAddr, regData.rdData)
     )
   )
   regDataNext.rs2Data := MuxCase(
     regDataNextInvalidForwards.rs2Data,
     Seq(
-      (io.flush & !io.out.ready & io.frontRetired) -> Mux(operandBusMatches.asUInt.orR, operandRs2, regData.rs2Data),
-      (!io.flush & !io.out.ready)                  -> Mux(operandBusMatches.asUInt.orR, operandRs2, regData.rs2Data)
+      (io.setflushed & !io.out.ready & io.frontRetired) -> Mux(operandBusMatches.asUInt.orR, operandRs2, regData.rs2Data),
+      (!io.setflushed & !io.out.ready)                  -> Mux(operandBusMatches.asUInt.orR, operandRs2, regData.rs2Data)
     )
   )
   regDataNext.operandReady := MuxCase(
     regDataNextInvalidForwards.operandReady,
     Seq(
-      (io.flush & !io.out.ready & io.frontRetired) -> (regData.operandReady | operandBusMatches.asUInt.orR),
-      (!io.flush & !io.out.ready)                  -> (regData.operandReady | operandBusMatches.asUInt.orR)
+      (io.setflushed & !io.out.ready & io.frontRetired) -> (regData.operandReady | operandBusMatches.asUInt.orR),
+      (!io.setflushed & !io.out.ready)                  -> (regData.operandReady | operandBusMatches.asUInt.orR)
     )
   )
 
   regValidNext := MuxCase(
     regValid,
     Seq(
-      (io.flush & io.out.ready & io.in.bits.retired)  -> io.in.valid, // ignore flush
-      (io.flush & io.out.ready & !io.in.bits.retired) -> 0.B,
-      (io.flush & !io.out.ready & io.frontRetired)    -> regValid, // ignore flush
-      (io.flush & !io.out.ready & !io.frontRetired)   -> 0.B,
-      (!io.flush & io.out.ready)                      -> io.in.valid,
-      (!io.flush & !io.out.ready)                     -> regValid
+      (io.setflushed & io.out.ready & io.in.bits.retired)  -> io.in.valid, // ignore flush
+      (io.setflushed & io.out.ready & !io.in.bits.retired) -> 0.B,
+      (io.setflushed & !io.out.ready & io.frontRetired)    -> regValid, // ignore flush
+      (io.setflushed & !io.out.ready & !io.frontRetired)   -> 0.B,
+      (!io.setflushed & io.out.ready)                      -> io.in.valid,
+      (!io.setflushed & !io.out.ready)                     -> regValid
     )
   )
 
