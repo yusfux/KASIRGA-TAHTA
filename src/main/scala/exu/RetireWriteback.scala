@@ -37,13 +37,14 @@ class RetireWritebackStage(config: WoodConfig) extends Module {
     io.commitedBus(j).bits.tag := MuxCase(
       io.in(j).bits.rdTag,
       Array(
-        (!io.in(j).valid)                                     -> DontCare,
-        (io.in(j).bits.flushed)                               -> io.in(j).bits.rdTag,
-        (rdOverriden(j))                                      -> io.in(j).bits.rdTag,
-        (io.in(j).bits.arfValid & (io.in(j).bits.rd === 0.U)) -> io.in(j).bits.rdTag,
-        (io.in(j).bits.isBranch.asBool)                       -> io.in(j).bits.rdTag,
-        (io.in(j).bits.isJAL.asBool)                          -> io.in(j).bits.arfTag,
-        (io.in(j).bits.arfValid & (io.in(j).bits.rd =/= 0.U)) -> io.in(j).bits.arfTag
+        (!io.in(j).valid)                                                              -> DontCare,
+        (io.in(j).bits.flushed)                                                        -> io.in(j).bits.rdTag,
+        (rdOverriden(j))                                                               -> io.in(j).bits.rdTag,
+        (io.in(j).bits.arfValid & (io.in(j).bits.rd === 0.U))                          -> io.in(j).bits.rdTag,
+        (io.in(j).bits.isBranch.asBool)                                                -> io.in(j).bits.rdTag,
+        ((io.in(j).bits.lsType === Integer.parseInt(DecodeConfig.LS_T_S, 2).U).asBool) -> io.in(j).bits.rdTag, // isStore
+        (io.in(j).bits.isJAL.asBool)                                                   -> io.in(j).bits.arfTag,
+        (io.in(j).bits.arfValid & (io.in(j).bits.rd =/= 0.U))                          -> io.in(j).bits.arfTag
       ).toIndexedSeq
     )
 

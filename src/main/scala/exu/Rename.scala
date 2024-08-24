@@ -3,6 +3,7 @@ package wood.exu
 import chisel3._
 import chisel3.util._
 import wood.WoodConfig
+import wood.lsu.LSOperandBus
 import wood.util.{WoodLSRetireMIPipelineRegister, WoodMIPipelineRegister}
 
 class RenameStage(config: WoodConfig) extends Module {
@@ -11,6 +12,7 @@ class RenameStage(config: WoodConfig) extends Module {
     val flush        = Input(Bool())
     val archRF       = Input(Vec(32, UInt(config.tagWidth.W)))
     val frontRetired = Input(Vec(config.nWide, Bool()))
+    val lsOperandBus = Flipped(Vec(config.nWide, ValidIO(new LSOperandBus(config))))
     val out0         = Vec(config.nWide, Decoupled(new MI(config)))
     val out1         = Vec(config.nWide, Decoupled(new MI(config)))
     val out2         = Vec(config.nWide, Decoupled(new MI(config)))
@@ -21,7 +23,7 @@ class RenameStage(config: WoodConfig) extends Module {
 
   val frontEndRegisterFile = RegInit(VecInit(Seq.fill(32)(0.U(config.tagWidth.W))))
   val self                 = Wire(Vec(config.nWide, Decoupled(new MI(config))))
-  val flushDelayed         = RegNext(RegNext(io.flush, false.B), false.B)
+  val flushDelayed         = RegNext(RegNext(RegNext(io.flush, false.B), false.B), false.B) // Flush to last Arch RF update delay
   val allInValid           = Wire(Vec(config.nWide, Bool())).suggestName("allInValid")
   allInValid := io.in.map(_.valid)
 
@@ -92,6 +94,7 @@ class RenameStage(config: WoodConfig) extends Module {
       pRegs2(j).io.flush := 0.U // never lose tags
       // pRegs2(j).io.setflushed := io.flush
       pRegs2(j).io.frontRetired := io.frontRetired(j)
+      pRegs2(j).io.lsOperandBus <> io.lsOperandBus
 
       pRegs0(j).io.in       <> self(j)
       pRegs0(j).io.in.valid := self(j).valid & (out2Ready.asUInt.andR & out1Ready.asUInt.andR & out0Ready.asUInt.andR)

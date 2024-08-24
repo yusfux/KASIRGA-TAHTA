@@ -42,7 +42,7 @@ class LSStoreQueue(config: WoodConfig) extends Module {
     val camReadIn      = Input(UInt(config.xlen.W))
     val storeRetireBus = Input(Vec(config.nWide, ValidIO(new TagBus(config))))
     val flush          = Input(Bool())
-    val camReadOut     = Output(new LSCMI(config))
+    val camReadOut     = Output(ValidIO(new LSCMI(config)))
     val out            = Decoupled(new LSCMI(config))
   })
 
@@ -93,8 +93,8 @@ class LSStoreQueue(config: WoodConfig) extends Module {
 
   val addrMatch = VecInit(
     rows.map(row =>
-      row.io.out.bits.addr(config.xlen - 1, config.dCacheAddrStartIndex) ===
-        io.camReadIn(config.xlen - 1, config.dCacheAddrStartIndex)
+      row.io.out.bits.addr(config.xlen - 1, 2) ===
+        io.camReadIn(config.xlen - 1, 2)
     )
   )
 
@@ -103,17 +103,17 @@ class LSStoreQueue(config: WoodConfig) extends Module {
   val matchingEntries = validAndMatch.asUInt
 
   val (finalWstrobe, finalData) =
-    (0 until config.lsSQDepth).foldLeft((0.U(config.numDCacheLineBytes.W), VecInit(Seq.fill(config.numDCacheLineBytes)(0.U(8.W))))) {
+    (0 until config.lsSQDepth).foldLeft((0.U(config.numBytes.W), VecInit(Seq.fill(config.numBytes)(0.U(8.W))))) {
       case ((accWstrobe, accData), j) =>
         val currentWstrobe = rows(j).io.out.bits.wStrobe
-        val currentData    = rows(j).io.out.bits.cacheLine
+        val currentData    = rows(j).io.out.bits.cacheData
         val currentRecency = recencyArray(j)
 
-        val newWstrobe = accWstrobe | (currentWstrobe.asUInt & Fill(config.numDCacheLineBytes, validAndMatch(j)))
+        val newWstrobe = accWstrobe | (currentWstrobe.asUInt & Fill(config.numBytes, validAndMatch(j)))
 
         val moreRecentMatch = (0 until j).map(k => validAndMatch(k) && (recencyArray(k) < currentRecency)).foldLeft(false.B)(_ || _)
 
-        val newData = VecInit((0 until config.numDCacheLineBytes).map { byteIndex =>
+        val newData = VecInit((0 until config.numBytes).map { byteIndex =>
           val isCurrentByteValid = currentWstrobe(byteIndex)
           Mux(isCurrentByteValid && !moreRecentMatch, currentData(byteIndex), accData(byteIndex))
         })
@@ -121,10 +121,13 @@ class LSStoreQueue(config: WoodConfig) extends Module {
         (newWstrobe, newData)
     }
 
-  val tstrobe = Wire(Vec(config.numDCacheLineBytes, Bool()))
-  tstrobe := VecInit(Seq.tabulate(config.numDCacheLineBytes)(j => finalWstrobe(j)))
+  val tstrobe = Wire(Vec(config.numBytes, Bool()))
+  tstrobe := VecInit(Seq.tabulate(config.numBytes)(j => finalWstrobe(j)))
 
-  io.camReadOut           := DontCare
-  io.camReadOut.wStrobe   := tstrobe
-  io.camReadOut.cacheLine := finalData
+  dontTouch(tstrobe)
+
+  io.camReadOut              := DontCare
+  io.camReadOut.bits.wStrobe := tstrobe
+  io.camReadOut.bits.sqData  := finalData
+  io.camReadOut.valid        := io.in.valid
 }

@@ -24,10 +24,20 @@ class LSReservationStationRow(config: WoodConfig) extends Module {
   val operandBusMatchIndex = PriorityEncoder(operandBusMatches)
   val retireBusMatchIndex  = PriorityEncoder(retireBusMatches)
 
-  when(io.flush) {
+  when(io.flush & !(row.retired | retireBusMatches.asUInt.orR | io.in.bits.retired)) {
     rowNext := 0.U.asTypeOf(new LSRSMI(config))
+  }.elsewhen(io.flush & (io.in.valid & io.in.bits.retired)) {
+    rowNext := io.in.bits
+  }.elsewhen(io.flush & (row.retired | retireBusMatches.asUInt.orR)) {
+    val operandTargetAddr = io.lsOperandBus(operandBusMatchIndex).bits.targetAddr
+    val operandRs2        = io.lsOperandBus(operandBusMatchIndex).bits.rs2Data
+
+    rowNext              := row
+    rowNext.addr         := Mux(operandBusMatches.asUInt.orR, operandTargetAddr, row.addr)
+    rowNext.rs2Data      := Mux(operandBusMatches.asUInt.orR, operandRs2, row.rs2Data)
+    rowNext.retired      := row.retired | retireBusMatches.asUInt.orR
+    rowNext.operandReady := row.operandReady | operandBusMatches.asUInt.orR
   }.elsewhen(io.in.valid) {
-    rowNext := 0.U.asTypeOf(new LSRSMI(config))
     rowNext := io.in.bits
   }.otherwise {
     val operandTargetAddr = io.lsOperandBus(operandBusMatchIndex).bits.targetAddr
@@ -87,12 +97,6 @@ class LSReservationStation(config: WoodConfig) extends Module {
 
   io.in.ready  := !full
   io.out.valid := !empty & outValid(deqPtr.value) & valid(deqPtr.value)
-
-  when(io.flush) {
-    valid.foreach(_ := 0.B)
-    enqPtr.reset()
-    deqPtr.reset()
-  }
 
   rows.zipWithIndex.foreach {
     case (row, i) =>

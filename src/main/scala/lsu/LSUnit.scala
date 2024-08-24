@@ -36,10 +36,10 @@ class LSRSMI(config: WoodConfig) extends LSINFO(config) { // Load store reservat
 }
 
 class LSCMI(config: WoodConfig) extends LSINFO(config) { // Load store commit micro instruction
-  val cacheLine  = Vec(config.numDCacheLineBytes, UInt(8.W))
-  val wStrobe    = Vec(config.numDCacheLineBytes, Bool()) // Required for CAM reads only
-  val lsOp       = UInt(DecodeConfig.subWidths(DecodeConfig.lsOpIdx).W)
-  val commitable = Bool() // cache line has been read and is from store queue
+  val cacheData = Vec(config.numBytes, UInt(8.W))
+  val sqData    = Vec(config.numBytes, UInt(8.W)) // only used for load update after read
+  val wStrobe   = Vec(config.numBytes, Bool()) // Required for CAM reads only
+  val lsOp      = UInt(DecodeConfig.subWidths(DecodeConfig.lsOpIdx).W)
 }
 
 case class LSOperandBus(config: WoodConfig) extends Bundle {
@@ -78,42 +78,25 @@ class LSUnit(config: WoodConfig) extends Module {
   })
 
   val lsscstage  = Module(new LSScheduleStage(config))
-  val lsdc0stage = Module(new LSDCache0Stage(config))
-  val lsdc1stage = Module(new LSDCache1Stage(config))
+  val lssqstage  = Module(new LSSQStage(config))
   val lsducstage = Module(new LSDummyCache(config))
-  val lsatstage  = Module(new LSAtom(config))
+  val lswbstage  = Module(new LSWriteback(config))
 
   lsscstage.io.in          <> inOverridenOperands
   lsscstage.io.selfRetired <> io.selfRetired
 
-  lsdc0stage.io.in <> lsscstage.io.out
-  lsducstage.io.in <> lsdc0stage.io.outCache
-
-  // lsdc1stage.io.in <> lsdc0stage.io.outCache //TODO connect to cache
-  lsdc1stage.io.in     <> lsdc0stage.io.outPass
-  lsatstage.io.inPass  <> lsdc1stage.io.out
-  lsatstage.io.inCache <> lsducstage.io.out
-
-  io.out                  <> lsatstage.io.outRF
-  lsdc0stage.io.lsAtomBus <> lsatstage.io.outSQ
+  lssqstage.io.in  <> lsscstage.io.out
+  lsducstage.io.in <> lssqstage.io.out
+  lswbstage.io.in  <> lsducstage.io.out
+  io.out           <> lswbstage.io.out
 
   lsscstage.io.lsOperandBus <> io.lsOperandBus
 
-  lsscstage.io.storeRetireBus  <> io.storeRetireBus
-  lsdc0stage.io.storeRetireBus <> io.storeRetireBus
-  lsdc1stage.io.storeRetireBus <> io.storeRetireBus
-  lsatstage.io.storeRetireBus  <> io.storeRetireBus
+  lsscstage.io.storeRetireBus <> io.storeRetireBus
+  lssqstage.io.storeRetireBus <> io.storeRetireBus
 
-  lsscstage.io.frontRetired  <> lsdc0stage.io.selfRetired
-  lsdc0stage.io.frontRetired <> lsdc1stage.io.selfRetired
-  lsdc1stage.io.frontRetired <> lsatstage.io.selfRetired
+  lsscstage.io.frontRetired <> lssqstage.io.selfRetired
 
-  lsdc0stage.io.lsDCache1Bus <> lsdc1stage.io.lsDCache1Bus
-
-  lsdc1stage.io.lsAtomBus.bits  := lsatstage.io.outSQ.bits
-  lsdc1stage.io.lsAtomBus.valid := lsatstage.io.outSQ.valid
-
-  lsscstage.io.flush  := io.flush
-  lsdc0stage.io.flush := io.flush
-  lsdc1stage.io.flush := io.flush
+  lsscstage.io.flush := io.flush
+  lssqstage.io.flush := io.flush
 }

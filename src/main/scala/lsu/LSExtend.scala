@@ -8,12 +8,12 @@ import wood.exu.DecodeConfig
 class LSExtend(config: WoodConfig) extends Module {
   val io = IO(new Bundle {
     val inData = Input(UInt(config.xlen.W))
-    val lsOp   = Input(UInt(DecodeConfig.subWidths(DecodeConfig.lsOpIdx).W))
+    val inlsOp = Input(UInt(DecodeConfig.subWidths(DecodeConfig.lsOpIdx).W))
     val out    = Output(UInt(config.xlen.W))
   })
 
   val rawOp = Wire(UInt(LSOp.getWidth.W))
-  rawOp := io.lsOp
+  rawOp := io.inlsOp
   val (control, valid) = LSOp.safe(rawOp)
 
   val result = Wire(UInt(config.xlen.W))

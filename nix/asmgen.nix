@@ -5,6 +5,28 @@ pkgs.writers.writePython3Bin "asmgen" { } ''
   import random
   random.seed(42)  # Replace 42 with your desired seed
 
+  simple_ls_0 = """
+    la	x7, tdat1
+    li      x1,0
+    li      x2,3
+
+
+    stores:
+    sw      x1,(x7)
+    addi    x1, x1, 1
+    addi    x7, x7, 4
+    bne     x1,x2,stores
+
+    la	x7, tdat1
+    li      x1,0
+
+    loads:
+    lw      x3,(x7)
+    addi    x1, x1, 1
+    addi    x7, x7, 4
+    bne     x1,x2,loads
+  """
+
   start_part = """
     .section .init
     .globl _start
@@ -111,6 +133,7 @@ pkgs.writers.writePython3Bin "asmgen" { } ''
           self.branch_instructions = ["beq", "bne", "bge", "bgeu", "blt", "bltu"]
           self.load_instructions = ["lw", "lh", "lb", "lbu", "lhu"]
           self.store_instructions = ["sw", "sh", "sb"]
+          self.custom_tests = ["simple_ls_0"]
 
       def init_regs(self) -> List[str]:
           asm_code = []
@@ -266,6 +289,14 @@ pkgs.writers.writePython3Bin "asmgen" { } ''
               asm_code.append(inst)
           return "\n".join(asm_code)
 
+      def generate_custom_test(
+       self, num_insts: int, inst_type: str, num_data: int
+      ) -> str:
+          if inst_type == "simple_ls_0":
+              return simple_ls_0
+          else:
+              raise ValueError(f"Unknown custom test type: {args.type}")
+
 
   if __name__ == "__main__":
       parser = argparse.ArgumentParser(description="RISC-V Test Generator")
@@ -287,7 +318,8 @@ pkgs.writers.writePython3Bin "asmgen" { } ''
                    "bext", "binv", "bset", "clmul",
                    "lw", "lh", "lb", "lbu", "lhu",
                    "sw", "sh", "sb",
-                   "clmulh", "clmulr"],
+                   "clmulh", "clmulr",
+                   "simple_ls_0"],
           required=True,
           help="inst type to generate (li, add, sub, addi, xori, ori, or andi)",
       )
@@ -315,7 +347,11 @@ pkgs.writers.writePython3Bin "asmgen" { } ''
       args = parser.parse_args()
 
       test_gen = RiscVTestGenerator()
-      if args.type == "random":
+      if args.inst in test_gen.custom_tests:
+          test_asm = test_gen.generate_custom_test(
+              args.num_insts, args.inst, args.num_data
+          )
+      elif args.type == "random":
           test_asm = test_gen.generate_random_test(
               args.num_insts, args.inst, args.num_data
           )

@@ -11,7 +11,7 @@ case class WoodConfig(
   nWide:            Int = 4,
   xlen:             Int = 32,
   mmInterfaceWidth: Int = 128, // Main Memory Interface Width
-  mmDepth:          Int = 4096,
+  mmDepth:          Int = 86016,
   //--------------
   // FrUnitConfig
   pcInitAddr:   String = "h8000_0000",
@@ -31,13 +31,12 @@ case class WoodConfig(
   lsRSDepth: Int = 2 // LS reservation station Depth
   //--------------
 ) {
-  val dcacheDepth          = mmDepth // TODO: connect the cache
-  val dCacheLineWidth      = mmInterfaceWidth
-  val iCacheLineWidth      = mmInterfaceWidth // TODO set or use this
-  val numDCacheLineBytes   = dCacheLineWidth / 8
-  val dCacheAddrStartIndex = log2Ceil(numDCacheLineBytes) - 1
-
-  val numBytes = xlen / 8
+  val dcacheDepth           = mmDepth // TODO: connect the cache
+  val dCacheLineWidth       = mmInterfaceWidth
+  val iCacheLineWidth       = mmInterfaceWidth // TODO set or use this
+  val numBytes              = xlen / 8
+  val numDCacheLineBytes    = dCacheLineWidth / 8
+  val wordAddressStartIndex = log2Ceil(numBytes) - 1
 
   require(
     robDepth % nWide == 0,

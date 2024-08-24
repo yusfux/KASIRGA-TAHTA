@@ -35,7 +35,7 @@ class LSScheduleStage(val config: WoodConfig) extends Module {
 
   val pReg            = Module(new WoodLSCMIPipelineRegister(config))
   val retireOverrider = Module(new LSOverrideRetire(new LSCMI(config))(config))
-  val extendWStrobe   = Module(new LSExtendWriteStrobe(config))
+  val getWStrobe      = Module(new LSGetWriteStrobe(config))
   val inputRRShifter  = Module(new DCRRShifter(new MI(config))(config.nWide))
   val lsarbiter       = Module(new LSArbiter(new LSRSMI(config))(config.nWide))
   val reservationStations = Seq.tabulate(config.nWide) { _ =>
@@ -49,7 +49,7 @@ class LSScheduleStage(val config: WoodConfig) extends Module {
   val allReady                = reservationStationReady.asUInt.andR
 
   inputRRShifter.io.in    <> io.in
-  inputRRShifter.io.flush := io.flush
+  inputRRShifter.io.flush := 0.B // never forget the order
 
   (0 until config.nWide).foreach(j => {
     inputRetireOverrider(j).io.storeRetireBus := io.storeRetireBus
@@ -93,30 +93,26 @@ class LSScheduleStage(val config: WoodConfig) extends Module {
 
   pReg.io.frontRetired := io.frontRetired
 
-  val shiftAmount    = lsarbiter.io.out.bits.addr(log2Ceil(config.numDCacheLineBytes) - 1, 0) * 8.U
-  val rs2InCacheline = (lsarbiter.io.out.bits.rs2Data << shiftAmount)(config.dCacheLineWidth - 1, 0)
-
-  self.bits.retired    := lsarbiter.io.out.bits.retired
-  self.bits.store      := lsarbiter.io.out.bits.store
-  self.bits.atom       := lsarbiter.io.out.bits.atom
-  self.bits.addr       := lsarbiter.io.out.bits.addr
-  self.bits.rdTag      := lsarbiter.io.out.bits.rdTag
-  self.bits.inst       := lsarbiter.io.out.bits.inst // debug only
-  self.bits.pc         := lsarbiter.io.out.bits.pc // debug only
-  self.bits.cacheLine  := rs2InCacheline.asTypeOf(Vec(config.numDCacheLineBytes, UInt(8.W)))
-  self.bits.lsOp       := lsarbiter.io.out.bits.lsOp
-  self.bits.commitable := 0.B
-
-  self.bits.wStrobe := DontCare
+  self.bits.retired   := lsarbiter.io.out.bits.retired
+  self.bits.store     := lsarbiter.io.out.bits.store
+  self.bits.atom      := lsarbiter.io.out.bits.atom
+  self.bits.addr      := lsarbiter.io.out.bits.addr
+  self.bits.rdTag     := lsarbiter.io.out.bits.rdTag
+  self.bits.inst      := lsarbiter.io.out.bits.inst // debug only
+  self.bits.pc        := lsarbiter.io.out.bits.pc // debug only
+  self.bits.cacheData := lsarbiter.io.out.bits.rs2Data.asTypeOf(Vec(config.numBytes, UInt(8.W)))
+  self.bits.sqData    := DontCare
+  self.bits.lsOp      := lsarbiter.io.out.bits.lsOp
+  self.bits.wStrobe   := DontCare
 
   self.valid             := lsarbiter.io.out.valid
   lsarbiter.io.out.ready := self.ready
 
-  extendWStrobe.io.addr := self.bits.addr
-  extendWStrobe.io.lsOp := self.bits.lsOp
+  getWStrobe.io.addr := self.bits.addr
+  getWStrobe.io.lsOp := self.bits.lsOp
 
   retireOverrider.io.in              <> self
-  retireOverrider.io.in.bits.wStrobe := extendWStrobe.io.out
+  retireOverrider.io.in.bits.wStrobe := getWStrobe.io.out
 
   pReg.io.flush <> io.flush
   pReg.io.in    <> retireOverrider.io.out

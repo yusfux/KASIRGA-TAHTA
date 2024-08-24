@@ -398,39 +398,30 @@ for {set i 0} {$i < $nWide} {incr i 1} {
 }
 
 ################################
-# LSDCache0Stage
-add wave -noupdate -group exunit -group lsunit -group lsdc0stage -group -radix RISCV io_in /ExUnit/lsunit/lsdc0stage/io_in_bits_inst
-add wave -noupdate -group exunit -group lsunit -group lsdc0stage -group io_in /ExUnit/lsunit/lsdc0stage/io_in*
+# LSSQStage
+add wave -noupdate -group exunit -group lsunit -group lssqstage -group -radix RISCV io_in /ExUnit/lsunit/lssqstage/io_in_bits_inst
+add wave -noupdate -group exunit -group lsunit -group lssqstage -group io_in /ExUnit/lsunit/lssqstage/io_in*
 
-add wave -noupdate -group exunit -group lsunit -group lsdc0stage -group -radix RISCV io_out /ExUnit/lsunit/lsdc0stage/io_out_bits_inst
-add wave -noupdate -group exunit -group lsunit -group lsdc0stage -group io_out /ExUnit/lsunit/lsdc0stage/io_out*
+add wave -noupdate -group exunit -group lsunit -group lssqstage -group -radix RISCV io_out /ExUnit/lsunit/lssqstage/io_out_bits_inst
+add wave -noupdate -group exunit -group lsunit -group lssqstage -group io_out /ExUnit/lsunit/lssqstage/io_out*
 
 ## StoreQueue
-add wave -noupdate -group exunit -group lsunit -group lsdc0stage -group sq /ExUnit/lsunit/lsdc0stage/sq/full
-add wave -noupdate -group exunit -group lsunit -group lsdc0stage -group sq -group -radix RISCV io_in /ExUnit/lsunit/lsdc0stage/sq/io_in_bits_inst
-add wave -noupdate -group exunit -group lsunit -group lsdc0stage -group sq -group io_in /ExUnit/lsunit/lsdc0stage/sq/io_in*
-add wave -noupdate -group exunit -group lsunit -group lsdc0stage -group sq -group io_out /ExUnit/lsunit/lsdc0stage/sq/io_out*
+add wave -noupdate -group exunit -group lsunit -group lssqstage -group sq /ExUnit/lsunit/lssqstage/sq/full
+add wave -noupdate -group exunit -group lsunit -group lssqstage -group sq -group -radix RISCV io_in /ExUnit/lsunit/lssqstage/sq/io_in_bits_inst
+add wave -noupdate -group exunit -group lsunit -group lssqstage -group sq -group io_in /ExUnit/lsunit/lssqstage/sq/io_in*
+add wave -noupdate -group exunit -group lsunit -group lssqstage -group sq -group io_out /ExUnit/lsunit/lssqstage/sq/io_out*
 for {set i 0} {$i < $sqDepth} {incr i 1} {
-    set sig_name [format "/ExUnit/lsunit/lsdc0stage/sq/rows_%d/row_*" $i]
-    add wave -noupdate -group exunit -group lsunit -group lsdc0stage  -group sq -group rows_$i $sig_name
+    set sig_name [format "/ExUnit/lsunit/lssqstage/sq/rows_%d/row_*" $i]
+    add wave -noupdate -group exunit -group lsunit -group lssqstage  -group sq -group rows_$i $sig_name
 }
 
-
 ################################
-# LSDCache1Stage
-add wave -noupdate -group exunit -group lsunit -group lsdc1stage -group -radix RISCV io_in /ExUnit/lsunit/lsdc1stage/io_in_bits_inst
-add wave -noupdate -group exunit -group lsunit -group lsdc1stage -group io_in /ExUnit/lsunit/lsdc1stage/io_in*
+# LSWBStage
+add wave -noupdate -group exunit -group lsunit -group lswbstage -group -radix RISCV io_in /ExUnit/lsunit/lswbstage/io_in_bits_inst
+add wave -noupdate -group exunit -group lsunit -group lswbstage -group io_in /ExUnit/lsunit/lswbstage/io_in*
 
-add wave -noupdate -group exunit -group lsunit -group lsdc1stage -group -radix RISCV io_out /ExUnit/lsunit/lsdc1stage/io_out_bits_inst
-add wave -noupdate -group exunit -group lsunit -group lsdc1stage -group io_out /ExUnit/lsunit/lsdc1stage/io_out*
-
-################################
-# LSAtomStage
-add wave -noupdate -group exunit -group lsunit -group lsatstage -group -radix RISCV io_in /ExUnit/lsunit/lsatstage/io_in_bits_inst
-add wave -noupdate -group exunit -group lsunit -group lsatstage -group io_in /ExUnit/lsunit/lsatstage/io_in*
-
-add wave -noupdate -group exunit -group lsunit -group lsatstage -group -radix RISCV io_out /ExUnit/lsunit/lsatstage/io_out_bits_inst
-add wave -noupdate -group exunit -group lsunit -group lsatstage -group io_out /ExUnit/lsunit/lsatstage/io_out*
+add wave -noupdate -group exunit -group lsunit -group lswbstage -group -radix RISCV io_out /ExUnit/lsunit/lswbstage/io_out_bits_inst
+add wave -noupdate -group exunit -group lsunit -group lswbstage -group io_out /ExUnit/lsunit/lswbstage/io_out*
 
 
 

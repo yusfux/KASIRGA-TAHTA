@@ -83,6 +83,16 @@ async def decode_driver(dut, hex_path, nwide, base_addr):
             if all_ready == nwide:
                 virtual_pc += nwide
 
+        if jumped:  # wait for fetch pipeline depth
+            for n in range(0, nwide):
+                in_inst[n].value = 0
+                in_pc[n].value = 0
+                in_valid[n].value = 0
+
+            await RisingEdge(dut.clock)
+            await RisingEdge(dut.clock)
+            await RisingEdge(dut.clock)
+
         await RisingEdge(dut.clock)
 
 

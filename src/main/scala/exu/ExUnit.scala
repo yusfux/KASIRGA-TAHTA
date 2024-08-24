@@ -190,6 +190,7 @@ class ExUnit(config: WoodConfig) extends Module {
   rrstage.io.lsuIn          <> lsunit.io.out
   rsstage.io.storeRetireBus <> lsunit.io.storeRetireBus
   lsunit.io.lsOperandBus    <> wbstage.io.lsOperandBus
+  restage.io.lsOperandBus   <> wbstage.io.lsOperandBus
 
   restage.io.archRF <> arstage.io.archRF
 
