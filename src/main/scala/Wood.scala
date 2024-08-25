@@ -62,9 +62,15 @@ case class WoodConfig(
   val bankOffset = log2Ceil(nWide)
   val memOffset  = log2Ceil(mmInterfaceWidth / xlen)
 
-  val itaglen   = xlen - (log2Ceil(iCacheDepth) + byteOffset + bankOffset)
   val idatalen  = xlen
+  val itaglen   = xlen - (log2Ceil(iCacheDepth) + byteOffset + bankOffset)
   val ivalidlen = 1
+
+  val dcachewaycount = 4
+  val ddatalen       = dCacheLineWidth
+  val dtaglen        = xlen - (log2Ceil(dcacheDepth) + log2Ceil(ddatalen / 8))
+  val dvalidlen      = 1
+  val ddirtylen      = 1
 
   val tagWidth: Int = log2Ceil(prfDepth)
 
