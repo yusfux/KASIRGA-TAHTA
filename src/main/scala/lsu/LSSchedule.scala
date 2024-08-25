@@ -94,6 +94,14 @@ class LSScheduleStage(val config: WoodConfig) extends Module {
 
   pReg.io.frontRetired := io.frontRetired
 
+  val dataShiftAmount = lsarbiter.io.out.bits.addr(1, 0) * 8.U
+  val shiftedRs2Big   = lsarbiter.io.out.bits.rs2Data << dataShiftAmount
+  val shiftedRs2      = shiftedRs2Big(config.xlen - 1, 0)
+  dontTouch(dataShiftAmount) // debug only
+  dontTouch(shiftedRs2Big) // debug only
+  dontTouch(shiftedRs2) // debug only
+  dontTouch(self.bits.cacheData) // debug only
+
   self.bits.retired   := lsarbiter.io.out.bits.retired
   self.bits.store     := lsarbiter.io.out.bits.store
   self.bits.atom      := lsarbiter.io.out.bits.atom
@@ -101,7 +109,7 @@ class LSScheduleStage(val config: WoodConfig) extends Module {
   self.bits.rdTag     := lsarbiter.io.out.bits.rdTag
   self.bits.inst      := lsarbiter.io.out.bits.inst // debug only
   self.bits.pc        := lsarbiter.io.out.bits.pc // debug only
-  self.bits.cacheData := lsarbiter.io.out.bits.rs2Data.asTypeOf(Vec(config.numBytes, UInt(8.W)))
+  self.bits.cacheData := (shiftedRs2).asTypeOf(Vec(config.numBytes, UInt(8.W)))
   self.bits.sqData    := DontCare
   self.bits.lsOp      := lsarbiter.io.out.bits.lsOp
   self.bits.sqwStrobe := DontCare

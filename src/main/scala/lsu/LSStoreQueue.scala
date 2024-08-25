@@ -95,46 +95,43 @@ class LSStoreQueue(config: WoodConfig) extends Module {
     outValid(j)               := rows(j).io.out.valid && (deqPtr.value === j.U) && valid(deqPtr.value)
   })
 
-  //********* CAM Logic ************//
-  val recencyArray = VecInit(Seq.fill(config.lsSQDepth)(0.U))
-  (0 until config.lsSQDepth).foreach(j => {
-    recencyArray(j) := j.U - deqPtr.value
-  })
+//********* CAM Logic ************//
+  val recencyArray = VecInit(
+    Seq.tabulate(config.lsSQDepth)(j => (config.lsSQDepth - 1).U - ((j.U + config.lsSQDepth.U - enqPtr.value) % config.lsSQDepth.U))
+  )
 
   val addrMatch = VecInit(
-    rows.map(row =>
-      row.io.out.bits.addr(config.xlen - 1, 2) ===
-        io.camReadIn(config.xlen - 1, 2)
-    )
+    rows.map(row => row.io.out.bits.addr(config.xlen - 1, 2) === io.camReadIn(config.xlen - 1, 2))
   )
 
   val validAndMatch = VecInit(valid.zip(addrMatch).map { case (v, m) => v && m })
 
   val matchingEntries = validAndMatch.asUInt
 
-  val (finalWstrobe, finalData) =
-    (0 until config.lsSQDepth).foldLeft((0.U(config.numBytes.W), VecInit(Seq.fill(config.numBytes)(0.U(8.W))))) {
-      case ((accWstrobe, accData), j) =>
-        val currentWstrobe = rows(j).io.out.bits.sqwStrobe.asUInt & Fill(config.numBytes, !rows(j).io.out.bits.flushed)
-        val currentData    = rows(j).io.out.bits.cacheData
-        val currentRecency = recencyArray(j)
+  val (finalWstrobe, finalData) = (0 until config.lsSQDepth).foldRight((0.U(config.numBytes.W), VecInit(Seq.fill(config.numBytes)(0.U(8.W))))) {
+    case (j, (accWstrobe, accData)) =>
+      val currentWstrobe = rows(j).io.out.bits.sqwStrobe.asUInt & Fill(config.numBytes, !rows(j).io.out.bits.flushed)
+      val currentData    = rows(j).io.out.bits.cacheData
 
-        val newWstrobe = accWstrobe | (currentWstrobe.asUInt & Fill(config.numBytes, validAndMatch(j)))
+      val newWstrobe = accWstrobe | (currentWstrobe & Fill(config.numBytes, validAndMatch(j)))
+      val newData = VecInit((0 until config.numBytes).map { byteIndex =>
+        Mux(validAndMatch(j) && currentWstrobe(byteIndex), currentData(byteIndex), accData(byteIndex))
+      })
 
-        val moreRecentMatch = (0 until j).map(k => validAndMatch(k) && (recencyArray(k) < currentRecency)).foldLeft(false.B)(_ || _)
-
-        val newData = VecInit((0 until config.numBytes).map { byteIndex =>
-          val isCurrentByteValid = currentWstrobe(byteIndex)
-          Mux(isCurrentByteValid && !moreRecentMatch, currentData(byteIndex), accData(byteIndex))
-        })
-
-        (newWstrobe, newData)
-    }
+      (newWstrobe, newData)
+  }
 
   val tstrobe = Wire(Vec(config.numBytes, Bool()))
   tstrobe := VecInit(Seq.tabulate(config.numBytes)(j => finalWstrobe(j)))
 
+// debug only
   dontTouch(tstrobe)
+  dontTouch(addrMatch)
+  dontTouch(validAndMatch)
+  dontTouch(recencyArray)
+  dontTouch(valid)
+  dontTouch(deqPtr.value)
+  dontTouch(enqPtr.value)
 
   io.camReadOut                := DontCare
   io.camReadOut.bits.sqwStrobe := tstrobe

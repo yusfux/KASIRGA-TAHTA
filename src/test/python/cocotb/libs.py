@@ -119,6 +119,7 @@ async def get_branch_trace(trace_path: str):
         "jal",
         "jalr",
         "j  ",
+        "ret ",
     ]
 
     for i, instr in enumerate(spike_trace):

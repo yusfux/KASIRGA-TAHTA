@@ -53,12 +53,13 @@ class LSDummyCache(config: WoodConfig) extends Module {
   }
   mask := byteMasks.reduce(_ | _)
 
-  val shiftAmount     = pRegMid.io.out.bits.addr(log2Ceil(config.numDCacheLineBytes) - 1, 0) * 8.U
-  val storeData       = (pRegMid.io.out.bits.cacheData.asUInt << shiftAmount)(config.dCacheLineWidth - 1, 0)
-  val cacheMask       = ~((mask.asUInt << shiftAmount)(config.dCacheLineWidth - 1, 0))
-  val storeDataMask   = ((mask.asUInt << shiftAmount)(config.dCacheLineWidth - 1, 0))
-  val maskedCacheline = (sramOut & cacheMask)
-  val maskedStoreData = (storeData & storeDataMask)
+  val numdCacheLineWords = config.dCacheLineWidth / config.xlen
+  val shiftAmount        = pRegMid.io.out.bits.addr(numdCacheLineWords - 1, 2) * config.xlen.U
+  val storeData          = (pRegMid.io.out.bits.cacheData.asUInt << shiftAmount)(config.dCacheLineWidth - 1, 0)
+  val cacheMask          = ~((mask.asUInt << shiftAmount)(config.dCacheLineWidth - 1, 0))
+  val storeDataMask      = ((mask.asUInt << shiftAmount)(config.dCacheLineWidth - 1, 0))
+  val maskedCacheline    = (sramOut & cacheMask)
+  val maskedStoreData    = (storeData & storeDataMask)
 
   sram.readwritePorts(0).writeData := maskedCacheline | maskedStoreData
 

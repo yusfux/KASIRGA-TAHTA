@@ -28,5 +28,5 @@ class LSGetWriteStrobe(val config: WoodConfig) extends Module {
   }
   // format: on
 
-  io.out := wStrobeWord.asTypeOf(Vec(config.numBytes, Bool()))
+  io.out := (wStrobeWord << io.addr(1, 0)).asTypeOf(Vec(config.numBytes, Bool()))
 }

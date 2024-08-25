@@ -27,7 +27,7 @@ case class WoodConfig(
   rsDepth:      Int = 2, // Reservation station depth
   //--------------
   // LsUnitConfig
-  lsSQDepth: Int = 2, // LS Store Queue Depth
+  lsSQDepth: Int = 3, // LS Store Queue Depth
   lsRSDepth: Int = 2 // LS reservation station Depth
   //--------------
 ) {

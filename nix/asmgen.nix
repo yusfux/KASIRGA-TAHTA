@@ -27,6 +27,56 @@ pkgs.writers.writePython3Bin "asmgen" { } ''
     bne     x1,x2,loads
   """
 
+  sq_buster_0 = """
+    la      x7, tdat1
+    li      x1, 0x11
+    li      x2, 0x22
+    li      x3, 0x33
+    li      x4, 0x44
+
+    # Fill the store queue with overlapping stores
+    sb      x1, 0(x7)       # Store 0x11 to tdat1+0
+    sb      x2, 0(x7)       # Store 0x22 to tdat1+0 (should overwrite previous)
+    sb      x3, 1(x7)       # Store 0x33 to tdat1+1
+
+    sb      x4, 1(x7)       # Store 0x44 to tdat1+1 (should overwrite previous)
+
+    # Load operations to check recency
+    lb      x5, 0(x7)       # Should get 0x22 (most recent for tdat1+0)
+    lb      x6, 1(x7)       # Should get 0x44 (most recent for tdat1+1)
+
+    # More stores to test queue behavior
+    li      x1, 0x55
+    li      x2, 0x66
+    sb      x1, 2(x7)       # Store 0x55 to tdat1+2
+    sb      x2, 2(x7)       # Store 0x66 to tdat1+2 (should overwrite previous)
+
+    # Loads to check recency again
+    lb      x3, 0(x7)       # Still should get 0x22
+    lb      x4, 1(x7)       # Still should get 0x44
+    lb      x5, 2(x7)       # Should get 0x66 (most recent for tdat1+2)
+
+    # Test with half-word operations
+    li      x1, 0xAABB
+    sh      x1, 0(x7)       # Store 0xAABB to tdat1+0 and tdat1+1
+    lh      x2, 0(x7)       # Should get 0xAABB
+    lb      x3, 0(x7)       # Should get 0xBB (least significant byte)
+    lb      x4, 1(x7)       # Should get 0xAA (most significant byte)
+
+    # Test with word operations
+    li      x1, 0xCCDDEEFF
+    sw      x1, 0(x7)       # Store 0xCCDDEEFF to tdat1+0 through tdat1+3
+    lw      x2, 0(x7)       # Should get 0xCCDDEEFF
+    lh      x3, 2(x7)       # Should get 0xCCDD (most significant half-word)
+    lb      x4, 3(x7)       # Should get 0xCC (most significant byte)
+
+    # Final recency check
+    lb      x5, 0(x7)       # Should get 0xFF
+    lb      x6, 1(x7)       # Should get 0xEE
+    lb      x1, 2(x7)       # Should get 0xDD
+    lb      x2, 3(x7)       # Should get 0xCC
+  """
+
   just_store_0 = """
     la	x7, tdat1
     li      x1,0
@@ -164,7 +214,7 @@ pkgs.writers.writePython3Bin "asmgen" { } ''
           self.branch_instructions = ["beq", "bne", "bge", "bgeu", "blt", "bltu"]
           self.load_instructions = ["lw", "lh", "lb", "lbu", "lhu"]
           self.store_instructions = ["sw", "sh", "sb"]
-          self.custom_tests = ["simple_ls_0", "just_store_0"]
+          self.custom_tests = ["simple_ls_0", "just_store_0", "sq_buster_0"]
 
       def init_regs(self) -> List[str]:
           asm_code = []
@@ -201,9 +251,9 @@ pkgs.writers.writePython3Bin "asmgen" { } ''
               register2 = f"x{random.randint(0, self.num_registers - 1)}"
               return f"{inst_type} {register2}, {register1}"
           elif inst_type in self.load_instructions:
-              return self.generate_load_inst(inst_type, num_data)
+              return self.generate_random_load_inst(inst_type, num_data)
           elif inst_type in self.store_instructions:
-              return self.generate_load_store_inst(inst_type, num_data)
+              return self.generate_random_load_store_inst(inst_type, num_data)
           else:
               raise ValueError(f"Unsupported inst type: {inst_type}")
 
@@ -223,6 +273,46 @@ pkgs.writers.writePython3Bin "asmgen" { } ''
               data_index = random.randint(1, num_data)
               load_test.append(f"la {reg1}, tdat{data_index}")
               load_test.append(f"{inst_type} {reg2}, 0({reg1})")
+              return "\n".join(load_test)
+          else:
+              raise 1
+
+      def generate_random_load_inst(self, inst_type: str, num_data) -> str:
+          if inst_type in self.load_instructions:
+              registers = [f"x{i}" for i in range(1, 32)]
+              data_index = random.randint(1, num_data)
+              addr_offset = 0
+              if inst_type == "lh":
+                  addr_offset = random.choice([0, 2])
+              if inst_type == "lb":
+                  addr_offset = random.randint(0, 3)
+              load_test = [""]
+              reg1 = random.choice(registers)
+              reg2 = random.choice(registers)
+              data_index = random.randint(1, num_data)
+              load_test.append(f"la {reg1}, tdat{data_index}")
+              load_test.append(f"{inst_type} {reg2}, {addr_offset}({reg1})")
+              return "\n".join(load_test)
+          else:
+              raise 1
+
+      def generate_random_load_store_inst(self, inst_type: str, num_data) -> str:
+          if inst_type in self.store_instructions:
+              registers = [f"x{i}" for i in range(1, 32)]
+              data_index = random.randint(1, num_data)
+              addr_offset = 0
+              if inst_type == "sh":
+                  addr_offset = random.choice([0, 2])
+              if inst_type == "sb":
+                  addr_offset = random.randint(0, 3)
+              load_test = [""]
+              reg1 = random.choice(registers)
+              reg2 = random.choice(registers)
+              reg3 = random.choice(registers)
+              data_index = random.randint(1, num_data)
+              load_test.append(f"la {reg1}, tdat{data_index}")
+              load_test.append(f"{inst_type} {reg2}, {addr_offset}({reg1})")
+              load_test.append(f"lb {reg3}, {addr_offset}({reg1})")
               return "\n".join(load_test)
           else:
               raise 1
@@ -307,6 +397,15 @@ pkgs.writers.writePython3Bin "asmgen" { } ''
                       c = (c + 1) % 2048  # imm within 12-bit signed range
           elif inst_type in self.branch_instructions:
               return self.generate_beq_inst()
+          elif inst_type in self.load_instructions:
+              for _ in range(num_insts):
+                  code = self.generate_load_inst(inst_type, num_data)
+                  asm_code.append(code)
+
+          elif inst_type in self.store_instructions:
+              for _ in range(num_insts):
+                  code = self.generate_load_store_inst(inst_type, num_data)
+                  asm_code.append(code)
           else:
               raise ValueError(f"Unsupported inst type: {inst_type}")
           return "\n".join(asm_code)
@@ -327,6 +426,8 @@ pkgs.writers.writePython3Bin "asmgen" { } ''
               return simple_ls_0
           elif inst_type == "just_store_0":
               return just_store_0
+          elif inst_type == "sq_buster_0":
+              return sq_buster_0
           else:
               raise ValueError(f"Unknown custom test type: {args.type}")
 
@@ -352,7 +453,7 @@ pkgs.writers.writePython3Bin "asmgen" { } ''
                    "lw", "lh", "lb", "lbu", "lhu",
                    "sw", "sh", "sb",
                    "clmulh", "clmulr",
-                   "simple_ls_0", "just_store_0"],
+                   "simple_ls_0", "just_store_0", "sq_buster_0"],
           required=True,
           help="inst type to generate (li, add, sub, addi, xori, ori, or andi)",
       )

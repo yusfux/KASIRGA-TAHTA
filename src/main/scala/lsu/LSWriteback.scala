@@ -13,7 +13,6 @@ class LSWriteback(config: WoodConfig) extends Module {
 
   val extender   = Module(new LSExtend(config))
   val mergedData = Wire(Vec(config.numBytes, UInt(8.W)))
-
   extender.io.inlsOp := io.in.bits.lsOp
 
   (0 until config.numBytes).foreach(j => {
@@ -25,7 +24,10 @@ class LSWriteback(config: WoodConfig) extends Module {
     )
   })
 
-  extender.io.inData  := mergedData.asUInt
+  val dataShiftAmount = io.in.bits.addr(1, 0) * 8.U
+  val shiftedMerged   = (mergedData.asUInt >> dataShiftAmount)
+
+  extender.io.inData  := shiftedMerged
   io.out(0).bits.data := extender.io.out
   io.out(0).bits.tag  := io.in.bits.rdTag
   io.out(0).valid     := io.in.valid && !io.in.bits.store

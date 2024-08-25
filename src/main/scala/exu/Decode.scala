@@ -63,14 +63,14 @@ object DecodeConfig {
   val OPSRC3_IMM   = "00"
   val OPSRC3_FRF   = "01"
 
-  val OPSRC2_IMM   = "00"
-  val OPSRC2_IRF   = "01"
+  val OPSRC2_IRF   = "00"
+  val OPSRC2_IMM   = "01"
   val OPSRC2_FRF   = "10"
 
   val OPSRC1_IRF   = "00"
-  val OPSRC1_FRF   = "01"
-  val OPSRC1_PC    = "10"
-  val OPSRC1_X0    = "11"
+  val OPSRC1_PC    = "01"
+  val OPSRC1_X0    = "10"
+  val OPSRC1_FRF   = "11"
 
 
   val W_RF_F = "10"

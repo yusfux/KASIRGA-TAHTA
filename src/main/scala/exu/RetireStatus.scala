@@ -35,8 +35,10 @@ class RetireStatusStage(config: WoodConfig) extends Module {
   val retireVector      = Wire(Vec(config.nWide + 1, Bool()))
   val storeRetireVector = Wire(Vec(config.nWide, Bool()))
 
-  val allRetired = Wire(Vec(config.nWide, Bool()))
-  val allInValid = Wire(Vec(config.nWide, Bool()))
+  val rightOfItIsRetired = Wire(Vec(config.nWide, Bool()))
+  val allRetired         = Wire(Vec(config.nWide, Bool()))
+  val rowRetired         = Wire(Vec(config.nWide, Bool()))
+  val allInValid         = Wire(Vec(config.nWide, Bool()))
 
   val exceptionMispredSet = VecInit(Seq.fill(config.nWide)(false.B))
   val mispredIndex        = PriorityEncoder(exceptionMispredSet)
@@ -127,12 +129,14 @@ class RetireStatusStage(config: WoodConfig) extends Module {
     val isTaken         = takenStatusRegisterFile(tag).asBool
     val actualTarget    = pcRegisterFile(tag)
     val predictedTarget = predictedPCs(j)
+    rowRetired(j)         := retireStatusRegisterFile(io.in(j).bits.rdTag)
+    rightOfItIsRetired(j) := Mux(j.U === 0.U, 1.B, rowRetired.asUInt(j - 1, 0))
 
     flushVectors(j) := 0.U
     when((isException | isTaken) & notFlushed) {
       when(predictedTarget =/= actualTarget) {
-        exceptionMispredSet(j) := true.B
-        flushVectors(j)        := Fill(config.nWide, 1.U) << (j + 1)
+        exceptionMispredSet(j) := true.B && rightOfItIsRetired(j)
+        flushVectors(j)        := Fill(config.nWide, (rightOfItIsRetired(j))) << (j + 1)
       }
     }.otherwise {
       exceptionMispredSet(j) := false.B
