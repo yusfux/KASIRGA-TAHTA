@@ -43,7 +43,7 @@ dump2: compile
 
 .PHONY: trace
 trace: compile
-		spike -m0x80000000:0x150000  --log-commits --isa=rv32gc -l $(BUILD_DIR)/$(inst)_main.elf &> $(BUILD_DIR)/$(inst)_spike.trace
+		spike -m0x80000000:0x550000  --log-commits --isa=rv32gc -l $(BUILD_DIR)/$(inst)_main.elf &> $(BUILD_DIR)/$(inst)_spike.trace
 		spiketrace2json -f $(BUILD_DIR)/$(inst)_spike.trace -o $(BUILD_DIR)/$(inst)_spike_trace.json
 
 .PHONY: inject_questa_radix

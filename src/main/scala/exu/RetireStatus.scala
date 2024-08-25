@@ -32,9 +32,6 @@ class RetireStatusStage(config: WoodConfig) extends Module {
   val flushVector  = Wire(UInt(config.nWide.W))
   val flushVectors = Wire(Vec(config.nWide, UInt(config.nWide.W)))
 
-  val retireVector      = Wire(Vec(config.nWide + 1, Bool()))
-  val storeRetireVector = Wire(Vec(config.nWide, Bool()))
-
   val rightOfItIsRetired = Wire(Vec(config.nWide, Bool()))
   val allRetired         = Wire(Vec(config.nWide, Bool()))
   val rowRetired         = Wire(Vec(config.nWide, Bool()))
@@ -78,24 +75,12 @@ class RetireStatusStage(config: WoodConfig) extends Module {
     io.out(j)      <> pRegs(j).io.out
   })
 
-  // retire? 0 0 0 0 1 (dummy)
-  // retire0 0 0 0 0 1 (not retired)
-  // retire1 0 0 1 0 1 (    retired)
-  // retire2 0 1 0 0 1 (    retired)
-  // retire3 0 0 0 0 1 (not retired)
-  // -----------------or
-  //         0 1 1 0 1 (only lane0 can store)
-
-  retireVector(0) := 1.B
-
   (0 until config.nWide).foreach(j => {
-    retireVector(j + 1)  := retireStatusRegisterFile(io.in(j).bits.rdTag)
-    storeRetireVector(j) := PopCount(retireVector.asUInt(j + 1, 0)) === (j.U + 1.U)
-
     io.storeRetireBus(j).bits.tag := io.in(j).bits.rdTag
-    io.storeRetireBus(j).valid    := storeRetireVector(j) & !flushVector(j)
-    io.storeRetireBus(j).valid    := !flushVector(j)
+    io.storeRetireBus(j).valid    := rightOfItIsRetired(j) && retireStatusRegisterFile(io.in(j).bits.rdTag).asBool && !flushVector(j)
   })
+
+  dontTouch(rightOfItIsRetired) // debug only
 
   (0 until config.nWide).foreach(j => {
     when(io.exceptionBus(j).valid) {

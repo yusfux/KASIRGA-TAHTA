@@ -12,7 +12,7 @@ ENTRY( _start )
 
 MEMORY
 {
-  ram (wxa!ri) : ORIGIN = 0x80000000, LENGTH = 0x150000
+  ram (wxa!ri) : ORIGIN = 0x80000000, LENGTH = 0x550000
 }
 
 PHDRS
@@ -23,7 +23,7 @@ PHDRS
 
 SECTIONS
 {
-  __stack_size = DEFINED(__stack_size) ? __stack_size : 4K;
+  __stack_size = DEFINED(__stack_size) ? __stack_size : 128K;
 	
   .init           :
   {

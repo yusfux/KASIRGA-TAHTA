@@ -11,6 +11,7 @@
 **/target
 **/test_run_dir
 **/runs
+**/work
 **/.vscode
 
 # metals lsp

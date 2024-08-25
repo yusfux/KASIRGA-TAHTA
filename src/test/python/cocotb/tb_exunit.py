@@ -103,7 +103,7 @@ async def test_wood(dut):
 
     clock_period = 10
     time_unit = "ns"
-    timeout_value = 800
+    timeout_value = 4000
     base_addr = 0x80000000
     timeout_event = Event(name="timeout")
     top = ""  # relative to exunit

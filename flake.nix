@@ -105,6 +105,7 @@
 
             pkgs.scalafmt
 
+            (pkgs.callPackage ./nix/aapg.nix { })
             (pkgs.callPackage ./nix/bin2hex.nix { })
             (pkgs.callPackage ./nix/dump2vsim.nix { })
             (pkgs.callPackage ./nix/dump2gtkw.nix { })
