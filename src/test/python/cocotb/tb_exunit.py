@@ -5,7 +5,13 @@ import cocotb
 import git
 from cocotb.clock import Clock
 from cocotb.triggers import Event, FallingEdge, RisingEdge
-from libs import watchdog_timer, branch_monitor, flist_monitor, diff_traces
+from libs import (
+    watchdog_timer,
+    branch_monitor,
+    flist_monitor,
+    diff_traces,
+    store_monitor,
+)
 
 
 @cocotb.coroutine
@@ -126,6 +132,7 @@ async def test_wood(dut):
     cocotb.start_soon(watchdog_timer(timeout_event, timeout_value, time_unit))
 
     cocotb.start_soon(branch_monitor(dut, top, nwide, time_unit, trace_path))
+    cocotb.start_soon(store_monitor(dut, top, time_unit, trace_path))
     cocotb.start_soon(flist_monitor(dut, top, nwide, time_unit))
     cocotb.start_soon(decode_driver(dut, hex_path, nwide, base_addr))
     await cocotb.start_soon(

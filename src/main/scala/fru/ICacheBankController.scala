@@ -3,7 +3,7 @@ package wood.fru
 import chisel3._
 import chisel3.std.BarrelShifter
 import chisel3.util._
-import wood.std.{DCArbiter, DCShifter}
+import wood.std.{DCArbiter, DCLeftShifter}
 import wood.{CorePort, MemPortR, WoodConfig}
 
 //IMPORTTANT TODO: we can buffer the memory response and its address to match the following unaligned requests
@@ -27,9 +27,9 @@ class ICacheBankController(config: WoodConfig) extends Module {
   val shamt    = io.core(0).req.bits.addr(config.bankOffset + config.byteOffset - 1, config.byteOffset)
   val shamtReg = RegEnable(shamt, 0.U, io.core.map(_.req.fire).reduce(_ || _))
 
-  val corereqshifter  = Module(new DCShifter(io.core(0).req.bits.cloneType)(config.nWide))
-  val corerespshifter = Module(new DCShifter(io.core(0).resp.bits.cloneType)(config.nWide))
-  val memreqshifter   = Module(new DCShifter(io.mem.req.bits.cloneType)(config.nWide))
+  val corereqshifter  = Module(new DCLeftShifter(io.core(0).req.bits.cloneType)(config.nWide))
+  val corerespshifter = Module(new DCLeftShifter(io.core(0).resp.bits.cloneType)(config.nWide))
+  val memreqshifter   = Module(new DCLeftShifter(io.mem.req.bits.cloneType)(config.nWide))
   val arbiter         = Module(new DCArbiter(io.mem.req.bits.cloneType)(config.nWide, 1))
 
   corereqshifter.io.in    <> io.core.map(_.req)

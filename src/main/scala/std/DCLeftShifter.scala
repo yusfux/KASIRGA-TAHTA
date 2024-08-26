@@ -14,7 +14,7 @@ import chisel3.util._
   *  new DCShifter(UInt(8.W))(2)
   * }}}
   */
-class DCShifter[T <: Data](gen: T)(numPorts: Int) extends Module {
+class DCLeftShifter[T <: Data](gen: T)(numPorts: Int) extends Module {
   val io = IO(new Bundle {
     val in    = Flipped(Vec(numPorts, Decoupled(gen.cloneType)))
     val shamt = Input(UInt(log2Ceil(numPorts).W))

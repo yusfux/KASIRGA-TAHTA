@@ -6,10 +6,10 @@ quietly WaveActivateNextPane {} 0
 delete wave *
 
 # Define nWide parameter
-set nWide 2
+set nWide 4
 set rsDepth 2
 set lsrsDepth 2
-set sqDepth 2
+set sqDepth 8
 set prfDepth 99999
 
 ################################

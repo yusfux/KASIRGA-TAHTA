@@ -52,6 +52,117 @@ async def get_spike_trace(trace_path):
 
 
 @cocotb.coroutine
+async def get_store_trace(trace_path: str):
+    spike_trace = await get_spike_trace(trace_path)
+
+    stores = []
+    store_instructions = [
+        "sw",
+        "sh",
+        "sb",
+    ]
+
+    for _, instr in enumerate(spike_trace):
+        if any(
+            instr["alias_numeric"].startswith(branch) for branch in store_instructions
+        ):
+            store_addr = (instr["result"].strip()).split(" ")[1]
+            store_data = (instr["result"].strip()).split(" ")[2]
+            entry = {
+                "pc": instr["pc"],
+                "alias_numeric": instr["alias_numeric"],
+                "addr": store_addr,
+                "data": store_data,
+            }
+            stores.append(entry)
+
+    btfile = "./store_trace.json"
+    with Path(btfile).open("w") as output_file:
+        output_file.write("[\n")
+        output_file.write(
+            ",\n".join([json.dumps(entry, separators=(",", ":")) for entry in stores])
+        )
+        output_file.write("]\n")
+
+    return stores
+
+
+@cocotb.coroutine
+async def store_monitor(dut, top: str, time_unit: str, trace_path: str):
+    store_trace = await get_store_trace(trace_path)
+
+    await RisingEdge(dut.clock)
+    await RisingEdge(dut.clock)
+
+    while True:
+        store_pc = 0
+        store_addr = 0
+        store_valid = 0
+        store_flushed = 0
+        store_bytes = [0 for _ in range(4)]  # TODO: use xlen
+        store_wStrobes = [0 for _ in range(4)]  # TODO: use xlen
+
+        store_pc = getattr(
+            dut, f"{top}lsunit.lssqstage.sq.io_out_bits_pc"
+        ).value.integer
+        store_addr = getattr(
+            dut, f"{top}lsunit.lssqstage.sq.io_out_bits_addr"
+        ).value.integer
+        store_flushed = getattr(
+            dut, f"{top}lsunit.lssqstage.sq.io_out_bits_flushed"
+        ).value.integer
+        store_valid = getattr(
+            dut, f"{top}lsunit.lssqstage.sq.io_out_valid"
+        ).value.integer
+        store_ready = getattr(
+            dut, f"{top}lsunit.lssqstage.sq.io_out_ready"
+        ).value.integer
+
+        for n in range(0, 4):
+            store_bytes[n] = getattr(
+                dut, f"{top}lsunit.lssqstage.sq.io_out_bits_cacheData_{n}"
+            ).value.integer
+            store_wStrobes[n] = getattr(
+                dut, f"{top}lsunit.lssqstage.sq.io_out_bits_sqwStrobe_{n}"
+            ).value.integer
+
+        store_data = 0
+        for n in range(0, 4):
+            store_data += store_bytes[n] << n * 8
+
+        if store_valid and store_ready and not store_flushed:
+            current_trace = store_trace.pop(0)
+            addr = "{0:#0{1}x}".format(store_addr, 10)
+            pc = "{0:#0{1}x}".format(store_pc, 10)
+            data = "{0:#0{1}x}".format(store_data, 10)
+            golden_addr = current_trace["addr"]
+            golden_pc = current_trace["pc"]
+            golden_data = current_trace["data"]
+
+            store_wStrobes.reverse()
+            data = bytes.fromhex(data[2:])  # Remove '0x' prefix
+            hex_string = bytes(b for b, s in zip(data, store_wStrobes) if s).hex()
+            if len(hex_string) <= 2:
+                data = "0x" + ("0" if hex_string == "00" else hex_string.lstrip("0"))
+            else:
+                data = "0x" + hex_string
+
+            if (addr == golden_addr) and (pc == golden_pc) and (data == golden_data):
+                pass
+            else:
+                assert (
+                    0
+                ), f"{color('Incorrect STORE order!', Color.RED)}                 \n \
+                     Addr: {color(addr, Color.GREEN)} {color(golden_addr, Color.YELLOW)} \n \
+                     PC:   {color(pc, Color.GREEN)} {color(golden_pc, Color.YELLOW)}     \n \
+                     DATA: {color(data, Color.GREEN)} {color(golden_data, Color.YELLOW)} \n \
+                     STROBE: {color(store_wStrobes, Color.GREEN)}                        \n \
+                     TIME: {get_sim_time(units=time_unit)}{time_unit}                    \n \
+                "
+        await RisingEdge(dut.clock)
+
+
+@cocotb.coroutine
 async def flist_monitor(dut, top, nwide, time_unit: str):
     await RisingEdge(dut.clock)
     await RisingEdge(dut.clock)
@@ -308,7 +419,7 @@ async def diff_traces(
                 ), f"PC is {color(pc_p[n], Color.GREEN)} but it should be {color(golden_pc, Color.YELLOW)} at {get_sim_time(units=time_unit)}{time_unit}"
 
                 if isStore[n]:
-                    # store happens unknown time after the rob, so dont validate write data, only addr
+                    # store happens unknown time after the rob, so dont validate write data, only addr. Use store_monitor for the data
                     addr = rd_data_p[n].split(" ")[-1]
                     is_correct_addr = addr in golden_result
                     assert is_correct_addr, f"Store Addr is {color(addr, Color.GREEN)} but it should be {color(golden_result, Color.YELLOW)} at {get_sim_time(units=time_unit)}{time_unit}"

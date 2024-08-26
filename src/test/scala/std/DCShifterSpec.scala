@@ -11,7 +11,7 @@ class DCShifterSpec extends AnyFlatSpec with ChiselScalatestTester with Parallel
   val numDataPerGroup = 30
 
   "DCShifter" should s"work with 1 ports" in {
-    test(new DCShifter(UInt(8.W))(1)).withAnnotations(GetBackendAnnotation()) { dut =>
+    test(new DCLeftShifter(UInt(8.W))(1)).withAnnotations(GetBackendAnnotation()) { dut =>
       val inSources = dut.io.in.map(_.initSource())
       val outSinks  = dut.io.out.map(_.initSink())
 
@@ -25,7 +25,7 @@ class DCShifterSpec extends AnyFlatSpec with ChiselScalatestTester with Parallel
   }
 
   "DCShifter" should s"work with 2 ports" in {
-    test(new DCShifter(UInt(8.W))(2)).withAnnotations(GetBackendAnnotation()) { dut =>
+    test(new DCLeftShifter(UInt(8.W))(2)).withAnnotations(GetBackendAnnotation()) { dut =>
       val inSources = dut.io.in.map(_.initSource())
       val outSinks  = dut.io.out.map(_.initSink())
 
@@ -57,7 +57,7 @@ class DCShifterSpec extends AnyFlatSpec with ChiselScalatestTester with Parallel
   }
 
   "DCShifter" should s"work with 3 ports" in {
-    test(new DCShifter(UInt(8.W))(3)).withAnnotations(GetBackendAnnotation()) { dut =>
+    test(new DCLeftShifter(UInt(8.W))(3)).withAnnotations(GetBackendAnnotation()) { dut =>
       val inSources = dut.io.in.map(_.initSource())
       val outSinks  = dut.io.out.map(_.initSink())
 
@@ -81,6 +81,6 @@ class DCShifterSpec extends AnyFlatSpec with ChiselScalatestTester with Parallel
   }
 
   "DCShifter" should "emit Verilog" in {
-    GenerateVerilog(new DCShifter(UInt(8.W))(4))
+    GenerateVerilog(new DCLeftShifter(UInt(8.W))(4))
   }
 }

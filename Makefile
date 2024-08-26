@@ -35,7 +35,7 @@ wood_asm_test:
 
 .PHONY: exunit_csmith_test
 exunit_csmith_test:
-	csmith --seed 69420 --no-argc --concise --no-float --no-math64 --safe-math --quiet --no-builtins --max-block-size 7 --no-checksum  --inline-function --no-global-variables --no-hash-value-printf > src/test/c/src/$(inst).c
+	csmith --seed 69 --no-argc --no-float --quiet --no-builtins --max-pointer-depth 10 --max-block-size 7 --max-array-dim 10 --max-funcs 100 --no-hash-value-printf > src/test/c/src/$(inst).c
 	sed -i 's/^.*platform_main/\/\/&/' src/test/c/src/$(inst).c
 	genstarts -f src/test/c/src/$(inst).S
 	+@$(SUBMAKE) src/test/c/

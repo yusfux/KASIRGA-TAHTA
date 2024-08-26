@@ -28,9 +28,11 @@ class WoodLSRetireMIPipelineRegister(config: WoodConfig) extends Module {
   val operandRs2           = io.lsOperandBus(operandBusMatchIndex).bits.rs2Data
 
   // debug only
-  dontTouch(operandBusMatches)
-  dontTouch(operandBusMatchIndex)
-  dontTouch(regData.rdData)
+  if (config.nWide > 1) {
+    dontTouch(operandBusMatches)
+    dontTouch(operandBusMatchIndex)
+    dontTouch(regData.rdData)
+  }
 
   regDataNextInvalidForwards := MuxCase(
     regData,

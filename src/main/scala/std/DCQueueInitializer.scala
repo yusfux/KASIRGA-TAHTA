@@ -21,12 +21,13 @@ class DCQueueInitializer[T <: Data](gen: T)(numPorts: Int, depth: Int, dataPatte
     val out = Vec(numPorts, Decoupled(gen.cloneType))
   })
 
-  val writer  = Module(new DCQueueWriter(gen.cloneType)(numPorts, depth, dataPattern))
-  val arbiter = Module(new DCArbiter(gen.cloneType)(numPorts * 2, numPorts))
+  val writer = Module(new DCQueueWriter(gen.cloneType)(numPorts, depth, dataPattern))
 
   (0 until numPorts).foreach(j => {
-    arbiter.io.in(j)            <> writer.io.out(j)
-    arbiter.io.in(j + numPorts) <> io.in(j)
+    io.out(j).bits         := Mux(writer.io.done, io.in(j).bits, writer.io.out(j).bits)
+    io.out(j).valid        := Mux(writer.io.done, io.in(j).valid, writer.io.out(j).valid)
+    writer.io.out(j).ready := io.out(j).ready
+
+    io.in(j).ready := Mux(writer.io.done, io.out(j).ready, 0.B)
   })
-  arbiter.io.out <> io.out
 }

@@ -27,7 +27,7 @@ case class WoodConfig(
   rsDepth:      Int = 2, // Reservation station depth
   //--------------
   // LsUnitConfig
-  lsSQDepth: Int = 3, // LS Store Queue Depth
+  lsSQDepth: Int = 8, // LS Store Queue Depth
   lsRSDepth: Int = 2 // LS reservation station Depth
   //--------------
 ) {
@@ -43,8 +43,20 @@ case class WoodConfig(
     "RobDepth must be divisible by nWide"
   )
   require(
+    (nWide & (nWide - 1)) == 0,
+    "nWide must be a power of 2, BarrelShifter does not support other widths"
+  )
+  require(
+    (lsSQDepth & (lsSQDepth - 1)) == 0,
+    "lsSQDepth must be a power of 2, BarrelShifter does not support other widths"
+  )
+  require(
     xlen == 32,
     "Other xlen values are not tested"
+  )
+  require(
+    robDepth % 2 == 0,
+    "robDepth must be an exponent of two"
   )
   val prfDepth = (32 + (rsDepth * nWide) + (8 * nWide) + (robDepth * nWide))
   require(

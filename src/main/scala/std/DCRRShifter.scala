@@ -21,7 +21,7 @@ class DCRRShifter[T <: Data](gen: T)(numPorts: Int) extends Module {
   })
 
   val arbiter = Module(new DCArbiter(gen.cloneType)(numPorts, numPorts))
-  val shifter = Module(new DCShifter(gen.cloneType)(numPorts))
+  val shifter = Module(new DCLeftShifter(gen.cloneType)(numPorts))
 
   val shamt_next = Wire(UInt(log2Ceil(numPorts).W))
   val shamt      = RegEnable(shamt_next, 0.U, 1.B)

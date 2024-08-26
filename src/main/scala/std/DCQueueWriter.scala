@@ -17,7 +17,8 @@ import chisel3.util._
   */
 class DCQueueWriter[T <: Data](gen: T)(numPorts: Int, depth: Int, dataPattern: String = "zero") extends Module {
   val io = IO(new Bundle {
-    val out = Vec(numPorts, Decoupled(gen.cloneType))
+    val out  = Vec(numPorts, Decoupled(gen.cloneType))
+    val done = Output(Bool())
   })
 
   val oddNumberOfPorts = numPorts & 1
@@ -49,6 +50,8 @@ class DCQueueWriter[T <: Data](gen: T)(numPorts: Int, depth: Int, dataPattern: S
   when((counter >= stopCount) && !initialized) {
     initialized := 1.U
   }
+
+  io.done := initialized
 
   (0 until numPorts).foreach(j => {
     io.out(j).valid := !initialized

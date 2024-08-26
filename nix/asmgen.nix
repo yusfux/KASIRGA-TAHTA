@@ -219,11 +219,11 @@ pkgs.writers.writePython3Bin "asmgen" { } ''
       def init_regs(self) -> List[str]:
           asm_code = []
           for i in range(7):
-              asm_code.append(f"   li x0, {random.randint(0, 1023)}")
+              asm_code.append(f"   li x0, {random.randint(0, (2**32)-1)}")
           for i in range(7):
-              asm_code.append(f"   li x1, {random.randint(0, 1023)}")
+              asm_code.append(f"   li x1, {random.randint(0, (2**32)-1)}")
           for i in range(32):
-              asm_code.append(f"   li x{i}, {random.randint(0, 1023)}")
+              asm_code.append(f"   li x{i}, {random.randint(0, (2**32)-1)}")
           return asm_code
 
       def generate_inst(self, inst_type: str, num_data: int) -> str:
