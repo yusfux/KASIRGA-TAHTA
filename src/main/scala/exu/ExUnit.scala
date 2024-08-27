@@ -6,7 +6,7 @@ import chisel3.util._
 import wood.WoodConfig
 import wood.exu.{DecodeConfig, DecodeStage}
 import wood.fru.PCInst
-import wood.lsu.LSUnit
+import wood.lsu.{DCacheMemPort, LSUnit}
 
 class Retirable(config: WoodConfig) extends Bundle {
   val retired = Bool()
@@ -155,6 +155,7 @@ class ExUnit(config: WoodConfig) extends Module {
   val io = IO(new Bundle {
     val in    = Flipped(Vec(config.nWide, Decoupled(new PCInst(config))))
     val bpBus = Vec(config.nWide, ValidIO(new BranchPredictorBus(config)))
+    val mem   = new DCacheMemPort(config)
   })
 
   val lsunit = Module(new LSUnit(config))
@@ -246,5 +247,6 @@ class ExUnit(config: WoodConfig) extends Module {
 
   scstage.io.wakeupBus <> rrstage.io.wakeupBus
 
-  io.bpBus <> rsstage.io.bpBus
+  io.bpBus      <> rsstage.io.bpBus
+  lsunit.io.mem <> io.mem
 }

@@ -10,12 +10,12 @@ from libs import (
     branch_monitor,
     flist_monitor,
     diff_traces,
-    store_monitor,
+    # store_monitor,
 )
 
 
 @cocotb.coroutine
-async def decode_driver(dut, hex_path, nwide, base_addr):
+async def decode_driver(dut, top, hex_path, nwide, base_addr):
     insts: list[str] = []
     with open(hex_path, "r") as f:
         raw_lines = f.readlines()
@@ -31,10 +31,10 @@ async def decode_driver(dut, hex_path, nwide, base_addr):
     in_inst = []
     in_pc = []
     for n in range(0, nwide):
-        in_valid.append(getattr(dut, f"io_in_{n}_valid"))
-        in_inst.append(getattr(dut, f"io_in_{n}_bits_inst"))
-        in_pc.append(getattr(dut, f"io_in_{n}_bits_pc"))
-        in_ready.append(getattr(dut, f"io_in_{n}_ready"))
+        in_valid.append(getattr(dut, f"{top}destage.io_in_{n}_valid"))
+        in_inst.append(getattr(dut, f"{top}destage.io_in_{n}_bits_inst"))
+        in_pc.append(getattr(dut, f"{top}destage.io_in_{n}_bits_pc"))
+        in_ready.append(getattr(dut, f"{top}destage.io_in_{n}_ready"))
 
     dut.reset.value = 0  # START
 
@@ -64,16 +64,20 @@ async def decode_driver(dut, hex_path, nwide, base_addr):
         bp_taken = [0 for _ in range(nwide)]
         bp_exception = [0 for _ in range(nwide)]
         for n in range(0, nwide):
-            if getattr(dut, f"rsstage.io_bpBus_{n}_bits_pc").value.is_resolvable:
-                bp_pc[n] = getattr(dut, f"rsstage.io_bpBus_{n}_bits_pc").value.integer
-            bp_taken[n] = getattr(dut, f"rsstage.io_bpBus_{n}_bits_taken").value.integer
+            if getattr(dut, f"{top}rsstage.io_bpBus_{n}_bits_pc").value.is_resolvable:
+                bp_pc[n] = getattr(
+                    dut, f"{top}rsstage.io_bpBus_{n}_bits_pc"
+                ).value.integer
+            bp_taken[n] = getattr(
+                dut, f"{top}rsstage.io_bpBus_{n}_bits_taken"
+            ).value.integer
             bp_targetPC[n] = getattr(
-                dut, f"rsstage.io_bpBus_{n}_bits_targetPC"
+                dut, f"{top}rsstage.io_bpBus_{n}_bits_targetPC"
             ).value.integer
             bp_exception[n] = getattr(
-                dut, f"rsstage.io_bpBus_{n}_bits_exception"
+                dut, f"{top}rsstage.io_bpBus_{n}_bits_exception"
             ).value.integer
-            bp_valid[n] = getattr(dut, f"rsstage.io_bpBus_{n}_valid").value.integer
+            bp_valid[n] = getattr(dut, f"{top}rsstage.io_bpBus_{n}_valid").value.integer
 
             if (bp_taken[n] | bp_exception[n]) & bp_valid[n]:
                 real_pc = bp_targetPC[n]
@@ -113,7 +117,8 @@ async def test_wood(dut):
     timeout_value = 4000
     base_addr = 0x80000000
     timeout_event = Event(name="timeout")
-    top = ""  # relative to exunit
+    # top = "ExUnitDut."  # relative to exunit
+    top = "exunit."  # relative to exunit
 
     repo = git.Repo(".", search_parent_directories=True)
     project_dir = repo.working_tree_dir
@@ -133,9 +138,9 @@ async def test_wood(dut):
     cocotb.start_soon(watchdog_timer(timeout_event, timeout_value, time_unit))
 
     cocotb.start_soon(branch_monitor(dut, top, nwide, time_unit, trace_path))
-    cocotb.start_soon(store_monitor(dut, top, time_unit, trace_path))
+    # cocotb.start_soon(store_monitor(dut, top, time_unit, trace_path))
     cocotb.start_soon(flist_monitor(dut, top, nwide, time_unit))
-    cocotb.start_soon(decode_driver(dut, hex_path, nwide, base_addr))
+    cocotb.start_soon(decode_driver(dut, top, hex_path, nwide, base_addr))
     await cocotb.start_soon(
         diff_traces(dut, top, timeout_event, trace_path, nwide, time_unit)
     )

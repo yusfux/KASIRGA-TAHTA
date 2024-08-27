@@ -28,6 +28,13 @@ exunit_asm_test:
 	grouphex -f src/test/c/build/$(inst)_main.hex -g $(nWide) -o src/test/c/build/
 	python3 src/test/python/cocotb/main.py --inst $(inst) --width $(nWide) --test tb_exunit --top ExUnit --waves $(wave) --sim questa --dir ./test_run_dir/ExUnit_should_emit_for_cocotb/
 
+.PHONY: exunitdut_asm_test
+exunitdut_asm_test:
+	asmgen --inst $(inst) --type $(type) --num-insts $(numInst) --out_asm_file src/test/c/src/$(inst)_test.S
+	+@$(SUBMAKE) src/test/c/
+	grouphex -f src/test/c/build/$(inst)_main.hex -g $(nWide) -o src/test/c/build/
+	python3 src/test/python/cocotb/main.py --inst $(inst) --width $(nWide) --test tb_exunit --top ExUnitDut --waves $(wave) --sim questa --dir ./test_run_dir/ExUnitDut_should_emit_for_cocotb/
+
 .PHONY: wood_asm_test
 wood_asm_test:
 	asmgen --inst $(inst) --type $(type) --num-insts $(numInst) --out_asm_file src/test/c/src/$(inst)_test.S

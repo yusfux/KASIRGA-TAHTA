@@ -3,31 +3,39 @@ package wood.lsu
 import chisel3._
 import chisel3.util._
 import wood.WoodConfig
+import wood.exu.DecodeConfig
+
+class DCacheMemPort(config: WoodConfig) extends Bundle {
+  val req = DecoupledIO(new Bundle {
+    val addr = UInt(32.W)
+    val data = UInt(config.mmInterfaceWidth.W)
+    val wen  = Bool()
+  })
+  val resp = Flipped(DecoupledIO(new Bundle {
+    val data = UInt(config.mmInterfaceWidth.W)
+  }))
+}
 
 class DCache(config: WoodConfig) extends Module {
   val io = IO(new Bundle {
     val core = new Bundle {
       val req = Flipped(DecoupledIO(new Bundle {
         val addr  = UInt(32.W)
+        val tag   = UInt(config.tagWidth.W)
         val data  = UInt(config.ddatalen.W)
         val wstrb = Vec(config.ddatalen / 8, Bool())
         val wen   = Bool()
+        val lsOp  = UInt(DecodeConfig.subWidths(DecodeConfig.lsOpIdx).W)
       }))
       val resp = DecoupledIO(new Bundle {
         val data = UInt(config.ddatalen.W)
+        val tag  = UInt(config.tagWidth.W)
+        val addr = UInt(32.W)
+        val lsOp = UInt(DecodeConfig.subWidths(DecodeConfig.lsOpIdx).W)
       })
     }
 
-    val mem = new Bundle {
-      val req = DecoupledIO(new Bundle {
-        val addr = UInt(32.W)
-        val data = UInt(config.mmInterfaceWidth.W)
-        val wen  = Bool()
-      })
-      val resp = Flipped(DecoupledIO(new Bundle {
-        val data = UInt(config.mmInterfaceWidth.W)
-      }))
-    }
+    val mem = new DCacheMemPort(config)
   })
 
   val dcachebank = for (i <- 0 until config.dcachewaycount) yield {
@@ -57,6 +65,8 @@ class DCache(config: WoodConfig) extends Module {
   val isMemRead  = state === CacheState.memRead
   val isResponse = state === CacheState.response
 
+  val lsOpReg  = RegEnable(io.core.req.bits.lsOp, 0.U, io.core.req.fire)
+  val rdTagReg = RegEnable(io.core.req.bits.tag, 0.U, io.core.req.fire)
   val addrReg  = RegEnable(io.core.req.bits.addr, 0.U, io.core.req.fire)
   val wenReg   = RegEnable(io.core.req.bits.wen, false.B, io.core.req.fire)
   val wstrbReg = RegEnable(io.core.req.bits.wstrb, VecInit(Seq.fill(16)(false.B)), io.core.req.fire)
@@ -203,7 +213,11 @@ class DCache(config: WoodConfig) extends Module {
 
   io.core.req.ready      := isIdle
   io.core.resp.bits.data := Mux(isHit, dataList(hitWay), memData)
-  io.core.resp.valid     := isResponse
+  io.core.resp.bits.tag  := rdTagReg
+  io.core.resp.bits.addr := addrReg
+  io.core.resp.bits.lsOp := lsOpReg
+
+  io.core.resp.valid := isResponse
 
   io.mem.req.valid     := isMemWrite || isMemRead
   io.mem.req.bits.addr := Mux(isMemWrite, Cat(victimTag, idxReg, 0.U(4.W)), Cat(tagReg, idxReg, 0.U(4.W)))

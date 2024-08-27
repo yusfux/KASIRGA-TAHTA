@@ -4,6 +4,7 @@ import chisel3._
 import chisel3.util._
 import wood.exu.ExUnit
 import wood.fru.FrUnit
+import wood.lsu.DCacheMemPort
 
 case class TestConfig(val maxWidth: Int = 2) {}
 
@@ -27,11 +28,11 @@ case class WoodConfig(
   rsDepth:      Int = 2, // Reservation station depth
   //--------------
   // LsUnitConfig
-  lsSQDepth: Int = 8, // LS Store Queue Depth
-  lsRSDepth: Int = 2 // LS reservation station Depth
+  dcacheDepth: Int = 128,
+  lsSQDepth:   Int = 8, // LS Store Queue Depth
+  lsRSDepth:   Int = 2 // LS reservation station Depth
   //--------------
 ) {
-  val dcacheDepth           = mmDepth // TODO: connect the cache
   val dCacheLineWidth       = mmInterfaceWidth
   val iCacheLineWidth       = mmInterfaceWidth // TODO set or use this
   val numBytes              = xlen / 8
@@ -124,6 +125,7 @@ class CorePort(config: WoodConfig) extends Bundle {
 class Wood(config: WoodConfig) extends Module {
   val io = IO(new Bundle {
     val memr = new MemPortR(config)
+    val mem  = new DCacheMemPort(config)
   })
 
   val frunit = Module(new FrUnit(config))
@@ -141,4 +143,5 @@ class Wood(config: WoodConfig) extends Module {
   exunit.io.in.map(_.bits.valid := true.B)
 
   frunit.io.mem <> io.memr
+  exunit.io.mem <> io.mem
 }

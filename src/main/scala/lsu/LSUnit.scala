@@ -56,6 +56,7 @@ class LSUnit(config: WoodConfig) extends Module {
     val flush          = Input(Bool())
     val selfRetired    = Output(Vec(config.nWide, Bool()))
     val out            = Vec(1, ValidIO(new DataBus(config)))
+    val mem            = new DCacheMemPort(config)
   })
 
   val inOverridenOperands = Wire(Vec(config.nWide, Decoupled(new MI(config))))
@@ -91,7 +92,7 @@ class LSUnit(config: WoodConfig) extends Module {
 
   val lsscstage  = Module(new LSScheduleStage(config))
   val lssqstage  = Module(new LSSQStage(config))
-  val lsducstage = Module(new LSDummyCache(config))
+  val lsducstage = Module(new LSDCacheWrapper(config))
   val lswbstage  = Module(new LSWriteback(config))
 
   lsscstage.io.in          <> inOverridenOperands
@@ -111,4 +112,6 @@ class LSUnit(config: WoodConfig) extends Module {
 
   lsscstage.io.flush := io.flush
   lssqstage.io.flush := io.flush
+
+  lsducstage.io.mem <> io.mem
 }
