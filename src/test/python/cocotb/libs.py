@@ -283,7 +283,11 @@ async def branch_monitor(dut, top: str, nwide: int, time_unit: str, trace_path: 
         bp_valid = [0 for _ in range(nwide)]
         bp_taken = [0 for _ in range(nwide)]
         for n in range(0, nwide):
-            bp_pc[n] = getattr(dut, f"{top}rsstage.io_bpBus_{n}_bits_pc").value.integer
+            if getattr(dut, f"{top}rsstage.io_bpBus_{n}_bits_pc").value.is_resolvable:
+                bp_pc[n] = getattr(
+                    dut, f"{top}rsstage.io_bpBus_{n}_bits_pc"
+                ).value.integer
+
             bp_taken[n] = getattr(
                 dut, f"{top}rsstage.io_bpBus_{n}_bits_taken"
             ).value.integer
@@ -348,7 +352,8 @@ async def diff_traces(
         retired = [0 for _ in range(nwide)]
         flushed = [0 for _ in range(nwide)]
         for n in range(0, nwide):
-            isStore[n] = getattr(dut, f"{top}rwstage.isStore_{n}").value.integer
+            if getattr(dut, f"{top}rwstage.isStore_{n}").value.is_resolvable:
+                isStore[n] = getattr(dut, f"{top}rwstage.isStore_{n}").value.integer
 
             arfBus_valid[n] = getattr(
                 dut, f"{top}rwstage.io_arfBus_{n}_valid"
@@ -375,7 +380,9 @@ async def diff_traces(
                     dut, f"{top}rwstage.io_in_{n}_bits_inst"
                 ).value.integer
 
-            pc[n] = getattr(dut, f"{top}rwstage.io_in_{n}_bits_pc").value.integer
+            if getattr(dut, f"{top}rwstage.io_in_{n}_bits_pc").value.is_resolvable:
+                pc[n] = getattr(dut, f"{top}rwstage.io_in_{n}_bits_pc").value.integer
+
             rd_data[n] = getattr(dut, f"{top}rrstage.prf_{arfBus_tag[n]}").value.integer
             in_valid[n] = getattr(dut, f"{top}rwstage.io_in_{n}_valid").value.integer
             in_ready[n] = getattr(dut, f"{top}rwstage.io_in_{n}_ready").value.integer

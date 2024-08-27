@@ -64,7 +64,8 @@ async def decode_driver(dut, hex_path, nwide, base_addr):
         bp_taken = [0 for _ in range(nwide)]
         bp_exception = [0 for _ in range(nwide)]
         for n in range(0, nwide):
-            bp_pc[n] = getattr(dut, f"rsstage.io_bpBus_{n}_bits_pc").value.integer
+            if getattr(dut, f"rsstage.io_bpBus_{n}_bits_pc").value.is_resolvable:
+                bp_pc[n] = getattr(dut, f"rsstage.io_bpBus_{n}_bits_pc").value.integer
             bp_taken[n] = getattr(dut, f"rsstage.io_bpBus_{n}_bits_taken").value.integer
             bp_targetPC[n] = getattr(
                 dut, f"rsstage.io_bpBus_{n}_bits_targetPC"

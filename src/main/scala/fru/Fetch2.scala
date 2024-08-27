@@ -42,13 +42,16 @@ class Fetch2Stage(config: WoodConfig) extends Module {
   }
 
   when(kill && allRespValid) {
-    kill := false.B
+    kill                                        := false.B
+    icachebankcont.io.core.foreach(_.resp.ready := true.B)
+  }
+
+  when(io.flush && allRespValid) {
+    icachebankcont.io.core.foreach(_.resp.ready := true.B)
   }
 
   when(kill) {
-    io.instPacket.valid                         := false.B
-    io.pcPacket.ready                           := false.B
-    icachebankcont.io.core.foreach(_.resp.ready := allRespValid)
+    io.instPacket.valid := false.B
+    io.pcPacket.ready   := false.B
   }
-
 }

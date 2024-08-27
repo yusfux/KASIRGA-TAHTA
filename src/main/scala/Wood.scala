@@ -63,10 +63,6 @@ case class WoodConfig(
     (prfDepth % nWide == 0),
     "prfDepth must be divisible by nWide"
   )
-  require(
-    (mmInterfaceWidth == 128),
-    "Other mmInterfaceWidth values are not tested"
-  )
 
   val ghrWidth = log2Ceil(btbDepth)
 

@@ -19,13 +19,16 @@ class RetireStatusStage(config: WoodConfig) extends Module {
     val flush          = Output(Bool())
   })
 
+  val inMightFlushed = Wire(Vec(config.nWide, Decoupled(new RetireMI(config))))
+  inMightFlushed <> io.in
+
   val pRegs                       = Seq.fill(config.nWide)(Module(new DCPipelineRegister(new RetireMI(config))(1)))
   val retireStatusRegisterFile    = RegInit(VecInit(Seq.fill(config.prfDepth)(0.U(1.W))))
   val takenStatusRegisterFile     = RegInit(VecInit(Seq.fill(config.prfDepth)(0.U(1.W))))
   val exceptionStatusRegisterFile = RegInit(VecInit(Seq.fill(config.prfDepth)(0.U(1.W))))
   val pcRegisterFile              = RegInit(VecInit(Seq.fill(config.prfDepth)(0.U(config.xlen.W)))) // TODO: remove reset
 
-  val predictedPCs           = VecInit(io.in.tail.map(_.bits.pc) :+ io.firstPC.bits)
+  val predictedPCs           = VecInit(inMightFlushed.tail.map(_.bits.pc) :+ io.firstPC.bits)
   val self                   = Wire(Vec(config.nWide, Decoupled(new RetireMI(config))))
   val overridenRetiredStatus = Wire(Vec(config.nWide, Decoupled(new RetireMI(config))))
 
@@ -41,31 +44,35 @@ class RetireStatusStage(config: WoodConfig) extends Module {
   val mispredIndex        = PriorityEncoder(exceptionMispredSet)
 
   allRetired := overridenRetiredStatus.map(_.bits.retired.asBool)
-  allInValid := io.in.map(_.valid)
+  allInValid := inMightFlushed.map(_.valid)
 
   (0 until config.nWide).foreach(j => {
-    io.bpBus(j).bits.exception  := exceptionStatusRegisterFile(io.in(j).bits.rdTag)
-    io.bpBus(j).bits.pc         := io.in(j).bits.pc
-    io.bpBus(j).bits.taken      := takenStatusRegisterFile(io.in(j).bits.rdTag) & !io.in(j).bits.flushed
+    inMightFlushed(j).bits.flushed := io.in(j).bits.flushed | io.flush
+
+    io.bpBus(j).bits.exception  := exceptionStatusRegisterFile(inMightFlushed(j).bits.rdTag)
+    io.bpBus(j).bits.pc         := inMightFlushed(j).bits.pc
+    io.bpBus(j).bits.taken      := takenStatusRegisterFile(inMightFlushed(j).bits.rdTag) & !inMightFlushed(j).bits.flushed
     io.bpBus(j).bits.mispredict := exceptionMispredSet(j)
-    io.bpBus(j).bits.targetPC   := pcRegisterFile(io.in(j).bits.rdTag)
-    io.bpBus(j).valid           := io.in(j).fire & !io.in(j).bits.flushed & (io.in(j).bits.isJAL | io.in(j).bits.isBranch) & !flushVector(j)
+    io.bpBus(j).bits.targetPC   := pcRegisterFile(inMightFlushed(j).bits.rdTag)
+    io.bpBus(j).valid := inMightFlushed(j).fire & !inMightFlushed(j).bits.flushed & (inMightFlushed(j).bits.isJAL | inMightFlushed(
+      j
+    ).bits.isBranch) & !flushVector(j)
   })
 
-  io.flush    := exceptionMispredSet.reduce(_ || _) && rightOfItIsRetired(mispredIndex)
+  io.flush    := RegNext(exceptionMispredSet.reduce(_ || _) && rightOfItIsRetired(mispredIndex), 0.B)
   flushVector := flushVectors.reduce(_ | _)
 
-  overridenRetiredStatus <> io.in
+  overridenRetiredStatus <> inMightFlushed
 
   (0 until config.nWide).foreach(j => {
-    overridenRetiredStatus(j).bits.retired := retireStatusRegisterFile(io.in(j).bits.rdTag) | io.in(j).bits.flushed | flushVector(j)
+    overridenRetiredStatus(j).bits.retired := retireStatusRegisterFile(inMightFlushed(j).bits.rdTag) | inMightFlushed(j).bits.flushed | flushVector(j)
 
     self(j).bits         := overridenRetiredStatus(j).bits
     self(j).bits.flushed := flushVector(j) | overridenRetiredStatus(j).bits.flushed
 
-    self(j).valid := (allInValid.asUInt.andR & allRetired.asUInt.andR) | (io.in(j).bits.flushed & io.in(j).valid)
+    self(j).valid := (allInValid.asUInt.andR & allRetired.asUInt.andR) | (inMightFlushed(j).bits.flushed & inMightFlushed(j).valid)
 
-    pRegs(j).io.valids(0)       := io.in(j).valid
+    pRegs(j).io.valids(0)       := inMightFlushed(j).valid
     pRegs(j).io.flush           := 0.U // never lose tags
     pRegs(j).io.in.bits.flushed := flushVector(j)
 
@@ -76,9 +83,13 @@ class RetireStatusStage(config: WoodConfig) extends Module {
   })
 
   (0 until config.nWide).foreach(j => {
-    io.storeRetireBus(j).bits.tag := io.in(j).bits.rdTag
-    io.storeRetireBus(j)
-      .valid := rightOfItIsRetired(j) && retireStatusRegisterFile(io.in(j).bits.rdTag).asBool && !flushVector(j) && !io.in(j).bits.flushed
+    io.storeRetireBus(j).bits.tag := RegNext(inMightFlushed(j).bits.rdTag, 0.B)
+    io.storeRetireBus(j).valid := RegNext(
+      rightOfItIsRetired(j) && retireStatusRegisterFile(inMightFlushed(j).bits.rdTag).asBool && !flushVector(
+        j
+      ) && !inMightFlushed(j).bits.flushed,
+      0.B
+    )
   })
 
   dontTouch(rightOfItIsRetired) // debug only
@@ -109,13 +120,13 @@ class RetireStatusStage(config: WoodConfig) extends Module {
   }
 
   (0 until config.nWide).foreach(j => {
-    val tag             = io.in(j).bits.rdTag
-    val notFlushed      = !io.in(j).bits.flushed
+    val tag             = inMightFlushed(j).bits.rdTag
+    val notFlushed      = !inMightFlushed(j).bits.flushed
     val isException     = exceptionStatusRegisterFile(tag).asBool
     val isTaken         = takenStatusRegisterFile(tag).asBool
     val actualTarget    = pcRegisterFile(tag)
     val predictedTarget = predictedPCs(j)
-    rowRetired(j)         := retireStatusRegisterFile(io.in(j).bits.rdTag)
+    rowRetired(j)         := retireStatusRegisterFile(inMightFlushed(j).bits.rdTag)
     rightOfItIsRetired(j) := Mux(j.U === 0.U, 1.B, rowRetired.asUInt(j - 1, 0).andR)
 
     flushVectors(j) := 0.U

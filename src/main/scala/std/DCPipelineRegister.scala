@@ -31,7 +31,7 @@ class DCPipelineRegister[T <: Data](gen: T)(numValids: Int) extends Module {
 
   // Reset the registers when the flush signal is asserted
   when(io.flush) {
-    regData  := 0.U.asTypeOf(gen.cloneType)
+    regData  := regData // too expensive to flush
     regValid := 0.B
   }
 
