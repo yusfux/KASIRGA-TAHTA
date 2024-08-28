@@ -38,13 +38,18 @@ class LSDCacheWrapper(config: WoodConfig) extends Module {
   getWStrobe.io.addr := io.in.bits.addr
   getWStrobe.io.lsOp := io.in.bits.lsOp
 
-  dcache.io.core.req.bits.lsOp  := io.in.bits.lsOp
-  dcache.io.core.req.bits.tag   := io.in.bits.rdTag
-  dcache.io.core.req.bits.addr  := io.in.bits.addr
-  dcache.io.core.req.bits.data  := maskedStoreData
-  dcache.io.core.req.bits.wen   := io.in.bits.store
-  dcache.io.core.req.bits.wstrb := storeMask.asTypeOf(Vec(config.numDCacheLineBytes, Bool()))
-  dcache.io.core.req.valid      := io.in.valid
+  dcache.io.core.req.bits.pc   := io.in.bits.pc // debug only
+  dcache.io.core.req.bits.inst := io.in.bits.inst // debug only
+
+  dcache.io.core.req.bits.sqwStrobe := io.in.bits.sqwStrobe
+  dcache.io.core.req.bits.sqData    := io.in.bits.sqData
+  dcache.io.core.req.bits.lsOp      := io.in.bits.lsOp
+  dcache.io.core.req.bits.tag       := io.in.bits.rdTag
+  dcache.io.core.req.bits.addr      := io.in.bits.addr
+  dcache.io.core.req.bits.data      := maskedStoreData
+  dcache.io.core.req.bits.wen       := io.in.bits.store
+  dcache.io.core.req.bits.wstrb     := storeMask.asTypeOf(Vec(config.numDCacheLineBytes, Bool()))
+  dcache.io.core.req.valid          := io.in.valid
 
   io.in.ready := dcache.io.core.req.ready
 
@@ -52,11 +57,15 @@ class LSDCacheWrapper(config: WoodConfig) extends Module {
   dcache.io.core.resp.ready := io.out.ready
 
   val outDataShiftAmount = dcache.io.core.resp.bits.addr(numdCacheLineWords - 1, 2) * config.xlen.U
-  io.out.bits           := io.in.bits // debug only
+  io.out.bits           := DontCare
   io.out.bits.cacheData := ((dcache.io.core.resp.bits.data >> outDataShiftAmount)(config.xlen - 1, 0)).asTypeOf(Vec(config.numBytes, UInt(8.W)))
   io.out.bits.rdTag     := dcache.io.core.resp.bits.tag
   io.out.bits.lsOp      := dcache.io.core.resp.bits.lsOp
+  io.out.bits.sqwStrobe := dcache.io.core.resp.bits.sqwStrobe
+  io.out.bits.sqData    := dcache.io.core.resp.bits.sqData
   io.out.bits.addr      := dcache.io.core.resp.bits.addr
+  io.out.bits.pc        := dcache.io.core.resp.bits.pc
+  io.out.bits.inst      := dcache.io.core.resp.bits.inst
 
   dcache.io.mem <> io.mem
 

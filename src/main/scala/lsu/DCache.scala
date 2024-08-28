@@ -20,18 +20,26 @@ class DCache(config: WoodConfig) extends Module {
   val io = IO(new Bundle {
     val core = new Bundle {
       val req = Flipped(DecoupledIO(new Bundle {
-        val addr  = UInt(32.W)
-        val tag   = UInt(config.tagWidth.W)
-        val data  = UInt(config.ddatalen.W)
-        val wstrb = Vec(config.ddatalen / 8, Bool())
-        val wen   = Bool()
-        val lsOp  = UInt(DecodeConfig.subWidths(DecodeConfig.lsOpIdx).W)
+        val addr      = UInt(32.W)
+        val tag       = UInt(config.tagWidth.W)
+        val data      = UInt(config.ddatalen.W)
+        val wstrb     = Vec(config.ddatalen / 8, Bool())
+        val wen       = Bool()
+        val lsOp      = UInt(DecodeConfig.subWidths(DecodeConfig.lsOpIdx).W)
+        val sqwStrobe = Vec(config.numBytes, Bool()) // only used for CAM merge at writeback
+        val sqData    = Vec(config.numBytes, UInt(8.W)) // only used for load update after read
+        val inst      = UInt(32.W) // for testbench only
+        val pc        = UInt(config.xlen.W) // for testbench only
       }))
       val resp = DecoupledIO(new Bundle {
-        val data = UInt(config.ddatalen.W)
-        val tag  = UInt(config.tagWidth.W)
-        val addr = UInt(32.W)
-        val lsOp = UInt(DecodeConfig.subWidths(DecodeConfig.lsOpIdx).W)
+        val data      = UInt(config.ddatalen.W)
+        val tag       = UInt(config.tagWidth.W)
+        val addr      = UInt(32.W)
+        val lsOp      = UInt(DecodeConfig.subWidths(DecodeConfig.lsOpIdx).W)
+        val sqwStrobe = Vec(config.numBytes, Bool()) // only used for CAM merge at writeback
+        val sqData    = Vec(config.numBytes, UInt(8.W)) // only used for load update after read
+        val inst      = UInt(32.W) // for testbench only
+        val pc        = UInt(config.xlen.W) // for testbench only
       })
     }
 
@@ -65,13 +73,17 @@ class DCache(config: WoodConfig) extends Module {
   val isMemRead  = state === CacheState.memRead
   val isResponse = state === CacheState.response
 
-  val lsOpReg  = RegEnable(io.core.req.bits.lsOp, 0.U, io.core.req.fire)
-  val rdTagReg = RegEnable(io.core.req.bits.tag, 0.U, io.core.req.fire)
-  val addrReg  = RegEnable(io.core.req.bits.addr, 0.U, io.core.req.fire)
-  val wenReg   = RegEnable(io.core.req.bits.wen, false.B, io.core.req.fire)
-  val wstrbReg = RegEnable(io.core.req.bits.wstrb, VecInit(Seq.fill(16)(false.B)), io.core.req.fire)
-  val wdataReg = RegEnable(io.core.req.bits.data, 0.U, io.core.req.fire)
-  val tagReg   = RegEnable(io.core.req.bits.addr(32 - 1, log2Ceil(config.dcacheDepth) + log2Ceil(config.ddatalen / 8)), 0.U, io.core.req.fire)
+  val pcReg        = RegEnable(io.core.req.bits.pc, 0.U, io.core.req.fire) // debug only
+  val instReg      = RegEnable(io.core.req.bits.inst, 0.U, io.core.req.fire) // debug only
+  val sqwStrobeReg = RegEnable(io.core.req.bits.sqwStrobe, VecInit(Seq.fill(config.numBytes)(false.B)), io.core.req.fire) // debug only
+  val sqDataReg    = RegEnable(io.core.req.bits.sqData, VecInit(Seq.fill(config.numBytes)(0.U.asTypeOf(UInt(8.W)))), io.core.req.fire) // debug only
+  val lsOpReg      = RegEnable(io.core.req.bits.lsOp, 0.U, io.core.req.fire)
+  val rdTagReg     = RegEnable(io.core.req.bits.tag, 0.U, io.core.req.fire)
+  val addrReg      = RegEnable(io.core.req.bits.addr, 0.U, io.core.req.fire)
+  val wenReg       = RegEnable(io.core.req.bits.wen, false.B, io.core.req.fire)
+  val wstrbReg     = RegEnable(io.core.req.bits.wstrb, VecInit(Seq.fill(16)(false.B)), io.core.req.fire)
+  val wdataReg     = RegEnable(io.core.req.bits.data, 0.U, io.core.req.fire)
+  val tagReg       = RegEnable(io.core.req.bits.addr(32 - 1, log2Ceil(config.dcacheDepth) + log2Ceil(config.ddatalen / 8)), 0.U, io.core.req.fire)
   val idxReg = RegEnable(
     io.core.req.bits.addr(log2Ceil(config.dcacheDepth) + log2Ceil(config.ddatalen / 8) - 1, log2Ceil(config.ddatalen / 8)),
     0.U,
@@ -211,11 +223,15 @@ class DCache(config: WoodConfig) extends Module {
     }
   }
 
-  io.core.req.ready      := isIdle
-  io.core.resp.bits.data := Mux(isHit, dataList(hitWay), memData)
-  io.core.resp.bits.tag  := rdTagReg
-  io.core.resp.bits.addr := addrReg
-  io.core.resp.bits.lsOp := lsOpReg
+  io.core.req.ready           := isIdle
+  io.core.resp.bits.data      := Mux(isHit, dataList(hitWay), memData)
+  io.core.resp.bits.tag       := rdTagReg
+  io.core.resp.bits.addr      := addrReg
+  io.core.resp.bits.sqwStrobe := sqwStrobeReg
+  io.core.resp.bits.sqData    := sqDataReg
+  io.core.resp.bits.lsOp      := lsOpReg
+  io.core.resp.bits.pc        := pcReg
+  io.core.resp.bits.inst      := instReg
 
   io.core.resp.valid := isResponse
 

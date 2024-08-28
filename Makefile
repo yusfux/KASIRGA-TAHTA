@@ -21,13 +21,6 @@ all:
 	@echo "What are you expecting? (￣ー￣)";
 	@echo "Read the makefile.";
 
-.PHONY: exunit_asm_test
-exunit_asm_test:
-	asmgen --inst $(inst) --type $(type) --num-insts $(numInst) --out_asm_file src/test/c/src/$(inst)_test.S
-	+@$(SUBMAKE) src/test/c/
-	grouphex -f src/test/c/build/$(inst)_main.hex -g $(nWide) -o src/test/c/build/
-	python3 src/test/python/cocotb/main.py --inst $(inst) --width $(nWide) --test tb_exunit --top ExUnit --waves $(wave) --sim questa --dir ./test_run_dir/ExUnit_should_emit_for_cocotb/
-
 .PHONY: exunitdut_asm_test
 exunitdut_asm_test:
 	asmgen --inst $(inst) --type $(type) --num-insts $(numInst) --out_asm_file src/test/c/src/$(inst)_test.S
@@ -42,14 +35,14 @@ wood_asm_test:
 	grouphex -f src/test/c/build/$(inst)_main.hex -g $(nWide) -o src/test/c/build/
 	python3 src/test/python/cocotb/main.py --inst $(inst) --width $(nWide) --test tb_wood --top WoodDut --waves $(wave)  --sim questa --dir ./test_run_dir/WoodDut_should_emit_for_cocotb/
 
-.PHONY: exunit_csmith_test
-exunit_csmith_test:
+.PHONY: exunitdut_csmith_test
+exunitdut_csmith_test:
 	csmith --seed 69 --no-argc --no-float --quiet --no-builtins --max-pointer-depth 10 --max-block-size 7 --max-array-dim 10 --max-funcs 100 --no-hash-value-printf > src/test/c/src/$(inst).c
 	sed -i 's/^.*platform_main/\/\/&/' src/test/c/src/$(inst).c
 	genstarts -f src/test/c/src/$(inst).S
 	+@$(SUBMAKE) src/test/c/
 	grouphex -f src/test/c/build/$(inst)_main.hex -g $(nWide) -o src/test/c/build/
-	python3 src/test/python/cocotb/main.py --inst $(inst) --width $(nWide) --test tb_exunit --top ExUnit --waves $(wave)  --sim questa --dir ./test_run_dir/ExUnit_should_emit_for_cocotb/
+	python3 src/test/python/cocotb/main.py --inst $(inst) --width $(nWide) --test tb_exunit --top ExUnitDut --waves $(wave)  --sim questa --dir ./test_run_dir/ExUnitDut_should_emit_for_cocotb/
 
 .PHONY: wood_csmith_test
 wood_csmith_test:
@@ -60,8 +53,8 @@ wood_csmith_test:
 	grouphex -f src/test/c/build/$(inst)_main.hex -g $(nWide) -o src/test/c/build/
 	python3 src/test/python/cocotb/main.py --inst $(inst) --width $(nWide) --test tb_wood --top WoodDut --waves $(wave)  --sim questa --dir ./test_run_dir/WoodDut_should_emit_for_cocotb
 
-.PHONY: exunit_coremark_test
-exunit_coremark_test:
+.PHONY: exunitdut_coremark_test
+exunitdut_coremark_test:
 	# assumes coremark is present:
 	spike -m0x80000000:0x550000  --log-commits --isa=rv32gc -l src/test/c/build/$(inst)_main.elf &> src/test/c/build/$(inst)_spike.trace
 	spiketrace2json -f src/test/c/build/$(inst)_spike.trace -o src/test/c/build/$(inst)_spike_trace.json
@@ -79,7 +72,7 @@ exunit_coremark_test:
 	sed -i '1r src/test/c/build/$(inst)_main.vsim.map' src/test/c/build/exunit_wave.do
 
 	grouphex -f src/test/c/build/$(inst)_main.hex -g $(nWide) -o src/test/c/build/
-	python3 src/test/python/cocotb/main.py --inst $(inst) --width $(nWide) --test tb_exunit --top ExUnit --waves $(wave)  --sim questa --dir ./test_run_dir/ExUnit_should_emit_for_cocotb/
+	python3 src/test/python/cocotb/main.py --inst $(inst) --width $(nWide) --test tb_exunit --top ExUnit --waves $(wave)  --sim questa --dir ./test_run_dir/ExUnitDut_should_emit_for_cocotb/
 
 .PHONY: exunit_aapg_test
 exunit_aapg_test:

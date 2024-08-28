@@ -98,7 +98,7 @@ class LSStoreQueue(config: WoodConfig) extends Module {
   (0 until config.lsSQDepth).foreach(j => {
     demux.io.out(j)(0).ready  := (enqPtr.value === j.U) && !full && !valid(enqPtr.value)
     rows(j).io.in.bits        := demux.io.out(j)(0).bits
-    rows(j).io.in.valid       := demux.io.out(j)(0).valid && !io.in.bits.flushed
+    rows(j).io.in.valid       := demux.io.out(j)(0).valid && !io.in.bits.flushed && !full
     rows(j).io.setflushed     := io.flush
     rows(j).io.storeRetireBus := io.storeRetireBus
   })

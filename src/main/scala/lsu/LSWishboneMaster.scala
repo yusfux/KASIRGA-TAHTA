@@ -36,23 +36,28 @@ class LSWishboneMaster(config: WoodConfig) extends Module {
   io.out.valid := false.B
 
   // Latch input for preserving data
-  val latchedInput = Reg(new LSCMI(config))
+  val latchedInputNext = Wire(new LSCMI(config))
+  val latchedInput     = RegEnable(latchedInputNext, 0.U.asTypeOf(new LSCMI(config)), 1.B)
 
   // Output assignment (preserving all fields)
   io.out.bits := latchedInput
+
+  latchedInputNext := latchedInput
 
   switch(state) {
     is(sIdle) {
       io.in.ready := true.B
       when(io.in.fire) {
-        latchedInput := io.in.bits
-        io.wb_adr    := io.in.bits.addr(3, 0)
-        io.wb_dat_o  := io.in.bits.cacheData.asUInt
-        io.wb_we     := io.in.bits.store
-        io.wb_stb    := true.B
-        io.wb_sel    := io.in.bits.cacheData.asUInt
-        io.wb_cyc    := true.B
-        state        := sRequest
+        latchedInputNext := io.in.bits
+        io.wb_adr        := io.in.bits.addr(3, 0)
+        io.wb_dat_o      := io.in.bits.cacheData.asUInt
+        io.wb_we         := io.in.bits.store
+        io.wb_stb        := true.B
+        io.wb_sel        := io.in.bits.cacheData.asUInt
+        io.wb_cyc        := true.B
+        state            := sRequest
+      }.otherwise {
+        latchedInputNext := latchedInput
       }
     }
 
