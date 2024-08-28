@@ -156,6 +156,9 @@ class ExUnit(config: WoodConfig) extends Module {
     val in    = Flipped(Vec(config.nWide, Decoupled(new PCInst(config))))
     val bpBus = Vec(config.nWide, ValidIO(new BranchPredictorBus(config)))
     val mem   = new DCacheMemPort(config)
+
+    val uart_rx = Input(Bool())
+    val uart_tx = Output(Bool())
   })
 
   val lsunit = Module(new LSUnit(config))
@@ -249,4 +252,7 @@ class ExUnit(config: WoodConfig) extends Module {
 
   io.bpBus      <> rsstage.io.bpBus
   lsunit.io.mem <> io.mem
+
+  io.uart_rx <> lsunit.io.uart_rx
+  io.uart_tx <> lsunit.io.uart_tx
 }

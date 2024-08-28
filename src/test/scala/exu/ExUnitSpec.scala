@@ -14,6 +14,9 @@ class ExUnitDut(config: WoodConfig) extends Module {
   val io = IO(new Bundle {
     val in    = Flipped(Vec(config.nWide, Decoupled(new PCInst(config))))
     val bpBus = Vec(config.nWide, ValidIO(new BranchPredictorBus(config)))
+
+    val uart_rx = Input(Bool())
+    val uart_tx = Output(Bool())
   })
 
   val exunit = Module(new ExUnit(config))
@@ -29,6 +32,9 @@ class ExUnitDut(config: WoodConfig) extends Module {
   when(exunit.io.mem.req.valid && exunit.io.mem.req.bits.wen) {
     mem.write(exunit.io.mem.req.bits.addr >> (config.byteOffset + config.memOffset), exunit.io.mem.req.bits.data)
   }
+
+  io.uart_rx <> exunit.io.uart_rx
+  io.uart_tx <> exunit.io.uart_tx
 }
 
 class ExUnitSpec extends AnyFlatSpec with ChiselScalatestTester with ParallelTestExecution {

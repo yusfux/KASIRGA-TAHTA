@@ -4,6 +4,7 @@ import chisel3._
 import chisel3.util._
 import wood.WoodConfig
 import wood.exu.{DataBus, DecodeConfig, MI, Retirable, TagBus}
+import wood.periph.UARTController
 
 // format: off
 object LSOp extends ChiselEnum {
@@ -57,6 +58,9 @@ class LSUnit(config: WoodConfig) extends Module {
     val selfRetired    = Output(Vec(config.nWide, Bool()))
     val out            = Vec(1, ValidIO(new DataBus(config)))
     val mem            = new DCacheMemPort(config)
+
+    val uart_rx = Input(Bool())
+    val uart_tx = Output(Bool())
   })
 
   val inOverridenOperands = Wire(Vec(config.nWide, Decoupled(new MI(config))))
@@ -94,6 +98,8 @@ class LSUnit(config: WoodConfig) extends Module {
   val lssqstage  = Module(new LSSQStage(config))
   val lsducstage = Module(new LSDCacheWrapper(config))
   val lswbstage  = Module(new LSWriteback(config))
+  val lswishbone = Module(new LSWishboneMaster(config))
+  val uart       = Module(new UARTController(config))
 
   lsscstage.io.in          <> inOverridenOperands
   lsscstage.io.selfRetired <> io.selfRetired
@@ -114,4 +120,19 @@ class LSUnit(config: WoodConfig) extends Module {
   lssqstage.io.flush := io.flush
 
   lsducstage.io.mem <> io.mem
+
+  lswishbone.io.in      <> lssqstage.io.outPeriph
+  lswbstage.io.inPeriph <> lswishbone.io.out
+
+  lswishbone.io.wb_adr   <> uart.io.wb_adr
+  lswishbone.io.wb_dat_o <> uart.io.wb_dat_i
+  lswishbone.io.wb_we    <> uart.io.wb_we
+  lswishbone.io.wb_stb   <> uart.io.wb_stb
+  lswishbone.io.wb_sel   <> uart.io.wb_sel
+  lswishbone.io.wb_cyc   <> uart.io.wb_cyc
+  lswishbone.io.wb_ack   <> uart.io.wb_ack
+  lswishbone.io.wb_dat_i <> uart.io.wb_dat_o
+
+  io.uart_rx <> uart.io.uart_rx
+  io.uart_tx <> uart.io.uart_tx
 }

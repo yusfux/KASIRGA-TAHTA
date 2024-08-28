@@ -13,24 +13,34 @@ class LSSQStage(config: WoodConfig) extends Module {
     val flush          = Input(Bool())
     val selfRetired    = Output(Bool())
     val out            = Decoupled(new LSCMI(config)) // comb out
+    val outPeriph      = Decoupled(new LSCMI(config)) // comb out
   })
 
   val inRetireOverrider  = Module(new LSOverrideRetire(new LSCMI(config))(config))
   val outRetireOverrider = Module(new LSOverrideRetire(new LSCMI(config))(config))
-  val demux              = Module(new DCDemux(new LSCMI(config))(1, 2))
+  val cacheDemux         = Module(new DCDemux(new LSCMI(config))(1, 2))
+  val periphDemux        = Module(new DCDemux(new LSCMI(config))(1, 2))
   val arbiter            = Module(new Arbiter(new LSCMI(config), 2))
   val sq                 = Module(new LSStoreQueue(config))
   val sqIndex            = 1
   val inIndex            = 0
 
-  demux.io.sel(0) := Mux(io.in.bits.store, sqIndex.U, inIndex.U)
+  val cacheIndex  = 1
+  val periphIndex = 0
+
+  val isPeriph = "h80000000".U > io.in.bits.addr >= "h20000000".U // TODO: hardcoded addr
+
+  periphDemux.io.sel(0) := Mux(isPeriph, periphIndex.U, cacheIndex.U)
+  cacheDemux.io.sel(0)  := Mux(io.in.bits.store, sqIndex.U, inIndex.U)
 
   val flushed = outRetireOverrider.io.out.bits.flushed || (io.flush && !outRetireOverrider.io.out.bits.retired)
 
   inRetireOverrider.io.in  <> io.in
-  demux.io.in(0)           <> inRetireOverrider.io.out
-  sq.io.in                 <> demux.io.out(sqIndex)(0)
-  arbiter.io.in(inIndex)   <> demux.io.out(inIndex)(0)
+  periphDemux.io.in(0)     <> inRetireOverrider.io.out
+  cacheDemux.io.in(0)      <> periphDemux.io.out(cacheIndex)(0)
+  io.outPeriph             <> periphDemux.io.out(periphIndex)(0)
+  sq.io.in                 <> cacheDemux.io.out(sqIndex)(0)
+  arbiter.io.in(inIndex)   <> cacheDemux.io.out(inIndex)(0)
   arbiter.io.in(sqIndex)   <> sq.io.out
   outRetireOverrider.io.in <> arbiter.io.out
   io.out                   <> outRetireOverrider.io.out
