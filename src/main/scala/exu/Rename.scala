@@ -23,7 +23,7 @@ class RenameStage(config: WoodConfig) extends Module {
 
   val frontEndRegisterFile = RegInit(VecInit(Seq.fill(32)(0.U(config.tagWidth.W))))
   val self                 = Wire(Vec(config.nWide, Decoupled(new MI(config))))
-  val flushDelayed         = RegNext(RegNext(RegNext(io.flush, false.B), false.B), false.B) // Flush to last Arch RF update delay
+  val flushDelayed         = RegNext(RegNext(io.flush, false.B), false.B) // Flush to last Arch RF update delay
   val allInValid           = Wire(Vec(config.nWide, Bool())).suggestName("allInValid")
   allInValid := io.in.map(_.valid)
 
