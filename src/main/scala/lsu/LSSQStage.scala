@@ -28,7 +28,7 @@ class LSSQStage(config: WoodConfig) extends Module {
   val cacheIndex  = 1
   val periphIndex = 0
 
-  val isPeriph = "h80000000".U > io.in.bits.addr >= "h20000000".U // TODO: hardcoded addr
+  val isPeriph = ("h80000000".U > io.in.bits.addr) && (io.in.bits.addr >= "h20000000".U) // TODO: fix hardcoded addr
 
   periphDemux.io.sel(0) := Mux(isPeriph, periphIndex.U, cacheIndex.U)
   cacheDemux.io.sel(0)  := Mux(io.in.bits.store, sqIndex.U, inIndex.U)

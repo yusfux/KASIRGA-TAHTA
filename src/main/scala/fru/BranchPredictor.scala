@@ -31,8 +31,8 @@ class BranchPredictor(config: WoodConfig) extends Module {
   }
 
   object pcfield {
-    val idxH = config.byteOffset + log2Ceil(config.btbDepth) - 1
-    val idxL = log2Ceil(config.btbDepth)
+    val idxH = log2Ceil(config.btbDepth) + config.byteOffset - 1
+    val idxL = config.byteOffset
     val tagH = config.xlen - 1
     val tagL = config.byteOffset + log2Ceil(config.btbDepth)
     val pciH = config.bankOffset + config.byteOffset - 1
@@ -44,20 +44,22 @@ class BranchPredictor(config: WoodConfig) extends Module {
   val bim  = RegInit(VecInit(Seq.fill(1 << config.ghrWidth)(0.U(2.W))))
   val sghr = Wire(Vec(config.nWide, UInt(config.ghrWidth.W)))
 
-  val idx        = PriorityEncoder(io.bpBus.map(bp => bp.valid && bp.bits.mispredict))
-  val mpreden    = io.bpBus.map(bp => bp.valid && bp.bits.mispredict).reduce(_ || _)
-  val mpredtaken = io.bpBus(idx).bits.taken
-  val mpredidx   = io.bpBus(idx).bits.pc(pcfield.idxH, pcfield.idxL) ^ sghr(idx)
-  val mpredtag   = io.bpBus(idx).bits.pc(pcfield.tagH, pcfield.tagL)
-  val mpredtpc   = io.bpBus(idx).bits.targetPC
-  val mpredpci   = io.bpBus(idx).bits.pc(pcfield.pciH, pcfield.pciL)
+  val idx         = PriorityEncoder(io.bpBus.map(bp => bp.valid && bp.bits.mispredict))
+  val mpreden     = io.bpBus.map(bp => bp.valid && bp.bits.mispredict).reduce(_ || _)
+  val mpredtaken  = io.bpBus(idx).bits.taken
+  val mpredidx    = io.bpBus(idx).bits.pc(pcfield.idxH, pcfield.idxL)
+  val mpredbimidx = io.bpBus(idx).bits.pc(pcfield.idxH, pcfield.idxL) ^ sghr(idx)
+  val mpredtag    = io.bpBus(idx).bits.pc(pcfield.tagH, pcfield.tagL)
+  val mpredtpc    = io.bpBus(idx).bits.targetPC
+  val mpredpci    = io.bpBus(idx).bits.pc(pcfield.pciH, pcfield.pciL)
 
-  val predidx   = io.pc(pcfield.idxH, pcfield.idxL) ^ ghr
-  val predtag   = io.pc(pcfield.tagH, pcfield.tagL)
-  val predhit   = btb(predidx)(btbfield.tagH, btbfield.tagL) === predtag
-  val predtaken = bim(predidx)(1).asBool
-  val predpc    = btb(predidx)(btbfield.tpcH, btbfield.tpcL)
-  val predmask  = ((1.U << btb(predidx)(btbfield.pciH, btbfield.pciL)) - 1.U)(config.nWide - 1, 0) //TODO: THIS DOES NOT WORK
+  val predidx    = io.pc(pcfield.idxH, pcfield.idxL)
+  val predbimidx = io.pc(pcfield.idxH, pcfield.idxL) ^ ghr
+  val predtag    = io.pc(pcfield.tagH, pcfield.tagL)
+  val predhit    = btb(predidx)(btbfield.tagH, btbfield.tagL) === predtag
+  val predtaken  = bim(predbimidx)(1).asBool
+  val predpc     = btb(predidx)(btbfield.tpcH, btbfield.tpcL)
+  val predmask   = ((1.U << btb(predidx)(btbfield.pciH, btbfield.pciL)) - 1.U)(config.nWide - 1, 0) //TODO: THIS DOES NOT WORK
 
   sghr(0) := ghr
   when(io.bpBus(0).valid && ~io.bpBus(0).bits.exception) { sghr(0) := ghr << 1 | io.bpBus(0).bits.taken }
@@ -83,10 +85,10 @@ class BranchPredictor(config: WoodConfig) extends Module {
 
   when(mpreden) {
     btb(mpredidx) := Cat(mpredtag, mpredpci, mpredtpc)
-    bim(mpredidx) := Mux(
+    bim(mpredbimidx) := Mux(
       mpredtaken,
-      Mux(bim(mpredidx) =/= "b11".U, bim(mpredidx) + 1.U, bim(mpredidx)),
-      Mux(bim(mpredidx) =/= "b00".U, bim(mpredidx) - 1.U, bim(mpredidx))
+      Mux(bim(mpredbimidx) =/= "b11".U, bim(mpredbimidx) + 1.U, bim(mpredbimidx)),
+      Mux(bim(mpredbimidx) =/= "b00".U, bim(mpredbimidx) - 1.U, bim(mpredbimidx))
     )
   }
 

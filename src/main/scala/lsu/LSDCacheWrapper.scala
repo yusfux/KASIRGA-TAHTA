@@ -6,9 +6,10 @@ import wood.WoodConfig
 
 class LSDCacheWrapper(config: WoodConfig) extends Module {
   val io = IO(new Bundle {
-    val in  = Flipped(Decoupled(new LSCMI(config)))
-    val out = Decoupled(new LSCMI(config))
-    val mem = new DCacheMemPort(config)
+    val in    = Flipped(Decoupled(new LSCMI(config)))
+    val flush = Input(Bool())
+    val out   = Decoupled(new LSCMI(config))
+    val mem   = new DCacheMemPort(config)
   })
 
   val dcache     = Module(new DCache(config))
@@ -16,6 +17,15 @@ class LSDCacheWrapper(config: WoodConfig) extends Module {
 
   val mask      = Wire(UInt(config.xlen.W))
   val byteMasks = Wire(Vec(config.numBytes, UInt(config.xlen.W)))
+
+  val flushedState = RegInit(0.B)
+  when(io.in.fire) {
+    flushedState := 0.B
+  }.otherwise {
+    flushedState := flushedState || io.flush
+  }
+  val flushed = dcache.io.core.resp.bits.flushed || io.flush || flushedState
+
   for (j <- 0 until config.numBytes) {
     when(getWStrobe.io.out(j)) {
       byteMasks(j) := (0xff.U << (j * 8))
@@ -46,6 +56,7 @@ class LSDCacheWrapper(config: WoodConfig) extends Module {
   dcache.io.core.req.bits.lsOp      := io.in.bits.lsOp
   dcache.io.core.req.bits.tag       := io.in.bits.rdTag
   dcache.io.core.req.bits.addr      := io.in.bits.addr
+  dcache.io.core.req.bits.flushed   := io.in.bits.flushed
   dcache.io.core.req.bits.data      := maskedStoreData
   dcache.io.core.req.bits.wen       := io.in.bits.store
   dcache.io.core.req.bits.wstrb     := storeMask.asTypeOf(Vec(config.numDCacheLineBytes, Bool()))
@@ -53,7 +64,7 @@ class LSDCacheWrapper(config: WoodConfig) extends Module {
 
   io.in.ready := dcache.io.core.req.ready
 
-  io.out.valid              := dcache.io.core.resp.valid
+  io.out.valid              := dcache.io.core.resp.valid && !flushed
   dcache.io.core.resp.ready := io.out.ready
 
   val outDataShiftAmount = dcache.io.core.resp.bits.addr(numdCacheLineWords - 1, 2) * config.xlen.U
@@ -66,6 +77,7 @@ class LSDCacheWrapper(config: WoodConfig) extends Module {
   io.out.bits.addr      := dcache.io.core.resp.bits.addr
   io.out.bits.pc        := dcache.io.core.resp.bits.pc
   io.out.bits.inst      := dcache.io.core.resp.bits.inst
+  io.out.bits.flushed   := dcache.io.core.resp.bits.flushed
 
   dcache.io.mem <> io.mem
 

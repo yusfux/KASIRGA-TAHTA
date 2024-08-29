@@ -91,41 +91,31 @@ case class WoodConfig(
 
 }
 
-class ReqPort(addrWidth: Int, dataWidth: Int) extends Bundle {
-  val ReadReq = new Bundle {
-    val addr = UInt(addrWidth.W)
-  }
-
-  val WriteReq = new Bundle {
-    val addr = UInt(addrWidth.W)
-    val data = UInt(dataWidth.W)
-  }
+class ICacheCorePort(config: WoodConfig) extends Bundle {
+  val req = Flipped(DecoupledIO(new Bundle {
+    val addr = UInt(32.W)
+  }))
+  val resp = DecoupledIO(new Bundle {
+    val data = UInt(config.xlen.W)
+  })
 }
 
-class RespPort(dataWidth: Int) extends Bundle {
-  val ReadResp = new Bundle {
-    val data = UInt(dataWidth.W)
-  }
-}
-
-class MemPortR(config: WoodConfig) extends Bundle {
-  val req  = DecoupledIO(new ReqPort(config.xlen, config.mmInterfaceWidth).ReadReq)
-  val resp = Flipped(DecoupledIO(new RespPort(config.mmInterfaceWidth).ReadResp))
-}
-
-class MemPortW(config: WoodConfig) extends Bundle {
-  val req = Flipped(DecoupledIO(new ReqPort(config.xlen, config.mmInterfaceWidth).WriteReq))
-}
-
-class CorePort(config: WoodConfig) extends Bundle {
-  val req  = Flipped(DecoupledIO(new ReqPort(config.xlen, config.xlen).ReadReq))
-  val resp = DecoupledIO(new RespPort(config.xlen).ReadResp)
+class ICacheMemPort(config: WoodConfig) extends Bundle {
+  val req = DecoupledIO(new Bundle {
+    val addr = UInt(32.W)
+  })
+  val resp = Flipped(DecoupledIO(new Bundle {
+    val data = UInt(config.mmInterfaceWidth.W)
+  }))
 }
 
 class Wood(config: WoodConfig) extends Module {
   val io = IO(new Bundle {
-    val memr = new MemPortR(config)
-    val mem  = new DCacheMemPort(config)
+    val icachemem = new ICacheMemPort(config)
+    val dcachemem = new DCacheMemPort(config)
+
+    val uart_rx = Input(Bool())
+    val uart_tx = Output(Bool())
   })
 
   val frunit = Module(new FrUnit(config))
@@ -142,6 +132,9 @@ class Wood(config: WoodConfig) extends Module {
   frunit.io.instPacket.ready    := exunit.io.in.map(_.ready).reduce(_ && _)
   exunit.io.in.map(_.bits.valid := true.B)
 
-  frunit.io.mem <> io.memr
-  exunit.io.mem <> io.mem
+  frunit.io.mem <> io.icachemem
+  exunit.io.mem <> io.dcachemem
+
+  exunit.io.uart_rx := io.uart_rx
+  io.uart_tx        := exunit.io.uart_tx
 }

@@ -9,7 +9,6 @@ class LSWishboneMaster(config: WoodConfig) extends Module {
     val in  = Flipped(Decoupled(new LSCMI(config)))
     val out = Decoupled(new LSCMI(config))
 
-    // Wishbone master interface
     val wb_adr   = Output(UInt(4.W))
     val wb_dat_o = Output(UInt(32.W))
     val wb_we    = Output(Bool())
@@ -20,11 +19,19 @@ class LSWishboneMaster(config: WoodConfig) extends Module {
     val wb_dat_i = Input(UInt(32.W))
   })
 
-  // State machine
   val sIdle :: sRequest :: sWaitAck :: Nil = Enum(3)
   val state                                = RegInit(sIdle)
 
-  // Default values
+  val latchedInputNext = Wire(new LSCMI(config))
+  val latchedInput     = RegEnable(latchedInputNext, 0.U.asTypeOf(new LSCMI(config)), 1.B)
+
+  val getWStrobe = Module(new LSGetWriteStrobe(config))
+  getWStrobe.io.addr := io.in.bits.addr
+  getWStrobe.io.lsOp := io.in.bits.lsOp
+  val strobeShiftAmount = io.in.bits.addr(log2Ceil(config.numBytes) - 1, 0)
+  val shiftedStrobe     = (getWStrobe.io.out.asUInt << strobeShiftAmount)(config.numBytes - 1, 0)
+  dontTouch(shiftedStrobe) // debug only
+
   io.wb_adr   := 0.U
   io.wb_dat_o := 0.U
   io.wb_we    := false.B
@@ -35,13 +42,7 @@ class LSWishboneMaster(config: WoodConfig) extends Module {
   io.in.ready  := false.B
   io.out.valid := false.B
 
-  // Latch input for preserving data
-  val latchedInputNext = Wire(new LSCMI(config))
-  val latchedInput     = RegEnable(latchedInputNext, 0.U.asTypeOf(new LSCMI(config)), 1.B)
-
-  // Output assignment (preserving all fields)
-  io.out.bits := latchedInput
-
+  io.out.bits      := latchedInput
   latchedInputNext := latchedInput
 
   switch(state) {
@@ -53,7 +54,7 @@ class LSWishboneMaster(config: WoodConfig) extends Module {
         io.wb_dat_o      := io.in.bits.cacheData.asUInt
         io.wb_we         := io.in.bits.store
         io.wb_stb        := true.B
-        io.wb_sel        := io.in.bits.cacheData.asUInt
+        io.wb_sel        := shiftedStrobe
         io.wb_cyc        := true.B
         state            := sRequest
       }.otherwise {

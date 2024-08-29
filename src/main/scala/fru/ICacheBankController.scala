@@ -4,14 +4,14 @@ import chisel3._
 import chisel3.std.BarrelShifter
 import chisel3.util._
 import wood.std.{DCArbiter, DCLeftShifter}
-import wood.{CorePort, MemPortR, WoodConfig}
+import wood.{ICacheCorePort, ICacheMemPort, WoodConfig}
 
 //IMPORTTANT TODO: we can buffer the memory response and its address to match the following unaligned requests
 // we assume that input addr will not change until the next request handshake
 class ICacheBankController(config: WoodConfig) extends Module {
   val io = IO(new Bundle {
-    val core = Vec(config.nWide, new CorePort(config))
-    val mem  = new MemPortR(config)
+    val core = Vec(config.nWide, new ICacheCorePort(config))
+    val mem  = new ICacheMemPort(config)
   })
 
   val icachebank = for (i <- 0 until config.nWide) yield {

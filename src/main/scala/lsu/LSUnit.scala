@@ -116,8 +116,9 @@ class LSUnit(config: WoodConfig) extends Module {
 
   lsscstage.io.frontRetired <> lssqstage.io.selfRetired
 
-  lsscstage.io.flush := io.flush
-  lssqstage.io.flush := io.flush
+  lsscstage.io.flush  := io.flush
+  lssqstage.io.flush  := io.flush
+  lsducstage.io.flush := io.flush
 
   lsducstage.io.mem <> io.mem
 

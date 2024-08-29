@@ -17,14 +17,14 @@ object CSROp extends ChiselEnum {
 }
 
 object CSRMask {
-  val misa          = "b00000011000100100010000000000000".U(32.W)
+  val misa          = "b00000000000000000001000000100011".U(32.W)
   val mvendorid     = "b00000000000000000000000000000000".U(32.W)
   val marchid       = "b00000000000000000000000000000000".U(32.W)
   val mimpid        = "b00000000000000000000000000000000".U(32.W)
   val mhartid       = "b00000000000000000000000000000000".U(32.W)
-  val mstatus       = "b00000000000001100000000000000000".U(32.W)
+  val mstatus       = "b00000000000000011110000000000000".U(32.W)
   val mstatush      = "b00000000000000000000000000000000".U(32.W)
-  val mtvec         = "b00111111111111111111111111111111".U(32.W)
+  val mtvec         = "b11111111111111111111111111111100".U(32.W)
   val mscratch      = "b11111111111111111111111111111111".U(32.W)
   val mcountinhibit = "b11111111111111111111111111111111".U(32.W)
   val mcycle        = "b11111111111111111111111111111111".U(32.W)
@@ -32,7 +32,7 @@ object CSRMask {
   val cycle         = "b00000000000000000000000000000000".U(32.W)
   val instret       = "b00000000000000000000000000000000".U(32.W)
   val mepc          = "b11111111111111111111111111111100".U(32.W)
-  val mcause        = "b11111111111111111111111111111110".U(32.W)
+  val mcause        = "b01111111111111111111111111111111".U(32.W)
   val mtval         = "b11111111111111111111111111111111".U(32.W)
 }
 
@@ -106,13 +106,13 @@ class CSR(config: WoodConfig) extends Module {
     val mxl   = UInt(2.W)
     val const = UInt(4.W)
     val extensions = new Bundle {
-      val a = Bool(); val b = Bool(); val c = Bool(); val d = Bool()
-      val e = Bool(); val f = Bool(); val g = Bool(); val h = Bool()
-      val i = Bool(); val j = Bool(); val k = Bool(); val l = Bool()
-      val m = Bool(); val n = Bool(); val o = Bool(); val p = Bool()
-      val q = Bool(); val r = Bool(); val s = Bool(); val t = Bool()
-      val u = Bool(); val v = Bool(); val w = Bool(); val x = Bool()
-      val y = Bool(); val z = Bool()
+      val z = Bool(); val y = Bool(); val x = Bool(); val w = Bool()
+      val v = Bool(); val u = Bool(); val t = Bool(); val s = Bool()
+      val r = Bool(); val q = Bool(); val p = Bool(); val o = Bool()
+      val n = Bool(); val m = Bool(); val l = Bool(); val k = Bool()
+      val j = Bool(); val i = Bool(); val h = Bool(); val g = Bool()
+      val f = Bool(); val e = Bool(); val d = Bool(); val c = Bool()
+      val b = Bool(); val a = Bool()
     }
   })
   misa.mxl          := 1.U
@@ -128,28 +128,28 @@ class CSR(config: WoodConfig) extends Module {
       competition comitee do not let us hardwire FS to Dirty god knows why
    */
   val mstatus = Reg(new Bundle {
-    val wpri = UInt(1.W); val sie   = UInt(1.W); val wpri0 = UInt(1.W)
-    val mie  = UInt(1.W); val wpri1 = UInt(1.W); val spie  = UInt(1.W)
-    val ube  = UInt(1.W); val mpie  = UInt(1.W); val spp   = UInt(1.W)
-    val vs   = UInt(2.W); val mpp   = UInt(2.W); val fs    = UInt(2.W)
-    val xs   = UInt(2.W); val mprv  = UInt(1.W); val sum   = UInt(1.W)
-    val mxr  = UInt(1.W); val tvm   = UInt(1.W); val tw    = UInt(1.W)
-    val tsr  = UInt(1.W); val wpri2 = UInt(8.W); val sd    = UInt(1.W)
+    val sd    = UInt(1.W); val wpri2 = UInt(8.W); val tsr  = UInt(1.W)
+    val tw    = UInt(1.W); val tvm   = UInt(1.W); val mxr  = UInt(1.W)
+    val sum   = UInt(1.W); val mprv  = UInt(1.W); val xs   = UInt(2.W)
+    val fs    = UInt(2.W); val mpp   = UInt(2.W); val vs   = UInt(2.W)
+    val spp   = UInt(1.W); val mpie  = UInt(1.W); val ube  = UInt(1.W)
+    val spie  = UInt(1.W); val wpri1 = UInt(1.W); val mie  = UInt(1.W)
+    val wpri0 = UInt(1.W); val sie   = UInt(1.W); val wpri = UInt(1.W)
   })
   mstatus    := 0.U.asTypeOf(mstatus)
   mstatus.sd := mstatus.fs === 3.U
 
   val mstatush = Reg(new Bundle {
-    val wpri0 = UInt(4.W)
-    val sbe   = UInt(1.W)
+    val wpri0 = UInt(26.W)
     val mbe   = UInt(1.W)
-    val wpri1 = UInt(26.W)
+    val sbe   = UInt(1.W)
+    val wpri1 = UInt(4.W)
   })
   mstatush := 0.U.asTypeOf(mstatush)
 
   val mtvec = Reg(new Bundle {
-    val mode = UInt(2.W)
     val base = UInt(30.W)
+    val mode = UInt(2.W)
   })
   mtvec := 0.U.asTypeOf(mtvec)
 
@@ -164,8 +164,8 @@ class CSR(config: WoodConfig) extends Module {
   mepc := 0.U.asTypeOf(mepc)
 
   val mcause = Reg(new Bundle {
-    val cause     = UInt(31.W)
     val interrupt = UInt(1.W)
+    val cause     = UInt(31.W)
   })
   mcause := 0.U.asTypeOf(mcause)
 
@@ -176,10 +176,10 @@ class CSR(config: WoodConfig) extends Module {
 
   val perfmonitors = new Bundle {
     val mcountinhibit = Reg(new Bundle {
-      val cy    = UInt(1.W)
-      val const = UInt(1.W)
-      val ir    = UInt(1.W)
       val hpm   = Vec(29, UInt(1.W))
+      val ir    = UInt(1.W)
+      val const = UInt(1.W)
+      val cy    = UInt(1.W)
     })
     mcountinhibit := 0.U.asTypeOf(mcountinhibit)
 

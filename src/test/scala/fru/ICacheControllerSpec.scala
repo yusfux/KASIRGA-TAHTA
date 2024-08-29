@@ -7,12 +7,12 @@ import chiseltest._
 import org.scalatest.flatspec.AnyFlatSpec
 import wood.util.{GenerateVerilog, GetBackendAnnotation}
 import wood.WoodConfig
-import wood.{CorePort, MemPortW}
+import wood.{ICacheCorePort, MemPort}
 
 class ICacheControllerDut(config: WoodConfig, mmDepth: Int, cacheDataWidth: Int) extends Module {
   val io = IO(new Bundle() {
-    val core = new CorePort(config)
-    val mem  = new MemPortW(config)
+    val core = new ICacheCorePort(config)
+    val mem  = new MemPort(config)
   })
 
   val controller = Module(new ICacheController(config))

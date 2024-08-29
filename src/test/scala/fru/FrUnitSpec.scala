@@ -6,7 +6,7 @@ import chiseltest._
 import org.scalatest.flatspec.AnyFlatSpec
 import wood.util.{GenerateVerilog, GetBackendAnnotation}
 import wood.WoodConfig
-import wood.{MemPortW}
+import wood.{MemPort}
 import wood.fru.PCInst
 import scala.io.Source
 import os._
@@ -19,7 +19,7 @@ class FrUnitDut(config: WoodConfig) extends Module {
     val exception_en = Input(Bool())
     val exception_pc = Input(UInt(config.xlen.W))
 
-    val mem     = new MemPortW(config)
+    val mem     = new MemPort(config)
     val frreset = Input(Bool())
   })
 

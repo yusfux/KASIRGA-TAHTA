@@ -35,7 +35,7 @@ class LSWriteback(config: WoodConfig) extends Module {
   extender.io.inData  := shiftedMerged
   io.out(0).bits.data := extender.io.out
   io.out(0).bits.tag  := arbiter.io.out.bits.rdTag
-  io.out(0).valid     := arbiter.io.out.valid && !arbiter.io.out.bits.store
+  io.out(0).valid     := arbiter.io.out.valid && !arbiter.io.out.bits.store && ~arbiter.io.out.bits.flushed
 
   io.in.ready          := 1.B // TODO: think
   io.inPeriph.ready    := 1.B // TODO: think

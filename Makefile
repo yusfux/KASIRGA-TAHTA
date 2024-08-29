@@ -74,8 +74,8 @@ exunitdut_coremark_test:
 	grouphex -f src/test/c/build/$(inst)_main.hex -g $(nWide) -o src/test/c/build/
 	python3 src/test/python/cocotb/main.py --inst $(inst) --width $(nWide) --test tb_exunit --top ExUnit --waves $(wave)  --sim questa --dir ./test_run_dir/ExUnitDut_should_emit_for_cocotb/
 
-.PHONY: exunit_aapg_test
-exunit_aapg_test:
+.PHONY: exunitdut_aapg_test
+exunitdut_aapg_test:
 	mkdir -p src/test/aapg/
 	cd src/test/aapg/ && aapg setup
 	rm src/test/aapg/work/config.yaml
@@ -104,7 +104,7 @@ exunit_aapg_test:
 	sed -i '1r src/test/c/build/$(inst)_main.vsim.map' src/test/c/build/exunit_wave.do
 
 	grouphex -f src/test/c/build/$(inst)_main.hex -g $(nWide) -o src/test/c/build/
-	python3 src/test/python/cocotb/main.py --inst $(inst) --width $(nWide) --test tb_exunit --top ExUnit --waves $(wave)  --sim questa --dir ./test_run_dir/ExUnit_should_emit_for_cocotb/
+	python3 src/test/python/cocotb/main.py --inst $(inst) --width $(nWide) --test tb_exunit --top ExUnit --waves $(wave)  --sim questa --dir ./test_run_dir/ExUnitDut_should_emit_for_cocotb/
 
 .PHONY: clean
 clean:

@@ -2,12 +2,12 @@ package wood.fru
 
 import chisel3._
 import chisel3.util._
-import wood.{CorePort, MemPortR, WoodConfig}
+import wood.{ICacheCorePort, ICacheMemPort, WoodConfig}
 
 class ICacheBank(config: WoodConfig) extends Module {
   val io = IO(new Bundle {
-    val core = new CorePort(config)
-    val mem  = new MemPortR(config.copy(mmInterfaceWidth = config.xlen))
+    val core = new ICacheCorePort(config)
+    val mem  = new ICacheMemPort(config.copy(mmInterfaceWidth = config.xlen))
   })
 
   val icachecontroller = Module(new ICacheController(config))

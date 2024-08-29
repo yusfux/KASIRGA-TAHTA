@@ -31,7 +31,7 @@ build_dir:
 
 .PHONY: compile
 compile: build_dir
-		$(CC) $(C_SOURCES) $(ASM_SOURCES) $(FLAGS) -I$(CSMITH_INCLUDE) -o $(BUILD_DIR)/$(inst)_main.elf
+		$(CC) $(C_SOURCES) $(ASM_SOURCES) $(FLAGS) -I$(CSMITH_INCLUDE) -Isrc/generic -o $(BUILD_DIR)/$(inst)_main.elf
 		$(OBJCOPY) $(BUILD_DIR)/$(inst)_main.elf -O binary $(BUILD_DIR)/$(inst)_main.bin
 		$(OBJDUMP) -M numeric,no-aliases -D $(BUILD_DIR)/$(inst)_main.elf  > $(BUILD_DIR)/$(inst)_main.dump
 		bin2hex      $(BUILD_DIR)/$(inst)_main.bin  > $(BUILD_DIR)/$(inst)_main.hex
@@ -43,7 +43,7 @@ dump2: compile
 
 .PHONY: trace
 trace: compile
-		spike -m0x80000000:0x550000  --log-commits --isa=rv32gc -l $(BUILD_DIR)/$(inst)_main.elf &> $(BUILD_DIR)/$(inst)_spike.trace
+		spike -m0x80000000:0x550000,0x20000000:0x8000  --log-commits --isa=rv32gc -l $(BUILD_DIR)/$(inst)_main.elf &> $(BUILD_DIR)/$(inst)_spike.trace
 		spiketrace2json -f $(BUILD_DIR)/$(inst)_spike.trace -o $(BUILD_DIR)/$(inst)_spike_trace.json
 
 .PHONY: inject_questa_radix

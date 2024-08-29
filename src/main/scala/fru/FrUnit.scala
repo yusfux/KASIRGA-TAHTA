@@ -3,7 +3,7 @@ package wood.fru
 import chisel3._
 import chisel3.util._
 import wood.exu.BranchPredictorBus
-import wood.{MemPortR, WoodConfig}
+import wood.{ICacheMemPort, WoodConfig}
 
 class PCQueueEntry(config: WoodConfig) extends Bundle {
   val fetchpc = UInt(config.xlen.W)
@@ -25,7 +25,7 @@ class FrUnit(config: WoodConfig) extends Module {
   val io = IO(new Bundle {
     val bpBus      = Vec(config.nWide, Flipped(ValidIO(new BranchPredictorBus(config))))
     val instPacket = DecoupledIO(Vec(config.nWide, new PCInst(config)))
-    val mem        = new MemPortR(config)
+    val mem        = new ICacheMemPort(config)
   })
 
   val f1stage = Module(new Fetch1Stage(config))

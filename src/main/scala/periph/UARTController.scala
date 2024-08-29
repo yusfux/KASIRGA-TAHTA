@@ -53,7 +53,7 @@ class UARTController(config: WoodConfig) extends Module {
   val uartctrl   = Cat(uartCtrl.baudDiv, uartCtrl.padding, uartCtrl.rx_en, uartCtrl.tx_en)
   val uartrdata  = Cat(uartRdata.padding, uartRdata.data)
 
-  io.wb_ack   := RegNext(io.wb_stb && io.wb_cyc, false.B)
+  io.wb_ack   := RegNext(io.wb_stb && io.wb_cyc && !io.wb_ack, false.B)
   io.wb_dat_o := Mux(io.wb_adr === "h0".U, uartstatus, Mux(io.wb_adr === "h4".U, uartctrl, Mux(io.wb_adr === "h8".U, uartrdata, 0.U)))
 
   when(io.wb_stb && io.wb_cyc && io.wb_we && io.wb_adr === "h0".U) {

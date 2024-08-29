@@ -28,6 +28,7 @@ class DCache(config: WoodConfig) extends Module {
         val lsOp      = UInt(DecodeConfig.subWidths(DecodeConfig.lsOpIdx).W)
         val sqwStrobe = Vec(config.numBytes, Bool()) // only used for CAM merge at writeback
         val sqData    = Vec(config.numBytes, UInt(8.W)) // only used for load update after read
+        val flushed   = Bool()
         val inst      = UInt(32.W) // for testbench only
         val pc        = UInt(config.xlen.W) // for testbench only
       }))
@@ -39,6 +40,7 @@ class DCache(config: WoodConfig) extends Module {
         val sqwStrobe = Vec(config.numBytes, Bool()) // only used for CAM merge at writeback
         val sqData    = Vec(config.numBytes, UInt(8.W)) // only used for load update after read
         val inst      = UInt(32.W) // for testbench only
+        val flushed   = Bool()
         val pc        = UInt(config.xlen.W) // for testbench only
       })
     }
@@ -73,6 +75,7 @@ class DCache(config: WoodConfig) extends Module {
   val isMemRead  = state === CacheState.memRead
   val isResponse = state === CacheState.response
 
+  val flushedReg   = RegEnable(io.core.req.bits.flushed, 0.U, io.core.req.fire)
   val pcReg        = RegEnable(io.core.req.bits.pc, 0.U, io.core.req.fire) // debug only
   val instReg      = RegEnable(io.core.req.bits.inst, 0.U, io.core.req.fire) // debug only
   val sqwStrobeReg = RegEnable(io.core.req.bits.sqwStrobe, VecInit(Seq.fill(config.numBytes)(false.B)), io.core.req.fire) // debug only
@@ -156,12 +159,12 @@ class DCache(config: WoodConfig) extends Module {
   (0 until 4).foreach { i =>
     dcachebankio(i).address   := cacheAddr
     dcachebankio(i).writeData := cacheData
-    dcachebankio(i).enable    := cacheRead || (cacheWriteHit && i.U === hitWay) || ((cacheWriteVictim || cacheWriteFirst) && i.U === victimWay)
+    dcachebankio(i).enable    := true.B
     dcachebankio(i).isWrite   := (cacheWriteHit && i.U === hitWay) || ((cacheWriteVictim || cacheWriteFirst) && i.U === victimWay)
 
     tagbankio(i).address   := tagAddr
     tagbankio(i).writeData := tagData
-    tagbankio(i).enable    := tagRead || (tagWriteHit && i.U === hitWay) || ((tagWriteVictim || tagWriteFirst) && i.U === victimWay)
+    tagbankio(i).enable    := true.B
     tagbankio(i).isWrite   := (tagWriteHit && i.U === hitWay) || ((tagWriteVictim || tagWriteFirst) && i.U === victimWay)
   }
 
@@ -224,12 +227,13 @@ class DCache(config: WoodConfig) extends Module {
   }
 
   io.core.req.ready           := isIdle
-  io.core.resp.bits.data      := Mux(isHit, dataList(hitWay), memData)
+  io.core.resp.bits.data      := Mux(RegNext(io.mem.resp.fire, false.B) && ~isWrite, memData, dataList(hitWay))
   io.core.resp.bits.tag       := rdTagReg
   io.core.resp.bits.addr      := addrReg
   io.core.resp.bits.sqwStrobe := sqwStrobeReg
   io.core.resp.bits.sqData    := sqDataReg
   io.core.resp.bits.lsOp      := lsOpReg
+  io.core.resp.bits.flushed   := flushedReg
   io.core.resp.bits.pc        := pcReg
   io.core.resp.bits.inst      := instReg
 
