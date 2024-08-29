@@ -12,7 +12,7 @@ case class WoodConfig(
   nWide:            Int = 4,
   xlen:             Int = 32,
   mmInterfaceWidth: Int = 128, // Main Memory Interface Width
-  mmDepth:          Int = 86016,
+  mmDepth:          Int = 131072,
   //--------------
   // FrUnitConfig
   pcInitAddr:   String = "h8000_0000",

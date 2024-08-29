@@ -3,7 +3,6 @@ package wood
 import chisel3._
 import chisel3.util._
 import wood.WoodConfig
-import wood.std.DCArbiter
 
 class MemPort(config: WoodConfig) extends Bundle {
   val req = DecoupledIO(new Bundle {
@@ -17,16 +16,30 @@ class MemPort(config: WoodConfig) extends Bundle {
 }
 
 class MainMemory(config: WoodConfig) extends Module {
-  val io  = IO(Flipped(new MemPort(config)))
+  val io = IO(Flipped(new MemPort(config)))
+
   val mem = SyncReadMem(config.mmDepth, UInt(config.mmInterfaceWidth.W))
 
-  when(io.req.valid && io.req.bits.wen) {
-    mem.write(io.req.bits.addr >> (config.byteOffset + config.memOffset), io.req.bits.data)
+  when(io.req.fire && io.req.bits.wen) {
+    mem.write(io.req.bits.addr >> (config.memOffset + config.byteOffset), io.req.bits.data)
   }
-  io.req.ready := true.B
 
-  io.resp.bits.data := mem.read(io.req.bits.addr >> (config.byteOffset + config.memOffset))
-  io.resp.valid     := true.B
+  val addr = RegEnable(io.req.bits.addr, 0.U, io.req.fire)
+  io.resp.bits.data := mem.read(Mux(io.req.fire, io.req.bits.addr, addr) >> (config.memOffset + config.byteOffset))
+
+  val respValid = RegInit(false.B)
+  val reqReady  = RegInit(true.B)
+  when(io.req.fire) {
+    respValid := true.B
+    reqReady  := false.B
+  }
+  when(io.resp.fire) {
+    respValid := false.B
+    reqReady  := true.B
+  }
+
+  io.resp.valid := respValid
+  io.req.ready  := reqReady
 }
 
 class WoodDut(config: WoodConfig) extends Module {
@@ -43,21 +56,44 @@ class WoodDut(config: WoodConfig) extends Module {
   wood.io.uart_rx := io.uart_rx
   io.uart_tx      := wood.io.uart_tx
 
-  val arbiter = Module(new DCArbiter(mem.io.req.bits.cloneType)(2, 1))
+  val idle :: icache :: dcache :: Nil = Enum(3)
+  val state                           = RegInit(idle)
 
-  arbiter.io.in(0).valid      := wood.io.icachemem.req.valid
-  arbiter.io.in(0).bits.addr  := wood.io.icachemem.req.bits.addr
-  arbiter.io.in(0).bits.data  := 0.U
-  arbiter.io.in(0).bits.wen   := false.B
-  wood.io.icachemem.req.ready := arbiter.io.in(0).ready
+  mem.io.req.bits.addr := 0.U
+  mem.io.req.bits.data := wood.io.dcachemem.req.bits.data
+  mem.io.req.bits.wen  := wood.io.dcachemem.req.bits.wen
+  mem.io.req.valid     := false.B
+  mem.io.resp.ready    := false.B
 
-  arbiter.io.in(1) <> wood.io.dcachemem.req
-
-  mem.io.req <> arbiter.io.out(0)
-
-  wood.io.icachemem.resp.bits.data := mem.io.resp.bits.data
-  wood.io.icachemem.resp.valid     := mem.io.resp.valid
-  wood.io.dcachemem.resp.bits.data := mem.io.resp.bits.data
-  wood.io.dcachemem.resp.valid     := mem.io.resp.valid
-  mem.io.resp.ready                := true.B
+  wood.io.icachemem.req.ready      := false.B
+  wood.io.icachemem.resp.valid     := false.B
+  wood.io.icachemem.resp.bits.data := 0.U
+  wood.io.dcachemem.req.ready      := false.B
+  wood.io.dcachemem.resp.valid     := false.B
+  wood.io.dcachemem.resp.bits.data := 0.U
+  switch(state) {
+    is(idle) {
+      when(wood.io.icachemem.req.valid) {
+        state := icache
+      }.elsewhen(wood.io.dcachemem.req.valid) {
+        state := dcache
+      }
+    }
+    is(icache) {
+      mem.io.req.bits.addr        := wood.io.icachemem.req.bits.addr
+      mem.io.req.valid            := wood.io.icachemem.req.valid
+      wood.io.icachemem.req.ready := mem.io.req.ready
+      mem.io.resp                 <> wood.io.icachemem.resp
+      when(wood.io.icachemem.resp.fire) {
+        state := idle
+      }
+    }
+    is(dcache) {
+      mem.io.req  <> wood.io.dcachemem.req
+      mem.io.resp <> wood.io.dcachemem.resp
+      when(wood.io.dcachemem.resp.fire) {
+        state := idle
+      }
+    }
+  }
 }
