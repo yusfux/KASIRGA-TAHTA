@@ -34,6 +34,7 @@ class ROBStage(config: WoodConfig) extends Module {
     remi.valid := mi.valid
     mi.ready   := remi.ready
 
+    remi.bits.isCSR    := mi.bits.isCSR
     remi.bits.isBranch := mi.bits.isBranch
     remi.bits.isJAL    := mi.bits.isJAL
     remi.bits.writeRf  := mi.bits.writeRf

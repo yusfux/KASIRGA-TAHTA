@@ -17,6 +17,7 @@ class RegisterReadStage(config: WoodConfig) extends Module {
     val aluOut       = Vec(config.listExUnits(config.aluCrossbarIndex), Decoupled(new MI(config)))
     val imuOut       = Vec(config.listExUnits(config.imuCrossbarIndex), Decoupled(new MI(config)))
     val iduOut       = Vec(config.listExUnits(config.iduCrossbarIndex), Decoupled(new MI(config)))
+    val csrOut       = Vec(config.listExUnits(config.csrCrossbarIndex), Decoupled(new MI(config)))
   })
 
   val overrideForward   = Module(new OverrideRsFromBuses(config, config.nWide))
@@ -25,6 +26,7 @@ class RegisterReadStage(config: WoodConfig) extends Module {
   val aluPRegs          = Seq.fill(config.listExUnits(config.aluCrossbarIndex))(Module(new WoodMIPipelineRegister(config, 1)))
   val imuPRegs          = Seq.fill(config.listExUnits(config.imuCrossbarIndex))(Module(new WoodMIPipelineRegister(config, 1)))
   val iduPRegs          = Seq.fill(config.listExUnits(config.iduCrossbarIndex))(Module(new WoodMIPipelineRegister(config, 1)))
+  val csrPRegs          = Seq.fill(config.listExUnits(config.csrCrossbarIndex))(Module(new WoodMIPipelineRegister(config, 1)))
 
   val prf = RegInit(VecInit(Seq.fill(config.prfDepth)(0.U(config.xlen.W)))) // TODO: remove reset
 
@@ -51,7 +53,8 @@ class RegisterReadStage(config: WoodConfig) extends Module {
       Array(
         (io.in(j).bits.exEngine === ExEngine.alu.asUInt) -> config.aluCrossbarIndex.U,
         (io.in(j).bits.exEngine === ExEngine.idu.asUInt) -> config.iduCrossbarIndex.U,
-        (io.in(j).bits.exEngine === ExEngine.imu.asUInt) -> config.imuCrossbarIndex.U
+        (io.in(j).bits.exEngine === ExEngine.imu.asUInt) -> config.imuCrossbarIndex.U,
+        (io.in(j).bits.exEngine === ExEngine.csr.asUInt) -> config.csrCrossbarIndex.U
       ).toIndexedSeq
     )
   })
@@ -79,6 +82,14 @@ class RegisterReadStage(config: WoodConfig) extends Module {
     io.iduOut(j)              <> iduPRegs(j).io.out
     iduPRegs(j).io.flush      := io.flush
     iduPRegs(j).io.setflushed := io.flush
+  })
+
+  (0 until config.listExUnits(config.csrCrossbarIndex)).foreach(j => {
+    csrPRegs(j).io.in         <> crossbar.io.out(config.csrCrossbarIndex)(j)
+    csrPRegs(j).io.valids(0)  := crossbar.io.out(config.csrCrossbarIndex)(j).valid
+    io.csrOut(j)              <> csrPRegs(j).io.out
+    csrPRegs(j).io.flush      := io.flush
+    csrPRegs(j).io.setflushed := io.flush
   })
 
   overrideForward.io.inBus   <> io.forwardBus

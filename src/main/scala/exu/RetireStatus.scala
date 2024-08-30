@@ -16,6 +16,7 @@ class RetireStatusStage(config: WoodConfig) extends Module {
     val out            = Vec(config.nWide, Decoupled(new RetireMI(config)))
     val bpBus          = Vec(config.nWide, ValidIO(new BranchPredictorBus(config)))
     val storeRetireBus = Vec(config.nWide, ValidIO(new TagBus(config)))
+    val csrRetireBus   = Vec(config.nWide, ValidIO(new TagBus(config)))
     val flush          = Output(Bool())
   })
 
@@ -90,6 +91,8 @@ class RetireStatusStage(config: WoodConfig) extends Module {
       ) && !inMightFlushed(j).bits.flushed,
       0.B
     )
+    io.csrRetireBus(j).bits.tag := io.storeRetireBus(j).bits.tag
+    io.csrRetireBus(j).valid    := io.storeRetireBus(j).valid
   })
 
   dontTouch(rightOfItIsRetired) // debug only

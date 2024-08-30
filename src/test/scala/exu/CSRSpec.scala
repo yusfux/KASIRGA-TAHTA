@@ -9,7 +9,7 @@ import wood.util.{GenerateVerilog, GetBackendAnnotation}
 class CSRSpec extends AnyFlatSpec with ChiselScalatestTester {
 
   "CSR" should "work" in {
-    test(new CSR(new WoodConfig)).withAnnotations(GetBackendAnnotation()) { dut =>
+    test(new CSRRegisters(new WoodConfig)).withAnnotations(GetBackendAnnotation()) { dut =>
       dut.io.csr.ren.poke(true.B)
       dut.io.csr.addr.poke(CSRs.misa.U)
       step()

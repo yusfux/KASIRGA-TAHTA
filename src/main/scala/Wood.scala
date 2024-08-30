@@ -86,9 +86,9 @@ case class WoodConfig(
   val aluCrossbarIndex = 0 // NOTE: ALU has to be 0
   val imuCrossbarIndex = 1
   val iduCrossbarIndex = 2
-  val listExCrossbarUnits: List[Int] = List(nWide, 1, 1) // alu, mdu, idu
-  val listExUnits:         List[Int] = List(nWide, 1, 1) // alu, mdu, idu
-
+  val csrCrossbarIndex = 3
+  val listExCrossbarUnits: List[Int] = List(nWide, 1, 1, 1) // alu, mdu, idu, csr
+  val listExUnits:         List[Int] = List(nWide, 1, 1, 1) // alu, mdu, idu, csr
 }
 
 class ICacheCorePort(config: WoodConfig) extends Bundle {

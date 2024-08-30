@@ -129,7 +129,7 @@ class LSStoreQueue(config: WoodConfig) extends Module {
   val tstrobe = Wire(Vec(config.numBytes, Bool()))
   tstrobe := VecInit(Seq.tabulate(config.numBytes)(j => finalWstrobe(j)))
 
-// debug only
+  // debug only
   dontTouch(tstrobe)
   dontTouch(valid)
   dontTouch(deqPtr.value)

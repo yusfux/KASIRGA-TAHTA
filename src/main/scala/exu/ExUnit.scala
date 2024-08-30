@@ -15,6 +15,7 @@ class Retirable(config: WoodConfig) extends Bundle {
 
 case class MI(config: WoodConfig) extends Retirable(config) {
   val isFloat     = UInt(DecodeConfig.subWidths(DecodeConfig.isFloatIdx).W)
+  val isCSR       = UInt(DecodeConfig.subWidths(DecodeConfig.isCSRIdx).W)
   val isBranch    = UInt(DecodeConfig.subWidths(DecodeConfig.isBranchIdx).W)
   val isJAL       = UInt(DecodeConfig.subWidths(DecodeConfig.isJALIdx).W)
   val lsType      = UInt(DecodeConfig.subWidths(DecodeConfig.lsTypeIdx).W)
@@ -56,6 +57,7 @@ case class MI(config: WoodConfig) extends Retirable(config) {
 }
 
 case class RetireMI(config: WoodConfig) extends Bundle {
+  val isCSR    = UInt(DecodeConfig.subWidths(DecodeConfig.isCSRIdx).W)
   val isBranch = UInt(DecodeConfig.subWidths(DecodeConfig.isBranchIdx).W)
   val isJAL    = UInt(DecodeConfig.subWidths(DecodeConfig.isJALIdx).W)
   val lsType   = UInt(DecodeConfig.subWidths(DecodeConfig.lsTypeIdx).W)
@@ -113,8 +115,8 @@ object MI { // for testbench only, set all to value except overrides
 }
 
 object ExEngine extends ChiselEnum {
-  val alu, imu, idu, lsu, fpu, none = Value
-  val values                        = IndexedSeq(alu, imu, idu, lsu, fpu, none)
+  val alu, imu, idu, lsu, fpu, csr, none = Value
+  val values                             = IndexedSeq(alu, imu, idu, lsu, fpu, csr, none)
 
   def toBitpat(op: ExEngine.Type): BitPat =
     BitPat(op.litValue.U(getWidth.W))
@@ -196,12 +198,15 @@ class ExUnit(config: WoodConfig) extends Module {
   lsunit.io.lsOperandBus    <> wbstage.io.lsOperandBus
   restage.io.lsOperandBus   <> wbstage.io.lsOperandBus
 
+  rsstage.io.csrRetireBus <> exstage.io.csrRetireBus
+
   restage.io.archRF <> arstage.io.archRF
 
   rrstage.io.in    <> scstage.io.out
   exstage.io.aluIn <> rrstage.io.aluOut
   exstage.io.imuIn <> rrstage.io.imuOut
   exstage.io.iduIn <> rrstage.io.iduOut
+  exstage.io.csrIn <> rrstage.io.csrOut
   wbstage.io.in    <> exstage.io.out
 
   rsstage.io.exceptionBus <> wbstage.io.exceptionBus

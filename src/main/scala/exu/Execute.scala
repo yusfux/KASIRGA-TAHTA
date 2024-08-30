@@ -11,14 +11,17 @@ class ExecuteStage(config: WoodConfig) extends Module {
   val numALUs       = config.listExUnits(config.aluCrossbarIndex)
   val numIMUs       = config.listExUnits(config.imuCrossbarIndex)
   val numIDUs       = config.listExUnits(config.iduCrossbarIndex)
+  val numCSRs       = config.listExUnits(config.csrCrossbarIndex)
 
   val io = IO(new Bundle {
-    val aluIn      = Flipped(Vec(numALUs, Decoupled(new MI(config))))
-    val flush      = Input(Bool())
-    val imuIn      = Flipped(Vec(numIMUs, Decoupled(new MI(config))))
-    val iduIn      = Flipped(Vec(numIMUs, Decoupled(new MI(config))))
-    val forwardBus = Vec(config.nWide, ValidIO(new DataBus(config)))
-    val out        = Vec(config.nWide, Decoupled(new MI(config)))
+    val aluIn        = Flipped(Vec(numALUs, Decoupled(new MI(config))))
+    val flush        = Input(Bool())
+    val imuIn        = Flipped(Vec(numIMUs, Decoupled(new MI(config))))
+    val iduIn        = Flipped(Vec(numIMUs, Decoupled(new MI(config))))
+    val csrIn        = Flipped(Vec(numCSRs, Decoupled(new MI(config))))
+    val csrRetireBus = Flipped(Vec(config.nWide, ValidIO(new TagBus(config))))
+    val forwardBus   = Vec(config.nWide, ValidIO(new DataBus(config)))
+    val out          = Vec(config.nWide, Decoupled(new MI(config)))
   })
 
   val pRegs   = Seq.fill(config.nWide)(Module(new WoodMIPipelineRegister(config, 1)))
@@ -31,6 +34,9 @@ class ExecuteStage(config: WoodConfig) extends Module {
   }
   val idus = Seq.tabulate(numIDUs) { _ =>
     Module(new IDU(config))
+  }
+  val csrs = Seq.tabulate(numCSRs) { _ =>
+    Module(new CSR(config))
   }
 
   val aluOutputs = Wire(Vec(numALUs, Decoupled(new MI(config))))
@@ -48,17 +54,26 @@ class ExecuteStage(config: WoodConfig) extends Module {
   iduInputs  <> idus.map(_.io.in)
   iduOutputs <> idus.map(_.io.out)
 
+  val csrOutputs = Wire(Vec(numCSRs, Decoupled(new MI(config))))
+  val csrInputs  = Wire(Vec(numCSRs, Decoupled(new MI(config))))
+  csrInputs  <> csrs.map(_.io.in)
+  csrOutputs <> csrs.map(_.io.out)
+
   aluInputs <> io.aluIn
   imuInputs <> io.imuIn
   iduInputs <> io.iduIn
+  csrInputs <> io.csrIn
 
   // alu.foreach(_.io.flush := io.flush)
-  imus.foreach(_.io.flush := io.flush)
-  idus.foreach(_.io.flush := io.flush)
+  imus.foreach(_.io.flush        := io.flush)
+  idus.foreach(_.io.flush        := io.flush)
+  csrs.foreach(_.io.flush        := io.flush)
+  csrs.foreach(_.io.csrRetireBus := io.csrRetireBus)
 
   val aluRange = (0 until numALUs)
   val imuRange = (numALUs until numALUs + numIMUs)
   val iduRange = (numALUs + numIMUs until numALUs + numIMUs + numIDUs)
+  val csrRange = (numALUs + numIMUs + numIDUs until numALUs + numIMUs + numIDUs + numCSRs)
   (aluRange).foreach(j => {
     arbiter.io.in(j) <> aluOutputs(j)
   })
@@ -67,6 +82,9 @@ class ExecuteStage(config: WoodConfig) extends Module {
   })
   (iduRange).foreach(j => {
     arbiter.io.in(j) <> iduOutputs(j - iduRange(0))
+  })
+  (csrRange).foreach(j => {
+    arbiter.io.in(j) <> csrOutputs(j - csrRange(0))
   })
 
   (0 until config.nWide).foreach(j => {
@@ -78,7 +96,7 @@ class ExecuteStage(config: WoodConfig) extends Module {
     io.forwardBus(j).bits.tag  := arbiter.io.out(j).bits.rdTag
     io.forwardBus(j).valid     := arbiter.io.out(j).valid & !isLoad & !isAtom
 
-    pRegs(j).io.valids(0) := io.aluIn(j).valid // TODO: BUG: BUG: BUG:
+    pRegs(j).io.valids(0) := arbiter.io.out(j).valid
 
     pRegs(j).io.flush      := io.flush
     pRegs(j).io.setflushed := io.flush
